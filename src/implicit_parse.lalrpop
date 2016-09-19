@@ -1,0 +1,116 @@
+use common::Id;
+use common::Op2::*;
+use common::Const::*;
+use implicit::Exp;
+use implicit::Exp::*;
+use tok::{self, Tok};
+
+#[LALR]
+grammar<'input>(text: &'input str);
+
+pub Program: Box<Exp> = {
+    Exp,
+};
+
+Exp: Box<Exp> = {
+    "if" <c:Exp> "then" <t:Exp> "else" <f:Exp> => Box::new(If(c, t, f)),
+    "let" <id:Ident> "=" <v:Exp> "in" <e:Exp>  => Box::new(Let(id, v, e)),
+    "fun" <id:Ident> "->" <e:Exp>              => Box::new(Fun(id, e)),
+    "fix" <id:Ident> "->" <e:Exp>              => Box::new(Fix(id, e)),
+    Cmp,
+};
+
+Cmp: Box<Exp> = {
+    <l:Add> "=" <r:Cmp> => Box::new(Op2(Eq, l, r)),
+    <l:Add> "<" <r:Cmp> => Box::new(Op2(LT, l, r)),
+    <l:Add> ">" <r:Cmp> => Box::new(Op2(GT, l, r)),
+    Add,
+};
+
+Add: Box<Exp> = {
+    <l:Add> "-" <r:Mul> => Box::new(Op2(Sub, l, r)),
+    <l:Add> "+" <r:Mul> => Box::new(Op2(Add, l, r)),
+    Mul,
+};
+
+Mul: Box<Exp> = {
+    <l:Mul> "*" <r:List> => Box::new(Op2(Mul, l, r)),
+    List,
+};
+
+List: Box<Exp> = {
+    <hd:App> "::" <tl:List> => Box::new(Cons(hd, tl)),
+    App,
+};
+
+App: Box<Exp> = {
+    "head" <l:Atom>   => Box::new(Head(l)),
+    "tail" <l:Atom>   => Box::new(Tail(l)),
+    "empty?" <l:Atom> => Box::new(IsEmpty(l)),
+    <a:App> <b:Atom>  => Box::new(App(a, b)),
+    Atom,
+};
+
+Atom: Box<Exp> = {
+    <id:Ident>    => Box::new(Var(id)),
+    "true"        => Box::new(Const(Bool(true))),
+    "false"       => Box::new(Const(Bool(true))),
+    "empty"       => Box::new(Empty),
+    <p:Atom> ".1" => Box::new(ProjL(p)),
+    <p:Atom> ".2" => Box::new(ProjR(p)),
+    "(" <Exps> ")",
+    Int,
+};
+
+Exps: Box<Exp> = {
+    <l:Exp> "," <r:Exp> => Box::new(Pair(l, r)),
+    Exp,
+};
+
+Int: Box<Exp> = {
+    Num => Box::new(Const(Int(<>))),
+};
+
+Ident: Id = {
+    <id:"Iden"> => String::from(id),
+};
+
+Num: i64 = {
+    "Num",
+};
+
+extern {
+    type Location = usize;
+    type Error = tok::Error;
+    enum Tok<'input> {
+        "if" => Tok::If,
+        "then" => Tok::Then,
+        "else" => Tok::Else,
+        "let" => Tok::Let,
+        "in" => Tok::In,
+        "," => Tok::Comma,
+        "=" => Tok::Eq,
+        "->" => Tok::RArrow,
+        "<" => Tok::Lt,
+        ">" => Tok::Gt,
+        "+" => Tok::Plus,
+        "-" => Tok::Minus,
+        "*" => Tok::Mul,
+        "::" => Tok::Cons,
+        "(" => Tok::LParen,
+        ")" => Tok::RParen,
+        "fun" => Tok::Fun,
+        "fix" => Tok::Fix,
+        "head" => Tok::Head,
+        "tail" => Tok::Tail,
+        "empty?" => Tok::Emptyq,
+        "true" => Tok::True,
+        "false" => Tok::False,
+        "empty" => Tok::Empty,
+        ".1" => Tok::Dot1,
+        ".2" => Tok::Dot2,
+
+        "Iden" => Tok::Ident(<&'input str>),
+        "Num" => Tok::Num(<i64>),
+    }
+}

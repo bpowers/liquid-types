@@ -1,0 +1,17 @@
+[package]
+name = "liquid-types"
+version = "0.1.0"
+authors = ["Bobby Powers <bobbypowers@gmail.com>"]
+build = "build.rs" # LALRPOP preprocessing
+
+[dependencies]
+libc = "0.2.9"
+lazy_static = "0.1.15"
+unicode-xid = "0.0.3"
+
+# Add a dependency on the LALRPOP runtime library:
+[dependencies.lalrpop-util]
+git = "https://github.com/nikomatsakis/lalrpop.git"
+
+[build-dependencies.lalrpop]
+git = "https://github.com/nikomatsakis/lalrpop.git"
