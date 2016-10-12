@@ -1,3 +1,5 @@
+#![feature(box_syntax)]
+
 #[macro_use]
 extern crate lazy_static;
 extern crate unicode_xid;
@@ -119,8 +121,103 @@ pub fn implicit_open<'a>(path: &Path) -> Result<Box<implicit::Exp>> {
     }
 }
 
+struct MVEnv<'a> {
+    env_id: &'a str,
+    next_id: i32,
+}
+
+impl<'a> MVEnv<'a> {
+    fn new(env: &'a str) -> MVEnv<'a> {
+        MVEnv{env_id: env, next_id: 1}
+    }
+
+    fn alloc(&mut self, s: &String) -> explicit::Typ {
+        let id = self.next_id;
+        self.next_id += 1;
+        explicit::Typ::TMetavar((id, s.clone()))
+    }
+
+    fn alloc_empty(&mut self) -> explicit::Typ {
+        let id = self.next_id;
+        self.next_id += 1;
+        explicit::Typ::TMetavar((id, String::from(self.env_id)))
+    }
+}
+
+fn add_metavars_in(env: &mut MVEnv, exp: &implicit::Exp) -> explicit::Exp {
+    use implicit::Exp as I;
+    use explicit::Exp as E;
+
+    match *exp {
+        I::Var(ref id) => {
+            E::Var(id.clone())
+        },
+        I::Const(ref c) => E::Const(*c),
+        I::Op2(ref op, ref l, ref r) => {
+            let el = box add_metavars_in(env, l);
+            let er = box add_metavars_in(env, r);
+            E::Op2(*op, el, er)
+        },
+        I::Fun(ref id, ref e) => {
+            let ee = box add_metavars_in(env, e);
+            let mv = env.alloc(id);
+            E::Fun(id.clone(), mv, ee)
+        },
+        I::App(ref e1, ref e2) => {
+            let ee1 = box add_metavars_in(env, e1);
+            let ee2 = box add_metavars_in(env, e2);
+            E::App(ee1, ee2)
+        },
+        I::If(ref e1, ref e2, ref e3) => {
+            let ee1 = box add_metavars_in(env, e1);
+            let ee2 = box add_metavars_in(env, e2);
+            let ee3 = box add_metavars_in(env, e3);
+            E::If(ee1, ee2, ee3)
+        },
+        I::Let(ref id, ref e1, ref e2) => {
+            let ee1 = box add_metavars_in(env, e1);
+            let ee2 = box add_metavars_in(env, e2);
+            E::Let(id.clone(), ee1, ee2)
+        },
+        I::Fix(ref id, ref e) => {
+            let ee = box add_metavars_in(env, e);
+            let mv = env.alloc(id);
+            E::Fix(id.clone(), mv, ee)
+        },
+        I::Empty => {
+            E::Empty(env.alloc_empty())
+        },
+        I::Cons(ref hd, ref tl) => {
+            let ehd = box add_metavars_in(env, hd);
+            let etl = box add_metavars_in(env, tl);
+            E::Cons(ehd, etl)
+        },
+        I::Head(ref e) => {
+            E::Head(box add_metavars_in(env, e))
+        },
+        I::Tail(ref e) => {
+            E::Tail(box add_metavars_in(env, e))
+        },
+        I::IsEmpty(ref e) => {
+            E::IsEmpty(box add_metavars_in(env, e))
+        },
+        I::Pair(ref l, ref r) => {
+            let el = box add_metavars_in(env, l);
+            let er = box add_metavars_in(env, r);
+            E::Pair(el, er)
+        },
+        I::ProjL(ref e) => {
+            E::ProjL(box add_metavars_in(env, e))
+        },
+        I::ProjR(ref e) => {
+            E::ProjR(box add_metavars_in(env, e))
+        },
+    }
+}
+
 fn add_metavars(exp: &implicit::Exp) -> Box<explicit::Exp> {
-    Box::new(explicit::Exp::Empty)
+    let mut env = MVEnv::new("α");
+    box add_metavars_in(&mut env, exp)
 }
 
 fn main() {
@@ -137,7 +234,9 @@ fn main() {
         Err(e) => die!("implicit_open: {}", error::Error::description(&e)),
     };
 
-    let typedWithMetavars = add_metavars(&exp);
+    let typed_w_metavars = add_metavars(&exp);
+
+    // α β
 
     // let m = make_machine(&asm);
 
@@ -149,6 +248,7 @@ fn main() {
     // }
 
     println!("result:\n\n{:?}", exp);
+    println!("typed :\n\n{:?}", typed_w_metavars);
 }
 
 

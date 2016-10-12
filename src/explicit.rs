@@ -22,7 +22,7 @@ pub enum Exp {
     If(Box<Exp>, Box<Exp>, Box<Exp>),
     Let(Id, Box<Exp>, Box<Exp>),
     Fix(Id, Typ, Box<Exp>),
-    Empty,
+    Empty(Typ),
     Cons(Box<Exp>, Box<Exp>),
     Head(Box<Exp>),
     Tail(Box<Exp>),

@@ -1,7 +1,7 @@
 
 pub type Id = String;
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum Op2 {
     LT,
     GT,
@@ -11,7 +11,7 @@ pub enum Op2 {
     Mul,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum Const {
     Int(i64),
     Bool(bool),
