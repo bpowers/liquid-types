@@ -11,7 +11,7 @@ unicode-xid = "0.0.3"
 
 # Add a dependency on the LALRPOP runtime library:
 [dependencies.lalrpop-util]
-git = "https://github.com/nikomatsakis/lalrpop.git"
+version = "0.12.1"
 
 [build-dependencies.lalrpop]
-git = "https://github.com/nikomatsakis/lalrpop.git"
+version = "0.12.1"
