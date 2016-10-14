@@ -211,9 +211,9 @@ fn add_metavars(exp: &implicit::Exp) -> Box<explicit::Exp> {
     box add_metavars_in(&mut env, exp)
 }
 
-fn gen_constraints(m: &mut MVEnv,
-                   env: &mut HashMap<&str, &str>,
-                   exp: &explicit::Exp)
+fn gen_constraints<'a>(m: &mut MVEnv,
+                   env: &mut HashMap<&'a str, Typ>,
+                   exp: &'a explicit::Exp)
                    -> (Vec<(Typ, Typ)>, Typ) {
     use common::{Const, Op2};
     use explicit::Exp as E;
@@ -226,11 +226,106 @@ fn gen_constraints(m: &mut MVEnv,
                 Op2::LT | Op2::GT | Op2::Eq => Typ::TBool,
                 Op2::Add | Op2::Sub | Op2::Mul => Typ::TInt,
             };
-            let (c1, t1) = gen_constraints(m, env, e1);
-            let (c2, t2) = gen_constraints(m, env, e2);
-            (Vec::new(), Typ::TBool)
+            let (mut c1, t1) = gen_constraints(m, env, e1);
+            let (mut c2, t2) = gen_constraints(m, env, e2);
+            c1.append(&mut c2);
+            c1.push((t1, Typ::TInt));
+            c1.push((t2, Typ::TInt));
+            (c1, opty)
         }
-        _ => (Vec::new(), Typ::TMetavar((1, String::from("a")))),
+        E::If(ref e1, ref e2, ref e3) => {
+            let (mut c1, t1) = gen_constraints(m, env, e1);
+            let (mut c2, t2) = gen_constraints(m, env, e2);
+            let (mut c3, t3) = gen_constraints(m, env, e3);
+            c1.append(&mut c2);
+            c1.append(&mut c3);
+            c1.push((t1, Typ::TBool));
+            c1.push((t2, t3.clone()));
+            (c1, t3)
+        }
+        E::Var(ref x) => {
+            match env.get::<str>(&x) {
+                Some(ty) => (Vec::new(), ty.clone()),
+                None => panic!("unbound identifier"), // FIXME
+            }
+        }
+        E::Let(ref id, ref e1, ref e2) => {
+            let (mut c1, t1) = gen_constraints(m, env, e1);
+            env.insert(&id, t1.clone());
+            let (mut c2, t2) = gen_constraints(m, env, e2);
+            env.remove::<str>(&id);
+            c1.append(&mut c2);
+            (c1, t2)
+        }
+        E::Fun(ref id, ref t1, ref e) => {
+            env.insert(&id, t1.clone());
+            let (c, t2) = gen_constraints(m, env, e);
+            env.remove::<str>(&id);
+            (c, Typ::TFun(box t1.clone(), box t2))
+        }
+        E::Fix(ref id, ref t1, ref e) => {
+            env.insert(&id, t1.clone());
+            let (mut c, t2) = gen_constraints(m, env, e);
+            env.remove::<str>(&id);
+            c.push((t1.clone(), t2));
+            (c, t1.clone())
+        }
+        E::App(ref e1, ref e2) => {
+            let mv = m.alloc_empty();
+            let (mut c1, t1) = gen_constraints(m, env, e1);
+            let (mut c2, t2) = gen_constraints(m, env, e2);
+            c1.append(&mut c2);
+            c1.push((t1.clone(), Typ::TFun(box t2.clone(), box mv.clone())));
+            (c1, mv)
+        }
+        E::Empty(ref t1) => (Vec::new(), Typ::TList(box t1.clone())),
+        E::Cons(ref e1, ref e2) => {
+            let mv = m.alloc_empty();
+            let (mut c1, t1) = gen_constraints(m, env, e1);
+            let (mut c2, t2) = gen_constraints(m, env, e2);
+            c1.append(&mut c2);
+            c1.push((t1, mv.clone()));
+            c1.push((t2, Typ::TList(box mv.clone())));
+            (c1, Typ::TList(box mv))
+        }
+        E::Head(ref e) => {
+            let mv = m.alloc_empty();
+            let (mut c, t) = gen_constraints(m, env, e);
+            c.push((t, Typ::TList(box mv.clone())));
+            (c, mv)
+        }
+        E::Tail(ref e) => {
+            let mv = m.alloc_empty();
+            let (mut c, t) = gen_constraints(m, env, e);
+            c.push((t, Typ::TList(box mv.clone())));
+            (c, Typ::TList(box mv))
+        }
+        E::IsEmpty(ref e) => {
+            let mv = m.alloc_empty();
+            let (mut c, t) = gen_constraints(m, env, e);
+            c.push((t, Typ::TList(box mv.clone())));
+            (c, Typ::TBool)
+        }
+        E::Pair(ref e1, ref e2) => {
+            let (mut c1, t1) = gen_constraints(m, env, e1);
+            let (mut c2, t2) = gen_constraints(m, env, e2);
+            c1.append(&mut c2);
+            (c1, Typ::TPair(box t1, box t2))
+        }
+        E::ProjL(ref e) => {
+            let mv1 = m.alloc_empty();
+            let mv2 = m.alloc_empty();
+            let (mut c, t) = gen_constraints(m, env, e);
+            c.push((t, Typ::TPair(box mv1.clone(), box mv2.clone())));
+            (c, mv1)
+        }
+        E::ProjR(ref e) => {
+            let mv1 = m.alloc_empty();
+            let mv2 = m.alloc_empty();
+            let (mut c, t) = gen_constraints(m, env, e);
+            c.push((t, Typ::TPair(box mv1.clone(), box mv2.clone())));
+            (c, mv2)
+        }
     }
 }
 
