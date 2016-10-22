@@ -214,11 +214,11 @@ fn add_metavars(exp: &implicit::Exp) -> Box<explicit::Exp> {
 fn gen_constraints<'a>(m: &mut MVEnv,
                    env: &mut HashMap<&'a str, Typ>,
                    exp: &'a explicit::Exp)
-                   -> (Vec<(Typ, Typ)>, Typ) {
+                   -> Result<(Vec<(Typ, Typ)>, Typ)> {
     use common::{Const, Op2};
     use explicit::Exp as E;
 
-    match *exp {
+    let result = match *exp {
         E::Const(Const::Int(_)) => (Vec::new(), Typ::TInt),
         E::Const(Const::Bool(_)) => (Vec::new(), Typ::TBool),
         E::Op2(op, ref e1, ref e2) => {
@@ -226,17 +226,17 @@ fn gen_constraints<'a>(m: &mut MVEnv,
                 Op2::LT | Op2::GT | Op2::Eq => Typ::TBool,
                 Op2::Add | Op2::Sub | Op2::Mul => Typ::TInt,
             };
-            let (mut c1, t1) = gen_constraints(m, env, e1);
-            let (mut c2, t2) = gen_constraints(m, env, e2);
+            let (mut c1, t1) = gen_constraints(m, env, e1)?;
+            let (mut c2, t2) = gen_constraints(m, env, e2)?;
             c1.append(&mut c2);
             c1.push((t1, Typ::TInt));
             c1.push((t2, Typ::TInt));
             (c1, opty)
         }
         E::If(ref e1, ref e2, ref e3) => {
-            let (mut c1, t1) = gen_constraints(m, env, e1);
-            let (mut c2, t2) = gen_constraints(m, env, e2);
-            let (mut c3, t3) = gen_constraints(m, env, e3);
+            let (mut c1, t1) = gen_constraints(m, env, e1)?;
+            let (mut c2, t2) = gen_constraints(m, env, e2)?;
+            let (mut c3, t3) = gen_constraints(m, env, e3)?;
             c1.append(&mut c2);
             c1.append(&mut c3);
             c1.push((t1, Typ::TBool));
@@ -246,34 +246,36 @@ fn gen_constraints<'a>(m: &mut MVEnv,
         E::Var(ref x) => {
             match env.get::<str>(&x) {
                 Some(ty) => (Vec::new(), ty.clone()),
-                None => panic!("unbound identifier"), // FIXME
+                None => {
+                    return err!("unbound identifier: {}", x);
+                }
             }
         }
         E::Let(ref id, ref e1, ref e2) => {
-            let (mut c1, t1) = gen_constraints(m, env, e1);
+            let (mut c1, t1) = gen_constraints(m, env, e1)?;
             env.insert(&id, t1.clone());
-            let (mut c2, t2) = gen_constraints(m, env, e2);
+            let (mut c2, t2) = gen_constraints(m, env, e2)?;
             env.remove::<str>(&id);
             c1.append(&mut c2);
             (c1, t2)
         }
         E::Fun(ref id, ref t1, ref e) => {
             env.insert(&id, t1.clone());
-            let (c, t2) = gen_constraints(m, env, e);
+            let (c, t2) = gen_constraints(m, env, e)?;
             env.remove::<str>(&id);
             (c, Typ::TFun(box t1.clone(), box t2))
         }
         E::Fix(ref id, ref t1, ref e) => {
             env.insert(&id, t1.clone());
-            let (mut c, t2) = gen_constraints(m, env, e);
+            let (mut c, t2) = gen_constraints(m, env, e)?;
             env.remove::<str>(&id);
             c.push((t1.clone(), t2));
             (c, t1.clone())
         }
         E::App(ref e1, ref e2) => {
             let mv = m.alloc_empty();
-            let (mut c1, t1) = gen_constraints(m, env, e1);
-            let (mut c2, t2) = gen_constraints(m, env, e2);
+            let (mut c1, t1) = gen_constraints(m, env, e1)?;
+            let (mut c2, t2) = gen_constraints(m, env, e2)?;
             c1.append(&mut c2);
             c1.push((t1.clone(), Typ::TFun(box t2.clone(), box mv.clone())));
             (c1, mv)
@@ -281,8 +283,8 @@ fn gen_constraints<'a>(m: &mut MVEnv,
         E::Empty(ref t1) => (Vec::new(), Typ::TList(box t1.clone())),
         E::Cons(ref e1, ref e2) => {
             let mv = m.alloc_empty();
-            let (mut c1, t1) = gen_constraints(m, env, e1);
-            let (mut c2, t2) = gen_constraints(m, env, e2);
+            let (mut c1, t1) = gen_constraints(m, env, e1)?;
+            let (mut c2, t2) = gen_constraints(m, env, e2)?;
             c1.append(&mut c2);
             c1.push((t1, mv.clone()));
             c1.push((t2, Typ::TList(box mv.clone())));
@@ -290,43 +292,45 @@ fn gen_constraints<'a>(m: &mut MVEnv,
         }
         E::Head(ref e) => {
             let mv = m.alloc_empty();
-            let (mut c, t) = gen_constraints(m, env, e);
+            let (mut c, t) = gen_constraints(m, env, e)?;
             c.push((t, Typ::TList(box mv.clone())));
             (c, mv)
         }
         E::Tail(ref e) => {
             let mv = m.alloc_empty();
-            let (mut c, t) = gen_constraints(m, env, e);
+            let (mut c, t) = gen_constraints(m, env, e)?;
             c.push((t, Typ::TList(box mv.clone())));
             (c, Typ::TList(box mv))
         }
         E::IsEmpty(ref e) => {
             let mv = m.alloc_empty();
-            let (mut c, t) = gen_constraints(m, env, e);
+            let (mut c, t) = gen_constraints(m, env, e)?;
             c.push((t, Typ::TList(box mv.clone())));
             (c, Typ::TBool)
         }
         E::Pair(ref e1, ref e2) => {
-            let (mut c1, t1) = gen_constraints(m, env, e1);
-            let (mut c2, t2) = gen_constraints(m, env, e2);
+            let (mut c1, t1) = gen_constraints(m, env, e1)?;
+            let (mut c2, t2) = gen_constraints(m, env, e2)?;
             c1.append(&mut c2);
             (c1, Typ::TPair(box t1, box t2))
         }
         E::ProjL(ref e) => {
             let mv1 = m.alloc_empty();
             let mv2 = m.alloc_empty();
-            let (mut c, t) = gen_constraints(m, env, e);
+            let (mut c, t) = gen_constraints(m, env, e)?;
             c.push((t, Typ::TPair(box mv1.clone(), box mv2.clone())));
             (c, mv1)
         }
         E::ProjR(ref e) => {
             let mv1 = m.alloc_empty();
             let mv2 = m.alloc_empty();
-            let (mut c, t) = gen_constraints(m, env, e);
+            let (mut c, t) = gen_constraints(m, env, e)?;
             c.push((t, Typ::TPair(box mv1.clone(), box mv2.clone())));
             (c, mv2)
         }
-    }
+    };
+
+    Ok(result)
 }
 
 fn main() {
@@ -346,7 +350,10 @@ fn main() {
     let typed_w_metavars = add_metavars(&exp);
     let mut cg_env = MVEnv::new("β");
     let mut id_env = HashMap::new();
-    let constraints = gen_constraints(&mut cg_env, &mut id_env, &typed_w_metavars);
+    let constraints = match gen_constraints(&mut cg_env, &mut id_env, &typed_w_metavars) {
+        Ok((c, _)) => c,
+        Err(e) => die!("gen_constraints: {}", error::Error::description(&e))
+    };
 
     // α β
 
@@ -361,6 +368,9 @@ fn main() {
 
     println!("result:\n\n{:?}", exp);
     println!("typed :\n\n{:?}", typed_w_metavars);
+    for c in &constraints {
+        println!("c:\t{:?}", c)
+    }
 }
 
 
@@ -380,6 +390,23 @@ macro_rules! test_parse_fails(
         let tokenizer = Tokenizer::new(&s);
         if let Ok(_) = implicit_parse::parse_Program(&s, tokenizer) {
             die!("parse_Program({}) should have failed", $s)
+        }
+    } }
+);
+
+macro_rules! test_unbound_ident(
+    ($s:expr) => { {
+        let s = $s;
+        let tokenizer = Tokenizer::new(&s);
+        let exp = match implicit_parse::parse_Program(&s, tokenizer) {
+            Ok(v) => v,
+            Err(e) => die!("parse_Program: {:?}", e),
+        };
+        let typed_w_metavars = add_metavars(&exp);
+        let mut cg_env = MVEnv::new("β");
+        let mut id_env = HashMap::new();
+        if let Ok(_) = gen_constraints(&mut cg_env, &mut id_env, &typed_w_metavars) {
+            die!("expected gen_constraints to fail for: {}", $s)
         }
     } }
 );
@@ -404,4 +431,6 @@ fn implicit_parse() {
 
     test_parse_fails!("((22)");
     test_parse_fails!("let x = 1"); // only let-in supported
+
+    test_unbound_ident!("let i = 3 in z");
 }
