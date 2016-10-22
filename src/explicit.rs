@@ -2,7 +2,7 @@ pub use common::{Id, Op2, Const};
 
 pub type Metavar = (i32, String);
 
-#[derive(Debug, Clone)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone)]
 pub enum Typ {
     TMetavar(Metavar),
     TInt,
