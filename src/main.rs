@@ -1,4 +1,4 @@
-#![feature(box_syntax)]
+#![feature(box_syntax,box_patterns)]
 
 #[macro_use]
 extern crate lazy_static;
@@ -132,7 +132,7 @@ impl<'a> MVEnv<'a> {
     fn new(env: &'a str) -> MVEnv<'a> {
         MVEnv {
             env_id: env,
-            next_id: 1,
+            next_id: 0,
         }
     }
 
@@ -339,10 +339,10 @@ fn apply(env: &HashMap<Metavar, Typ>, typ_in: &Typ) -> Typ {
     match *typ_in {
         TMetavar(ref mv)   => {
             if let Some(styp) = env.get(mv) {
-                println!("$$\t  found {:?}", mv);
+                // println!("$$\t  found {:?}", mv);
                 styp.clone()
             } else {
-                println!("@@\t   notf {:?}", mv);
+                // println!("@@\t   notf {:?}", mv);
                 typ_in.clone()
             }
         }
@@ -356,11 +356,16 @@ fn apply(env: &HashMap<Metavar, Typ>, typ_in: &Typ) -> Typ {
 fn compose(env1: &HashMap<Metavar, Typ>, env2: &HashMap<Metavar, Typ>) -> HashMap<Metavar, Typ> {
     let mut r = HashMap::new();
 
-    for (mv, typ) in env2.iter() {
-        let typ = apply(env1, typ);
-        if typ == Typ::TMetavar(mv.clone()) {
-            die!("ugh {:?}", typ);
+    for (mv, typ) in env1.iter() {
+        if env2.contains_key(mv) {
+            if let Some(&Typ::TMetavar(ref mv2)) = env2.get(mv) {
+                r.insert(mv2.clone(), typ.clone());
+            }
         }
+    };
+
+    for (mv, typ) in env2.iter() {
+        let typ = apply(env1, &apply(&r, typ));
         r.insert(mv.clone(), typ);
     };
 
@@ -388,32 +393,23 @@ fn unify(t1: &Typ, t2: &Typ) ->Result<HashMap<Metavar, Typ>> {
 
     let mut env: HashMap<Metavar, Typ> = HashMap::new();
 
-    println!("!unifying {:?} w {:?}", t1, t2);
     match (t1, t2) {
         (&TInt, &TInt) => {},
         (&TBool, &TBool) => {},
-        (&TMetavar(ref mv1), &TMetavar(ref mv2)) if mv1 == mv2 => {
-            println!("mveq==");
-        }
-        (&TMetavar(ref mv1), &TMetavar(ref mv2)) => {
-            println!("mveq!= {:?} {:?}", mv1, mv2);
-//            env.insert(mv1.clone(), t2.clone());
-            env.insert(mv2.clone(), t1.clone());
+        (&TMetavar(ref mv1), &TMetavar(ref mv2)) if mv1 == mv2 => {},
+        (&TMetavar(ref mv1), &TMetavar(_)) => {
+            env.insert(mv1.clone(), t2.clone());
         }
         (&TMetavar(ref mv1), _) if !occurs(mv1, t2) => {
-            println!("mv1 == {:?}", t2);
             env.insert(mv1.clone(), t2.clone());
         }
         (&TMetavar(ref mv1), _)  => {
-            println!("occur fail");
             return err!("occurs check failed for mv1 '{:?}' in '{:?}'", mv1, t2)
         }
         (_, &TMetavar(ref mv2)) if !occurs(mv2, t1) => {
-            println!("mv2 == {:?}", t1);
             env.insert(mv2.clone(), t1.clone());
         }
         (_, &TMetavar(ref mv2))  => {
-            println!("occur fail");
             return err!("occurs check failed for mv2 '{:?}' in '{:?}'", mv2, t1)
         }
         (&TFun(ref s1, ref s2), &TFun(ref t1, ref t2)) | (&TPair(ref s1, ref s2), &TPair(ref t1, ref t2)) => {
@@ -426,7 +422,6 @@ fn unify(t1: &Typ, t2: &Typ) ->Result<HashMap<Metavar, Typ>> {
             env = unify(s, t)?;
         }
         _ => {
-            println!("unify fail");
             return err!("couldn't unify {:?} with {:?}", t1, t2)
         }
     };
@@ -434,15 +429,16 @@ fn unify(t1: &Typ, t2: &Typ) ->Result<HashMap<Metavar, Typ>> {
     Ok(env)
 }
 
-fn unify_all(constraints: &Vec<(Typ, Typ)>) -> Result<HashMap<Metavar, Typ>> {
-    let mut env = HashMap::new();
+fn unify_all(constraints: &[(Typ, Typ)]) -> Result<HashMap<Metavar, Typ>> {
+    let r: HashMap<Metavar, Typ> = if let Some((&(ref t1, ref t2), rest)) = constraints.split_first() {
+        let rst = unify_all(rest)?;
+        let fst = unify(t1, t2)?;
+        compose(&fst, &rst)
+    } else {
+        HashMap::new()
+    };
 
-    for &(ref t1, ref t2) in constraints {
-        env = compose(&env, &unify(t1, t2)?);
-        println!("\t{:?}", env);
-    }
-
-    Ok(env)
+    Ok(r)
 }
 
 fn main() {
@@ -540,4 +536,54 @@ fn implicit_parse() {
     test_parse_fails!("let x = 1"); // only let-in supported
 
     test_unbound_ident!("let i = 3 in z");
+}
+
+#[test]
+fn unification() {
+    use explicit::Metavar;
+    use explicit::Typ::*;
+
+    let x: Metavar = (0, String::from("x"));
+    let y: Metavar = (1, String::from("y"));
+
+    let mut s = HashMap::new();
+    s.insert(x.clone(), TInt);
+    match apply(&s, &TMetavar(x.clone())) {
+        TInt => {}
+        _ => {
+            die!("apply should replace x with TInt")
+        }
+    }
+
+    match apply(&s, &TFun(box TMetavar(x.clone()), box TBool)) {
+        TFun(box TInt, box TBool) => {}
+        _ => {
+            die!("apply should recur into type constructors")
+        }
+    }
+
+    // TEST "Subst.compose should distribute over Subst.apply (1)" =
+    let mut s1 = HashMap::new();
+    let mut s2 = HashMap::new();
+    s1.insert(x.clone(), TInt);
+    s2.insert(y.clone(), TBool);
+    let app1 = apply(&compose(&s1, &s2), &TFun(box TMetavar(x.clone()), box TMetavar(y.clone())));
+    let app2 = apply(&s1, &apply(&s2, &TFun(box TMetavar(x.clone()), box TMetavar(y.clone()))));
+    if app1 != app2 {
+        die!("expected equal: {:?} == {:?}", app1, app2)
+    }
+
+    // TEST "Subst.compose should distribute over Subst.apply (2)" =
+    s1.insert(x.clone(), TBool);
+    s2.insert(y.clone(), TMetavar(x.clone()));
+    let app1 = apply(&compose(&s1, &s2), &TFun(box TMetavar(x.clone()), box TMetavar(y.clone())));
+    let app2 = apply(&s1, &apply(&s2, &TFun(box TMetavar(x.clone()), box TMetavar(y.clone()))));
+    if app1 != app2 {
+        die!("expected equal2: {:?} == {:?}", app1, app2)
+    }
+
+// (* An incomplete suite of tests for unification *)
+// TEST "unifying identical base types should return the empty substitution" =
+//   Subst.to_list (unify TInt TInt) = []
+
 }
