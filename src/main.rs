@@ -441,6 +441,77 @@ fn unify_all(constraints: &[(Typ, Typ)]) -> Result<HashMap<Metavar, Typ>> {
     Ok(r)
 }
 
+fn remove_metavars(env: &HashMap<Metavar, Typ>, exp: &explicit::Exp) -> Result<Box<explicit::Exp>> {
+    use explicit::Exp as E;
+
+    let result: E = match *exp {
+        E::Const(ref c) => E::Const(c.clone()),
+        E::Op2(op, ref e1, ref e2) => {
+            let e1 = remove_metavars(env, e1)?;
+            let e2 = remove_metavars(env, e2)?;
+            E::Op2(op.clone(), e1, e2)
+        }
+        E::If(ref e1, ref e2, ref e3) => {
+            let e1 = remove_metavars(env, e1)?;
+            let e2 = remove_metavars(env, e2)?;
+            let e3 = remove_metavars(env, e3)?;
+            E::If(e1, e2, e3)
+        }
+        E::Var(ref x) => E::Var(x.clone()),
+        E::Let(ref id, ref e1, ref e2) => {
+            let e1 = remove_metavars(env, e1)?;
+            let e2 = remove_metavars(env, e2)?;
+            E::Let(id.clone(), e1, e2)
+        }
+        E::Fun(ref id, ref t1, ref e) => {
+            let e = remove_metavars(env, e)?;
+            E::Fun(id.clone(), apply(env, t1), e)
+        }
+        E::Fix(ref id, ref t1, ref e) => {
+            let e = remove_metavars(env, e)?;
+            E::Fix(id.clone(), apply(env, t1), e)
+        }
+        E::App(ref e1, ref e2) => {
+            let e1 = remove_metavars(env, e1)?;
+            let e2 = remove_metavars(env, e2)?;
+            E::App(e1, e2)
+        }
+        E::Empty(ref t1) => E::Empty(apply(env, t1)),
+        E::Cons(ref e1, ref e2) => {
+            let e1 = remove_metavars(env, e1)?;
+            let e2 = remove_metavars(env, e2)?;
+            E::Cons(e1, e2)
+        }
+        E::Head(ref e) => {
+            let e = remove_metavars(env, e)?;
+            E::Head(e)
+        }
+        E::Tail(ref e) => {
+            let e = remove_metavars(env, e)?;
+            E::Tail(e)
+        }
+        E::IsEmpty(ref e) => {
+            let e = remove_metavars(env, e)?;
+            E::IsEmpty(e)
+        }
+        E::Pair(ref e1, ref e2) => {
+            let e1 = remove_metavars(env, e1)?;
+            let e2 = remove_metavars(env, e2)?;
+            E::Pair(e1, e2)
+        }
+        E::ProjL(ref e) => {
+            let e = remove_metavars(env, e)?;
+            E::ProjL(e)
+        }
+        E::ProjR(ref e) => {
+            let e = remove_metavars(env, e)?;
+            E::ProjR(e)
+        }
+    };
+
+    Ok(box result)
+}
+
 fn main() {
 
     let path_s = parse_args();
@@ -460,12 +531,17 @@ fn main() {
     let mut id_env = HashMap::new();
     let constraints = match gen_constraints(&mut cg_env, &mut id_env, &typed_w_metavars) {
         Ok((c, _)) => c,
-        Err(e) => die!("gen_constraints: {}", error::Error::description(&e))
+        Err(e) => die!("gen_constraints: {}", error::Error::description(&e)),
     };
 
     let mv_env = match unify_all(&constraints) {
         Ok(e) => e,
-        Err(e) => die!("unification failed: {}", error::Error::description(&e))
+        Err(e) => die!("unification failed: {}", error::Error::description(&e)),
+    };
+
+    let typed = match remove_metavars(&mv_env, &typed_w_metavars) {
+        Ok(exp) => exp,
+        Err(e) => die!("remove_metavars failed: {}", error::Error::description(&e)),
     };
 
     println!("result:\n\n{:?}", exp);
@@ -474,6 +550,7 @@ fn main() {
         println!("c:\t{:?}", c)
     };
     println!("mvenv:\n\n{:?}\n", mv_env);
+    println!("typed:\n\n{:?}\n", typed);
 }
 
 
