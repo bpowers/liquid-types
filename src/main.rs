@@ -333,39 +333,40 @@ fn gen_constraints<'a>(m: &mut MVEnv,
     Ok(result)
 }
 
-fn insert(env: &HashMap<Metavar, Typ>, mv: Metavar, typ: Typ) -> HashMap<Metavar, Typ> {
-    let mut out = env.clone();
-    out.insert(mv, typ);
-    out
-}
-
 fn apply(env: &HashMap<Metavar, Typ>, typ_in: &Typ) -> Typ {
     use explicit::Typ::*;
 
-    let mut typ = typ_in.clone();
-
-    for (mv, styp) in env.iter() {
-        typ = match typ {
-            TMetavar(ref mv2) if mv == mv2 => styp.clone(),
-            TFun(ref a, ref b) => TFun(box apply(env, a), box apply(env, b)),
-            TPair(ref a, ref b) => TPair(box apply(env, a), box apply(env, b)),
-            TList(ref a) => TList(box apply(env, a)),
-            TMetavar(_) | TInt | TBool => typ,
+    match *typ_in {
+        TMetavar(ref mv)   => {
+            if let Some(styp) = env.get(mv) {
+                println!("$$\t  found {:?}", mv);
+                styp.clone()
+            } else {
+                println!("@@\t   notf {:?}", mv);
+                typ_in.clone()
+            }
         }
-    };
-
-    typ
+        TFun(ref a, ref b)  => TFun(box apply(env, a), box apply(env, b)),
+        TPair(ref a, ref b) => TPair(box apply(env, a), box apply(env, b)),
+        TList(ref a)        => TList(box apply(env, a)),
+        TInt | TBool        => typ_in.clone(),
+    }
 }
 
 fn compose(env1: &HashMap<Metavar, Typ>, env2: &HashMap<Metavar, Typ>) -> HashMap<Metavar, Typ> {
     let mut r = HashMap::new();
 
     for (mv, typ) in env2.iter() {
-        r.insert(mv.clone(), apply(env1, typ));
+        let typ = apply(env1, typ);
+        if typ == Typ::TMetavar(mv.clone()) {
+            die!("ugh {:?}", typ);
+        }
+        r.insert(mv.clone(), typ);
     };
 
     for (mv, typ) in env1.iter() {
-        r.insert(mv.clone(), typ.clone());
+        let typ = apply(&r, typ);
+        r.insert(mv.clone(), typ);
     };
 
     r
@@ -382,43 +383,47 @@ fn occurs(mv: &Metavar, t: &Typ) -> bool {
     }
 }
 
-fn unify(env: &HashMap<Metavar, Typ>, t1: &Typ, t2: &Typ) ->Result<HashMap<Metavar, Typ>> {
+fn unify(t1: &Typ, t2: &Typ) ->Result<HashMap<Metavar, Typ>> {
     use explicit::Typ::*;
 
+    let mut env: HashMap<Metavar, Typ> = HashMap::new();
+
     println!("!unifying {:?} w {:?}", t1, t2);
-    let r: HashMap<Metavar, Typ> = match (t1, t2) {
-        (&TInt, &TInt) => env.clone(),
-        (&TBool, &TBool) => env.clone(),
+    match (t1, t2) {
+        (&TInt, &TInt) => {},
+        (&TBool, &TBool) => {},
         (&TMetavar(ref mv1), &TMetavar(ref mv2)) if mv1 == mv2 => {
             println!("mveq==");
-            env.clone()
+        }
+        (&TMetavar(ref mv1), &TMetavar(ref mv2)) => {
+            println!("mveq!= {:?} {:?}", mv1, mv2);
+//            env.insert(mv1.clone(), t2.clone());
+            env.insert(mv2.clone(), t1.clone());
         }
         (&TMetavar(ref mv1), _) if !occurs(mv1, t2) => {
-            let t2 = apply(env, t2);
             println!("mv1 == {:?}", t2);
-            insert(env, mv1.clone(), t2)
+            env.insert(mv1.clone(), t2.clone());
         }
         (&TMetavar(ref mv1), _)  => {
             println!("occur fail");
             return err!("occurs check failed for mv1 '{:?}' in '{:?}'", mv1, t2)
         }
         (_, &TMetavar(ref mv2)) if !occurs(mv2, t1) => {
-            let t1 = apply(env, t1);
-            println!("mv1 == {:?}", t1);
-            insert(env, mv2.clone(), t1)
+            println!("mv2 == {:?}", t1);
+            env.insert(mv2.clone(), t1.clone());
         }
         (_, &TMetavar(ref mv2))  => {
             println!("occur fail");
             return err!("occurs check failed for mv2 '{:?}' in '{:?}'", mv2, t1)
         }
         (&TFun(ref s1, ref s2), &TFun(ref t1, ref t2)) | (&TPair(ref s1, ref s2), &TPair(ref t1, ref t2)) => {
-            let pi = unify(env, s1, t1)?;
+            let pi = unify(s1, t1)?;
             let s2 = apply(&pi, s2);
             let t2 = apply(&pi, t2);
-            compose(&unify(env, &s2, &t2)?, &pi)
+            env = compose(&unify(&s2, &t2)?, &pi);
         }
         (&TList(ref s), &TList(ref t)) => {
-            unify(env, s, t)?
+            env = unify(s, t)?;
         }
         _ => {
             println!("unify fail");
@@ -426,14 +431,14 @@ fn unify(env: &HashMap<Metavar, Typ>, t1: &Typ, t2: &Typ) ->Result<HashMap<Metav
         }
     };
 
-    Ok(r)
+    Ok(env)
 }
 
 fn unify_all(constraints: &Vec<(Typ, Typ)>) -> Result<HashMap<Metavar, Typ>> {
     let mut env = HashMap::new();
 
     for &(ref t1, ref t2) in constraints {
-        env = unify(&env, t1, t2)?;
+        env = compose(&env, &unify(t1, t2)?);
         println!("\t{:?}", env);
     }
 
