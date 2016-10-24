@@ -17,6 +17,7 @@ Exp: Box<Exp> = {
     "let" <id:Ident> "=" <v:Exp> "in" <e:Exp>  => Box::new(Let(id, v, e)),
     "fun" <id:Ident> "->" <e:Exp>              => Box::new(Fun(id, e)),
     "fix" <id:Ident> "->" <e:Exp>              => Box::new(Fix(id, e)),
+    "begin" <e:Exp> "end"                      => e,
     Cmp,
 };
 
@@ -86,6 +87,8 @@ extern {
         "if" => Tok::If,
         "then" => Tok::Then,
         "else" => Tok::Else,
+        "begin" => Tok::Begin,
+        "end" => Tok::End,
         "let" => Tok::Let,
         "in" => Tok::In,
         "," => Tok::Comma,

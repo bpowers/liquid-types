@@ -95,3 +95,12 @@ fn idents() {
         ("   ~~~", Ident("n3_")),
     ]);
 }
+
+#[test]
+fn block() {
+    test("begin 3 end", vec![
+        ("~~~~~      ", Begin),
+        ("      ~    ", Num(3)),
+        ("        ~~~", End),
+    ]);
+}
