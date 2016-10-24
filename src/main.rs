@@ -43,30 +43,17 @@ fn parse_args() -> String {
             return arg;
         }
     }
-    // no args? die
-    usage();
+    // no args? reading from stdin then
+    String::from("")
 }
 
-pub fn implicit_open<'a>(path: &Path) -> Result<Box<implicit::Exp>> {
-
-    let mut file = match File::open(path) {
-        // The `description` method of `io::Error` returns a string that
-        // describes the error
-        Err(why) => {
-            return err!("open({}): {}",
-                        path.display(),
-                        error::Error::description(&why))
-        }
-        Ok(file) => file,
-    };
+pub fn implicit_open<'a, R: Read>(file: &mut R) -> Result<Box<implicit::Exp>> {
 
     let s = {
         let mut s = String::new();
         match file.read_to_string(&mut s) {
             Err(why) => {
-                return err!("read({}): {}",
-                            path.display(),
-                            error::Error::description(&why))
+                return err!("read: {}", error::Error::description(&why))
             }
             Ok(_) => {}
         }
@@ -81,10 +68,28 @@ pub fn implicit_open<'a>(path: &Path) -> Result<Box<implicit::Exp>> {
 }
 
 fn main() {
-    let path_s = parse_args();
-    let path = Path::new(&path_s);
+    let parse_result = match parse_args().as_ref() {
+        "" => {
+            implicit_open(&mut std::io::stdin())
+        }
+        ref s => {
+            let path = Path::new(s);
+            let mut file = match File::open(path) {
+                // The `description` method of `io::Error` returns a string that
+                // describes the error
+                Err(why) => {
+                    die!("open({}): {}",
+                         path.display(),
+                         error::Error::description(&why))
+                }
+                Ok(file) => file,
+            };
 
-    let i_expr = match implicit_open(&path) {
+            implicit_open(&mut file)
+        }
+    };
+
+    let i_expr = match parse_result {
         Ok(expr) => expr,
         Err(e) => die!("implicit_open: {}", error::Error::description(&e)),
     };
