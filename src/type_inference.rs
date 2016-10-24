@@ -105,9 +105,9 @@ fn add_metavars(exp: &implicit::Exp) -> Box<explicit::Exp> {
 }
 
 fn gen_constraints<'a>(m: &mut MVEnv,
-                   env: &mut HashMap<&'a str, Typ>,
-                   exp: &'a explicit::Exp)
-                   -> Result<(Vec<(Typ, Typ)>, Typ)> {
+                       env: &mut HashMap<&'a str, Typ>,
+                       exp: &'a explicit::Exp)
+                       -> Result<(Vec<(Typ, Typ)>, Typ)> {
     use common::{Const, Op2};
     use explicit::Exp as E;
 
@@ -230,7 +230,7 @@ fn apply(env: &HashMap<Metavar, Typ>, typ_in: &Typ) -> Typ {
     use explicit::Typ::*;
 
     match *typ_in {
-        TMetavar(ref mv)   => {
+        TMetavar(ref mv) => {
             if let Some(styp) = env.get(mv) {
                 // println!("$$\t  found {:?}", mv);
                 styp.clone()
@@ -239,10 +239,10 @@ fn apply(env: &HashMap<Metavar, Typ>, typ_in: &Typ) -> Typ {
                 typ_in.clone()
             }
         }
-        TFun(ref a, ref b)  => TFun(box apply(env, a), box apply(env, b)),
+        TFun(ref a, ref b) => TFun(box apply(env, a), box apply(env, b)),
         TPair(ref a, ref b) => TPair(box apply(env, a), box apply(env, b)),
-        TList(ref a)        => TList(box apply(env, a)),
-        TInt | TBool        => typ_in.clone(),
+        TList(ref a) => TList(box apply(env, a)),
+        TInt | TBool => typ_in.clone(),
     }
 }
 
@@ -255,17 +255,17 @@ fn compose(env1: &HashMap<Metavar, Typ>, env2: &HashMap<Metavar, Typ>) -> HashMa
                 r.insert(mv2.clone(), typ.clone());
             }
         }
-    };
+    }
 
     for (mv, typ) in env2.iter() {
         let typ = apply(env1, &apply(&r, typ));
         r.insert(mv.clone(), typ);
-    };
+    }
 
     for (mv, typ) in env1.iter() {
         let typ = apply(&r, typ);
         r.insert(mv.clone(), typ);
-    };
+    }
 
     r
 }
@@ -275,37 +275,39 @@ fn occurs(mv: &Metavar, t: &Typ) -> bool {
 
     match t {
         &TMetavar(ref mv2) => mv == mv2,
-        &TFun(ref a, ref b) | &TPair(ref a, ref b) => occurs(mv, a) || occurs(mv, b),
+        &TFun(ref a, ref b) |
+        &TPair(ref a, ref b) => occurs(mv, a) || occurs(mv, b),
         &TList(ref a) => occurs(mv, a),
         &TInt | &TBool => false,
     }
 }
 
-fn unify(t1: &Typ, t2: &Typ) ->Result<HashMap<Metavar, Typ>> {
+fn unify(t1: &Typ, t2: &Typ) -> Result<HashMap<Metavar, Typ>> {
     use explicit::Typ::*;
 
     let mut env: HashMap<Metavar, Typ> = HashMap::new();
 
     match (t1, t2) {
-        (&TInt, &TInt) => {},
-        (&TBool, &TBool) => {},
-        (&TMetavar(ref mv1), &TMetavar(ref mv2)) if mv1 == mv2 => {},
+        (&TInt, &TInt) => {}
+        (&TBool, &TBool) => {}
+        (&TMetavar(ref mv1), &TMetavar(ref mv2)) if mv1 == mv2 => {}
         (&TMetavar(ref mv1), &TMetavar(_)) => {
             env.insert(mv1.clone(), t2.clone());
         }
         (&TMetavar(ref mv1), _) if !occurs(mv1, t2) => {
             env.insert(mv1.clone(), t2.clone());
         }
-        (&TMetavar(ref mv1), _)  => {
+        (&TMetavar(ref mv1), _) => {
             return err!("occurs check failed for mv1 '{:?}' in '{:?}'", mv1, t2)
         }
         (_, &TMetavar(ref mv2)) if !occurs(mv2, t1) => {
             env.insert(mv2.clone(), t1.clone());
         }
-        (_, &TMetavar(ref mv2))  => {
+        (_, &TMetavar(ref mv2)) => {
             return err!("occurs check failed for mv2 '{:?}' in '{:?}'", mv2, t1)
         }
-        (&TFun(ref s1, ref s2), &TFun(ref t1, ref t2)) | (&TPair(ref s1, ref s2), &TPair(ref t1, ref t2)) => {
+        (&TFun(ref s1, ref s2), &TFun(ref t1, ref t2)) |
+        (&TPair(ref s1, ref s2), &TPair(ref t1, ref t2)) => {
             let pi = unify(s1, t1)?;
             let s2 = apply(&pi, s2);
             let t2 = apply(&pi, t2);
@@ -314,16 +316,15 @@ fn unify(t1: &Typ, t2: &Typ) ->Result<HashMap<Metavar, Typ>> {
         (&TList(ref s), &TList(ref t)) => {
             env = unify(s, t)?;
         }
-        _ => {
-            return err!("couldn't unify {:?} with {:?}", t1, t2)
-        }
+        _ => return err!("couldn't unify {:?} with {:?}", t1, t2),
     };
 
     Ok(env)
 }
 
 fn unify_all(constraints: &[(Typ, Typ)]) -> Result<HashMap<Metavar, Typ>> {
-    let r: HashMap<Metavar, Typ> = if let Some((&(ref t1, ref t2), rest)) = constraints.split_first() {
+    let r: HashMap<Metavar, Typ> = if let Some((&(ref t1, ref t2), rest)) =
+        constraints.split_first() {
         let rst = unify_all(rest)?;
         let fst = unify(t1, t2)?;
         compose(&fst, &rst)
@@ -501,16 +502,12 @@ fn unification() {
     s.insert(x.clone(), TInt);
     match apply(&s, &TMetavar(x.clone())) {
         TInt => {}
-        _ => {
-            die!("apply should replace x with TInt")
-        }
+        _ => die!("apply should replace x with TInt"),
     }
 
     match apply(&s, &TFun(box TMetavar(x.clone()), box TBool)) {
         TFun(box TInt, box TBool) => {}
-        _ => {
-            die!("apply should recur into type constructors")
-        }
+        _ => die!("apply should recur into type constructors"),
     }
 
     // TEST "Subst.compose should distribute over Subst.apply (1)" =
@@ -518,8 +515,10 @@ fn unification() {
     let mut s2 = HashMap::new();
     s1.insert(x.clone(), TInt);
     s2.insert(y.clone(), TBool);
-    let app1 = apply(&compose(&s1, &s2), &TFun(box TMetavar(x.clone()), box TMetavar(y.clone())));
-    let app2 = apply(&s1, &apply(&s2, &TFun(box TMetavar(x.clone()), box TMetavar(y.clone()))));
+    let app1 = apply(&compose(&s1, &s2),
+                     &TFun(box TMetavar(x.clone()), box TMetavar(y.clone())));
+    let app2 = apply(&s1,
+                     &apply(&s2, &TFun(box TMetavar(x.clone()), box TMetavar(y.clone()))));
     if app1 != app2 {
         die!("expected equal: {:?} == {:?}", app1, app2)
     }
@@ -527,14 +526,16 @@ fn unification() {
     // TEST "Subst.compose should distribute over Subst.apply (2)" =
     s1.insert(x.clone(), TBool);
     s2.insert(y.clone(), TMetavar(x.clone()));
-    let app1 = apply(&compose(&s1, &s2), &TFun(box TMetavar(x.clone()), box TMetavar(y.clone())));
-    let app2 = apply(&s1, &apply(&s2, &TFun(box TMetavar(x.clone()), box TMetavar(y.clone()))));
+    let app1 = apply(&compose(&s1, &s2),
+                     &TFun(box TMetavar(x.clone()), box TMetavar(y.clone())));
+    let app2 = apply(&s1,
+                     &apply(&s2, &TFun(box TMetavar(x.clone()), box TMetavar(y.clone()))));
     if app1 != app2 {
         die!("expected equal2: {:?} == {:?}", app1, app2)
     }
 
-// (* An incomplete suite of tests for unification *)
-// TEST "unifying identical base types should return the empty substitution" =
-//   Subst.to_list (unify TInt TInt) = []
+    // (* An incomplete suite of tests for unification *)
+    // TEST "unifying identical base types should return the empty substitution" =
+    //   Subst.to_list (unify TInt TInt) = []
 
 }

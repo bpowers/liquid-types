@@ -91,7 +91,7 @@ fn main() {
 
     let expr = match infer_types(&i_expr) {
         Ok(expr) => expr,
-        Err(e) => die!("infer_types: {}", error::Error::description(&e))
+        Err(e) => die!("infer_types: {}", error::Error::description(&e)),
     };
 
     println!("typed:\n\n{:?}\n", expr);

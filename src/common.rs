@@ -18,7 +18,7 @@ pub enum Const {
     Bool(bool),
 }
 
-//const EXIT_FAILURE: i32 = 1;
+// const EXIT_FAILURE: i32 = 1;
 
 // from https://stackoverflow.com/questions/27588416/how-to-send-output-to-stderr
 #[macro_export]
@@ -52,7 +52,7 @@ pub struct LiquidError {
 
 impl LiquidError {
     pub fn new(msg: String) -> LiquidError {
-        LiquidError {msg: msg}
+        LiquidError { msg: msg }
     }
 }
 
