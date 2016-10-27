@@ -48,7 +48,7 @@ fn parse_args() -> String {
     String::from("")
 }
 
-pub fn implicit_open<'a, R: Read>(file: &mut R) -> Result<Box<implicit::Exp>> {
+pub fn implicit_open<'a, R: Read>(file: &mut R) -> Result<Box<implicit::Expr>> {
 
     let s = {
         let mut s = String::new();

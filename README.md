@@ -9,7 +9,7 @@ polymorphism extended with liquid types.
 TODO
 ----
 
-- [ ] rename Exp -> Expr; make Expr generic w.r.t. Type
+- [ ] make Expr generic w.r.t. Type
 - [ ] Add interpreter/evaluator
 - [ ] Add intarray intrinsics, constructor array(len, fill_val), a[i] get(a, i), a[i] = v set(a, i, v)
 - [ ] Add refined::Expr

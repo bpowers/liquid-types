@@ -42,9 +42,9 @@ impl<'a> MVEnv<'a> {
     }
 }
 
-fn add_metavars_in(env: &mut MVEnv, exp: &implicit::Exp) -> explicit::Exp {
-    use implicit::Exp as I;
-    use explicit::Exp as E;
+fn add_metavars_in(env: &mut MVEnv, exp: &implicit::Expr) -> explicit::Expr {
+    use implicit::Expr as I;
+    use explicit::Expr as E;
 
     match *exp {
         I::Var(ref id) => E::Var(id.clone()),
@@ -92,17 +92,17 @@ fn add_metavars_in(env: &mut MVEnv, exp: &implicit::Exp) -> explicit::Exp {
     }
 }
 
-fn add_metavars(exp: &implicit::Exp) -> Box<explicit::Exp> {
+fn add_metavars(exp: &implicit::Expr) -> Box<explicit::Expr> {
     let mut env = MVEnv::new("α");
     box add_metavars_in(&mut env, exp)
 }
 
 fn gen_constraints<'a>(m: &mut MVEnv,
                        env: &mut HashMap<&'a str, Type>,
-                       exp: &'a explicit::Exp)
+                       exp: &'a explicit::Expr)
                        -> Result<(Vec<(Type, Type)>, Type)> {
     use common::{Const, Op2};
-    use explicit::Exp as E;
+    use explicit::Expr as E;
 
     let result = match *exp {
         E::Const(Const::Int(_)) => (Vec::new(), Type::TInt),
@@ -305,8 +305,8 @@ fn unify_all(constraints: &[(Type, Type)]) -> Result<HashMap<Metavar, Type>> {
     Ok(r)
 }
 
-fn remove_metavars(env: &HashMap<Metavar, Type>, exp: &explicit::Exp) -> Result<Box<explicit::Exp>> {
-    use explicit::Exp as E;
+fn remove_metavars(env: &HashMap<Metavar, Type>, exp: &explicit::Expr) -> Result<Box<explicit::Expr>> {
+    use explicit::Expr as E;
 
     let result: E = match *exp {
         E::Const(ref c) => E::Const(c.clone()),
@@ -363,7 +363,7 @@ fn remove_metavars(env: &HashMap<Metavar, Type>, exp: &explicit::Exp) -> Result<
     Ok(box result)
 }
 
-pub fn infer_types(exp: &implicit::Exp) -> Result<explicit::Exp> {
+pub fn infer_types(exp: &implicit::Expr) -> Result<explicit::Expr> {
     let typed_w_metavars = add_metavars(&exp);
     let mut cg_env = MVEnv::new("β");
     let mut id_env = HashMap::new();

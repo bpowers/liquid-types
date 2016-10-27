@@ -1,8 +1,8 @@
 use common::Id;
 use common::Op2::*;
 use common::Const::*;
-use implicit::Exp;
-use implicit::Exp::*;
+use implicit::Expr;
+use implicit::Expr::*;
 use tok::{self, Tok};
 extern crate lalrpop_util as __lalrpop_util;
 
@@ -12,8 +12,8 @@ mod __parse__Program {
     use common::Id;
     use common::Op2::*;
     use common::Const::*;
-    use implicit::Exp;
-    use implicit::Exp::*;
+    use implicit::Expr;
+    use implicit::Expr::*;
     use tok::{self, Tok};
     extern crate lalrpop_util as __lalrpop_util;
     use super::__ToTriple;
@@ -47,19 +47,19 @@ mod __parse__Program {
         Term_22tail_22(Tok<'input>),
         Term_22then_22(Tok<'input>),
         Term_22true_22(Tok<'input>),
-        NtAdd(Box<Exp>),
-        NtApp(Box<Exp>),
-        NtAtom(Box<Exp>),
-        NtCmp(Box<Exp>),
-        NtExp(Box<Exp>),
-        NtExps(Box<Exp>),
+        NtAdd(Box<Expr>),
+        NtApp(Box<Expr>),
+        NtAtom(Box<Expr>),
+        NtCmp(Box<Expr>),
+        NtExpr(Box<Expr>),
+        NtExprs(Box<Expr>),
         NtIdent(Id),
-        NtInt(Box<Exp>),
-        NtList(Box<Exp>),
-        NtMul(Box<Exp>),
+        NtInt(Box<Expr>),
+        NtList(Box<Expr>),
+        NtMul(Box<Expr>),
         NtNum(i64),
-        NtProgram(Box<Exp>),
-        Nt____Program(Box<Exp>),
+        NtProgram(Box<Expr>),
+        Nt____Program(Box<Expr>),
     }
     const __ACTION: &'static [i32] = &[
         // State 0
@@ -73,7 +73,7 @@ mod __parse__Program {
         //     App = (*) "tail" Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true", EOF]
         //     Atom = (*) Ident ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true", EOF]
         //     Atom = (*) Int ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true", EOF]
-        //     Atom = (*) "(" Exps ")" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true", EOF]
+        //     Atom = (*) "(" Exprs ")" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true", EOF]
         //     Atom = (*) "empty" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true", EOF]
         //     Atom = (*) "false" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true", EOF]
         //     Atom = (*) "true" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true", EOF]
@@ -81,12 +81,12 @@ mod __parse__Program {
         //     Cmp = (*) Add "<" Cmp [EOF]
         //     Cmp = (*) Add "=" Cmp [EOF]
         //     Cmp = (*) Add ">" Cmp [EOF]
-        //     Exp = (*) Cmp [EOF]
-        //     Exp = (*) "begin" Exp "end" [EOF]
-        //     Exp = (*) "fix" Ident "->" Exp [EOF]
-        //     Exp = (*) "fun" Ident "->" Exp [EOF]
-        //     Exp = (*) "if" Exp "then" Exp "else" Exp [EOF]
-        //     Exp = (*) "let" Ident "=" Exp "in" Exp [EOF]
+        //     Expr = (*) Cmp [EOF]
+        //     Expr = (*) "begin" Expr "end" [EOF]
+        //     Expr = (*) "fix" Ident "->" Expr [EOF]
+        //     Expr = (*) "fun" Ident "->" Expr [EOF]
+        //     Expr = (*) "if" Expr "then" Expr "else" Expr [EOF]
+        //     Expr = (*) "let" Ident "=" Expr "in" Expr [EOF]
         //     Ident = (*) "Iden" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true", EOF]
         //     Int = (*) Num ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true", EOF]
         //     List = (*) App ["*", "+", "-", "<", "=", ">", EOF]
@@ -94,7 +94,7 @@ mod __parse__Program {
         //     Mul = (*) List ["*", "+", "-", "<", "=", ">", EOF]
         //     Mul = (*) Mul "*" List ["*", "+", "-", "<", "=", ">", EOF]
         //     Num = (*) "Num" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true", EOF]
-        //     Program = (*) Exp [EOF]
+        //     Program = (*) Expr [EOF]
         //     __Program = (*) Program [EOF]
         13, // on "(", goto 12
         0, // on ")", error
@@ -163,7 +163,7 @@ mod __parse__Program {
         //     App = App (*) Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "(" Exps ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
@@ -231,9 +231,9 @@ mod __parse__Program {
         -8, // on "then", reduce `App = Atom => ActionFn(23);`
         -8, // on "true", reduce `App = Atom => ActionFn(23);`
         // State 4
-        //     Exp = Cmp (*) [")", "else", "end", "in", "then", EOF]
+        //     Expr = Cmp (*) [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
-        -24, // on ")", reduce `Exp = Cmp => ActionFn(7);`
+        -24, // on ")", reduce `Expr = Cmp => ActionFn(7);`
         0, // on "*", error
         0, // on "+", error
         0, // on ",", error
@@ -246,22 +246,22 @@ mod __parse__Program {
         0, // on "Iden", error
         0, // on "Num", error
         0, // on "begin", error
-        -24, // on "else", reduce `Exp = Cmp => ActionFn(7);`
+        -24, // on "else", reduce `Expr = Cmp => ActionFn(7);`
         0, // on "empty", error
         0, // on "empty?", error
-        -24, // on "end", reduce `Exp = Cmp => ActionFn(7);`
+        -24, // on "end", reduce `Expr = Cmp => ActionFn(7);`
         0, // on "false", error
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        -24, // on "in", reduce `Exp = Cmp => ActionFn(7);`
+        -24, // on "in", reduce `Expr = Cmp => ActionFn(7);`
         0, // on "let", error
         0, // on "tail", error
-        -24, // on "then", reduce `Exp = Cmp => ActionFn(7);`
+        -24, // on "then", reduce `Expr = Cmp => ActionFn(7);`
         0, // on "true", error
         // State 5
-        //     Program = Exp (*) [EOF]
+        //     Program = Expr (*) [EOF]
         0, // on "(", error
         0, // on ")", error
         0, // on "*", error
@@ -482,8 +482,8 @@ mod __parse__Program {
         //     App = (*) "tail" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true"]
         //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true"]
         //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true"]
-        //     Atom = (*) "(" Exps ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true"]
-        //     Atom = "(" (*) Exps ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true"]
+        //     Atom = "(" (*) Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true"]
         //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true"]
         //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true"]
@@ -491,13 +491,13 @@ mod __parse__Program {
         //     Cmp = (*) Add "<" Cmp [")"]
         //     Cmp = (*) Add "=" Cmp [")"]
         //     Cmp = (*) Add ">" Cmp [")"]
-        //     Exp = (*) Cmp [")"]
-        //     Exp = (*) "begin" Exp "end" [")"]
-        //     Exp = (*) "fix" Ident "->" Exp [")"]
-        //     Exp = (*) "fun" Ident "->" Exp [")"]
-        //     Exp = (*) "if" Exp "then" Exp "else" Exp [")"]
-        //     Exp = (*) "let" Ident "=" Exp "in" Exp [")"]
-        //     Exps = (*) Exp [")"]
+        //     Expr = (*) Cmp [")"]
+        //     Expr = (*) "begin" Expr "end" [")"]
+        //     Expr = (*) "fix" Ident "->" Expr [")"]
+        //     Expr = (*) "fun" Ident "->" Expr [")"]
+        //     Expr = (*) "if" Expr "then" Expr "else" Expr [")"]
+        //     Expr = (*) "let" Ident "=" Expr "in" Expr [")"]
+        //     Exprs = (*) Expr [")"]
         //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true"]
         //     Int = (*) Num ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true"]
         //     List = (*) App [")", "*", "+", "-", "<", "=", ">"]
@@ -604,7 +604,7 @@ mod __parse__Program {
         //     App = (*) "tail" Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "end", "false", "true"]
         //     Atom = (*) Ident ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "end", "false", "true"]
         //     Atom = (*) Int ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "end", "false", "true"]
-        //     Atom = (*) "(" Exps ")" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "end", "false", "true"]
+        //     Atom = (*) "(" Exprs ")" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "end", "false", "true"]
         //     Atom = (*) "empty" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "end", "false", "true"]
         //     Atom = (*) "false" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "end", "false", "true"]
         //     Atom = (*) "true" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "end", "false", "true"]
@@ -612,13 +612,13 @@ mod __parse__Program {
         //     Cmp = (*) Add "<" Cmp ["end"]
         //     Cmp = (*) Add "=" Cmp ["end"]
         //     Cmp = (*) Add ">" Cmp ["end"]
-        //     Exp = (*) Cmp ["end"]
-        //     Exp = (*) "begin" Exp "end" ["end"]
-        //     Exp = "begin" (*) Exp "end" [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) "fix" Ident "->" Exp ["end"]
-        //     Exp = (*) "fun" Ident "->" Exp ["end"]
-        //     Exp = (*) "if" Exp "then" Exp "else" Exp ["end"]
-        //     Exp = (*) "let" Ident "=" Exp "in" Exp ["end"]
+        //     Expr = (*) Cmp ["end"]
+        //     Expr = (*) "begin" Expr "end" ["end"]
+        //     Expr = "begin" (*) Expr "end" [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) "fix" Ident "->" Expr ["end"]
+        //     Expr = (*) "fun" Ident "->" Expr ["end"]
+        //     Expr = (*) "if" Expr "then" Expr "else" Expr ["end"]
+        //     Expr = (*) "let" Ident "=" Expr "in" Expr ["end"]
         //     Ident = (*) "Iden" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "end", "false", "true"]
         //     Int = (*) Num ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "end", "false", "true"]
         //     List = (*) App ["*", "+", "-", "<", "=", ">", "end"]
@@ -688,7 +688,7 @@ mod __parse__Program {
         //     App = "empty?" (*) Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "(" Exps ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
@@ -754,7 +754,7 @@ mod __parse__Program {
         -11, // on "then", reduce `Atom = "false" => ActionFn(26);`
         -11, // on "true", reduce `Atom = "false" => ActionFn(26);`
         // State 19
-        //     Exp = "fix" (*) Ident "->" Exp [")", "else", "end", "in", "then", EOF]
+        //     Expr = "fix" (*) Ident "->" Expr [")", "else", "end", "in", "then", EOF]
         //     Ident = (*) "Iden" ["->"]
         0, // on "(", error
         0, // on ")", error
@@ -785,7 +785,7 @@ mod __parse__Program {
         0, // on "then", error
         0, // on "true", error
         // State 20
-        //     Exp = "fun" (*) Ident "->" Exp [")", "else", "end", "in", "then", EOF]
+        //     Expr = "fun" (*) Ident "->" Expr [")", "else", "end", "in", "then", EOF]
         //     Ident = (*) "Iden" ["->"]
         0, // on "(", error
         0, // on ")", error
@@ -819,7 +819,7 @@ mod __parse__Program {
         //     App = "head" (*) Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "(" Exps ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
@@ -865,7 +865,7 @@ mod __parse__Program {
         //     App = (*) "tail" Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "then", "true"]
         //     Atom = (*) Ident ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "then", "true"]
         //     Atom = (*) Int ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "then", "true"]
-        //     Atom = (*) "(" Exps ")" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "then", "true"]
+        //     Atom = (*) "(" Exprs ")" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "then", "true"]
         //     Atom = (*) "empty" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "then", "true"]
         //     Atom = (*) "false" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "then", "true"]
         //     Atom = (*) "true" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "then", "true"]
@@ -873,13 +873,13 @@ mod __parse__Program {
         //     Cmp = (*) Add "<" Cmp ["then"]
         //     Cmp = (*) Add "=" Cmp ["then"]
         //     Cmp = (*) Add ">" Cmp ["then"]
-        //     Exp = (*) Cmp ["then"]
-        //     Exp = (*) "begin" Exp "end" ["then"]
-        //     Exp = (*) "fix" Ident "->" Exp ["then"]
-        //     Exp = (*) "fun" Ident "->" Exp ["then"]
-        //     Exp = (*) "if" Exp "then" Exp "else" Exp ["then"]
-        //     Exp = "if" (*) Exp "then" Exp "else" Exp [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) "let" Ident "=" Exp "in" Exp ["then"]
+        //     Expr = (*) Cmp ["then"]
+        //     Expr = (*) "begin" Expr "end" ["then"]
+        //     Expr = (*) "fix" Ident "->" Expr ["then"]
+        //     Expr = (*) "fun" Ident "->" Expr ["then"]
+        //     Expr = (*) "if" Expr "then" Expr "else" Expr ["then"]
+        //     Expr = "if" (*) Expr "then" Expr "else" Expr [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) "let" Ident "=" Expr "in" Expr ["then"]
         //     Ident = (*) "Iden" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "then", "true"]
         //     Int = (*) Num ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "then", "true"]
         //     List = (*) App ["*", "+", "-", "<", "=", ">", "then"]
@@ -916,7 +916,7 @@ mod __parse__Program {
         0, // on "then", error
         26, // on "true", goto 25
         // State 23
-        //     Exp = "let" (*) Ident "=" Exp "in" Exp [")", "else", "end", "in", "then", EOF]
+        //     Expr = "let" (*) Ident "=" Expr "in" Expr [")", "else", "end", "in", "then", EOF]
         //     Ident = (*) "Iden" ["="]
         0, // on "(", error
         0, // on ")", error
@@ -950,7 +950,7 @@ mod __parse__Program {
         //     App = "tail" (*) Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "(" Exps ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
@@ -1024,7 +1024,7 @@ mod __parse__Program {
         //     App = (*) "tail" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "(" Exps ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
@@ -1072,7 +1072,7 @@ mod __parse__Program {
         //     App = (*) "tail" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "(" Exps ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
@@ -1122,7 +1122,7 @@ mod __parse__Program {
         //     App = (*) "tail" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "(" Exps ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
@@ -1177,7 +1177,7 @@ mod __parse__Program {
         //     App = (*) "tail" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "(" Exps ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
@@ -1232,7 +1232,7 @@ mod __parse__Program {
         //     App = (*) "tail" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "(" Exps ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
@@ -1314,7 +1314,7 @@ mod __parse__Program {
         //     App = (*) "tail" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "(" Exps ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
@@ -1360,7 +1360,7 @@ mod __parse__Program {
         //     App = (*) "tail" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "(" Exps ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
@@ -1399,9 +1399,9 @@ mod __parse__Program {
         0, // on "then", error
         26, // on "true", goto 25
         // State 34
-        //     Exps = Exp (*) [")"]
+        //     Exprs = Expr (*) [")"]
         0, // on "(", error
-        -25, // on ")", reduce `Exps = Exp => ActionFn(30);`
+        -25, // on ")", reduce `Exprs = Expr => ActionFn(30);`
         0, // on "*", error
         0, // on "+", error
         0, // on ",", error
@@ -1429,7 +1429,7 @@ mod __parse__Program {
         0, // on "then", error
         0, // on "true", error
         // State 35
-        //     Atom = "(" Exps (*) ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = "(" Exprs (*) ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         0, // on "(", error
         52, // on ")", goto 51
         0, // on "*", error
@@ -1459,7 +1459,7 @@ mod __parse__Program {
         0, // on "then", error
         0, // on "true", error
         // State 36
-        //     Exp = "begin" Exp (*) "end" [")", "else", "end", "in", "then", EOF]
+        //     Expr = "begin" Expr (*) "end" [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
         0, // on ")", error
         0, // on "*", error
@@ -1519,7 +1519,7 @@ mod __parse__Program {
         -6, // on "then", reduce `App = "empty?", Atom => ActionFn(21);`
         -6, // on "true", reduce `App = "empty?", Atom => ActionFn(21);`
         // State 38
-        //     Exp = "fix" Ident (*) "->" Exp [")", "else", "end", "in", "then", EOF]
+        //     Expr = "fix" Ident (*) "->" Expr [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
         0, // on ")", error
         0, // on "*", error
@@ -1549,7 +1549,7 @@ mod __parse__Program {
         0, // on "then", error
         0, // on "true", error
         // State 39
-        //     Exp = "fun" Ident (*) "->" Exp [")", "else", "end", "in", "then", EOF]
+        //     Expr = "fun" Ident (*) "->" Expr [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
         0, // on ")", error
         0, // on "*", error
@@ -1609,7 +1609,7 @@ mod __parse__Program {
         -4, // on "then", reduce `App = "head", Atom => ActionFn(19);`
         -4, // on "true", reduce `App = "head", Atom => ActionFn(19);`
         // State 41
-        //     Exp = "if" Exp (*) "then" Exp "else" Exp [")", "else", "end", "in", "then", EOF]
+        //     Expr = "if" Expr (*) "then" Expr "else" Expr [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
         0, // on ")", error
         0, // on "*", error
@@ -1639,7 +1639,7 @@ mod __parse__Program {
         56, // on "then", goto 55
         0, // on "true", error
         // State 42
-        //     Exp = "let" Ident (*) "=" Exp "in" Exp [")", "else", "end", "in", "then", EOF]
+        //     Expr = "let" Ident (*) "=" Expr "in" Expr [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
         0, // on ")", error
         0, // on "*", error
@@ -1911,39 +1911,39 @@ mod __parse__Program {
         -30, // on "then", reduce `Mul = Mul, "*", List => ActionFn(15);`
         0, // on "true", error
         // State 51
-        //     Atom = "(" Exps ")" (*) ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        -13, // on "(", reduce `Atom = "(", Exps, ")" => ActionFn(28);`
-        -13, // on ")", reduce `Atom = "(", Exps, ")" => ActionFn(28);`
-        -13, // on "*", reduce `Atom = "(", Exps, ")" => ActionFn(28);`
-        -13, // on "+", reduce `Atom = "(", Exps, ")" => ActionFn(28);`
+        //     Atom = "(" Exprs ")" (*) ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        -13, // on "(", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
+        -13, // on ")", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
+        -13, // on "*", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
+        -13, // on "+", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
         0, // on ",", error
-        -13, // on "-", reduce `Atom = "(", Exps, ")" => ActionFn(28);`
+        -13, // on "-", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
         0, // on "->", error
-        -13, // on "::", reduce `Atom = "(", Exps, ")" => ActionFn(28);`
-        -13, // on "<", reduce `Atom = "(", Exps, ")" => ActionFn(28);`
-        -13, // on "=", reduce `Atom = "(", Exps, ")" => ActionFn(28);`
-        -13, // on ">", reduce `Atom = "(", Exps, ")" => ActionFn(28);`
-        -13, // on "Iden", reduce `Atom = "(", Exps, ")" => ActionFn(28);`
-        -13, // on "Num", reduce `Atom = "(", Exps, ")" => ActionFn(28);`
+        -13, // on "::", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
+        -13, // on "<", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
+        -13, // on "=", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
+        -13, // on ">", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
+        -13, // on "Iden", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
+        -13, // on "Num", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
         0, // on "begin", error
-        -13, // on "else", reduce `Atom = "(", Exps, ")" => ActionFn(28);`
-        -13, // on "empty", reduce `Atom = "(", Exps, ")" => ActionFn(28);`
+        -13, // on "else", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
+        -13, // on "empty", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
         0, // on "empty?", error
-        -13, // on "end", reduce `Atom = "(", Exps, ")" => ActionFn(28);`
-        -13, // on "false", reduce `Atom = "(", Exps, ")" => ActionFn(28);`
+        -13, // on "end", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
+        -13, // on "false", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        -13, // on "in", reduce `Atom = "(", Exps, ")" => ActionFn(28);`
+        -13, // on "in", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
         0, // on "let", error
         0, // on "tail", error
-        -13, // on "then", reduce `Atom = "(", Exps, ")" => ActionFn(28);`
-        -13, // on "true", reduce `Atom = "(", Exps, ")" => ActionFn(28);`
+        -13, // on "then", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
+        -13, // on "true", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
         // State 52
-        //     Exp = "begin" Exp "end" (*) [")", "else", "end", "in", "then", EOF]
+        //     Expr = "begin" Expr "end" (*) [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
-        -23, // on ")", reduce `Exp = "begin", Exp, "end" => ActionFn(6);`
+        -23, // on ")", reduce `Expr = "begin", Expr, "end" => ActionFn(6);`
         0, // on "*", error
         0, // on "+", error
         0, // on ",", error
@@ -1956,19 +1956,19 @@ mod __parse__Program {
         0, // on "Iden", error
         0, // on "Num", error
         0, // on "begin", error
-        -23, // on "else", reduce `Exp = "begin", Exp, "end" => ActionFn(6);`
+        -23, // on "else", reduce `Expr = "begin", Expr, "end" => ActionFn(6);`
         0, // on "empty", error
         0, // on "empty?", error
-        -23, // on "end", reduce `Exp = "begin", Exp, "end" => ActionFn(6);`
+        -23, // on "end", reduce `Expr = "begin", Expr, "end" => ActionFn(6);`
         0, // on "false", error
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        -23, // on "in", reduce `Exp = "begin", Exp, "end" => ActionFn(6);`
+        -23, // on "in", reduce `Expr = "begin", Expr, "end" => ActionFn(6);`
         0, // on "let", error
         0, // on "tail", error
-        -23, // on "then", reduce `Exp = "begin", Exp, "end" => ActionFn(6);`
+        -23, // on "then", reduce `Expr = "begin", Expr, "end" => ActionFn(6);`
         0, // on "true", error
         // State 53
         //     Add = (*) Add "+" Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
@@ -1981,7 +1981,7 @@ mod __parse__Program {
         //     App = (*) "tail" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "(" Exps ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
@@ -1989,13 +1989,13 @@ mod __parse__Program {
         //     Cmp = (*) Add "<" Cmp [")", "else", "end", "in", "then", EOF]
         //     Cmp = (*) Add "=" Cmp [")", "else", "end", "in", "then", EOF]
         //     Cmp = (*) Add ">" Cmp [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) Cmp [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) "begin" Exp "end" [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) "fix" Ident "->" Exp [")", "else", "end", "in", "then", EOF]
-        //     Exp = "fix" Ident "->" (*) Exp [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) "fun" Ident "->" Exp [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) "if" Exp "then" Exp "else" Exp [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) "let" Ident "=" Exp "in" Exp [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) Cmp [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) "begin" Expr "end" [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) "fix" Ident "->" Expr [")", "else", "end", "in", "then", EOF]
+        //     Expr = "fix" Ident "->" (*) Expr [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) "fun" Ident "->" Expr [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) "if" Expr "then" Expr "else" Expr [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) "let" Ident "=" Expr "in" Expr [")", "else", "end", "in", "then", EOF]
         //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Int = (*) Num ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     List = (*) App [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
@@ -2042,7 +2042,7 @@ mod __parse__Program {
         //     App = (*) "tail" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "(" Exps ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
@@ -2050,13 +2050,13 @@ mod __parse__Program {
         //     Cmp = (*) Add "<" Cmp [")", "else", "end", "in", "then", EOF]
         //     Cmp = (*) Add "=" Cmp [")", "else", "end", "in", "then", EOF]
         //     Cmp = (*) Add ">" Cmp [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) Cmp [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) "begin" Exp "end" [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) "fix" Ident "->" Exp [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) "fun" Ident "->" Exp [")", "else", "end", "in", "then", EOF]
-        //     Exp = "fun" Ident "->" (*) Exp [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) "if" Exp "then" Exp "else" Exp [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) "let" Ident "=" Exp "in" Exp [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) Cmp [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) "begin" Expr "end" [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) "fix" Ident "->" Expr [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) "fun" Ident "->" Expr [")", "else", "end", "in", "then", EOF]
+        //     Expr = "fun" Ident "->" (*) Expr [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) "if" Expr "then" Expr "else" Expr [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) "let" Ident "=" Expr "in" Expr [")", "else", "end", "in", "then", EOF]
         //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Int = (*) Num ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     List = (*) App [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
@@ -2103,7 +2103,7 @@ mod __parse__Program {
         //     App = (*) "tail" Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "false", "true"]
         //     Atom = (*) Ident ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "false", "true"]
         //     Atom = (*) Int ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "false", "true"]
-        //     Atom = (*) "(" Exps ")" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "false", "true"]
+        //     Atom = (*) "(" Exprs ")" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "false", "true"]
         //     Atom = (*) "empty" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "false", "true"]
         //     Atom = (*) "false" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "false", "true"]
         //     Atom = (*) "true" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "false", "true"]
@@ -2111,13 +2111,13 @@ mod __parse__Program {
         //     Cmp = (*) Add "<" Cmp ["else"]
         //     Cmp = (*) Add "=" Cmp ["else"]
         //     Cmp = (*) Add ">" Cmp ["else"]
-        //     Exp = (*) Cmp ["else"]
-        //     Exp = (*) "begin" Exp "end" ["else"]
-        //     Exp = (*) "fix" Ident "->" Exp ["else"]
-        //     Exp = (*) "fun" Ident "->" Exp ["else"]
-        //     Exp = (*) "if" Exp "then" Exp "else" Exp ["else"]
-        //     Exp = "if" Exp "then" (*) Exp "else" Exp [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) "let" Ident "=" Exp "in" Exp ["else"]
+        //     Expr = (*) Cmp ["else"]
+        //     Expr = (*) "begin" Expr "end" ["else"]
+        //     Expr = (*) "fix" Ident "->" Expr ["else"]
+        //     Expr = (*) "fun" Ident "->" Expr ["else"]
+        //     Expr = (*) "if" Expr "then" Expr "else" Expr ["else"]
+        //     Expr = "if" Expr "then" (*) Expr "else" Expr [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) "let" Ident "=" Expr "in" Expr ["else"]
         //     Ident = (*) "Iden" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "false", "true"]
         //     Int = (*) Num ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "false", "true"]
         //     List = (*) App ["*", "+", "-", "<", "=", ">", "else"]
@@ -2164,7 +2164,7 @@ mod __parse__Program {
         //     App = (*) "tail" Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "in", "true"]
         //     Atom = (*) Ident ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "in", "true"]
         //     Atom = (*) Int ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "in", "true"]
-        //     Atom = (*) "(" Exps ")" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "in", "true"]
+        //     Atom = (*) "(" Exprs ")" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "in", "true"]
         //     Atom = (*) "empty" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "in", "true"]
         //     Atom = (*) "false" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "in", "true"]
         //     Atom = (*) "true" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "in", "true"]
@@ -2172,13 +2172,13 @@ mod __parse__Program {
         //     Cmp = (*) Add "<" Cmp ["in"]
         //     Cmp = (*) Add "=" Cmp ["in"]
         //     Cmp = (*) Add ">" Cmp ["in"]
-        //     Exp = (*) Cmp ["in"]
-        //     Exp = (*) "begin" Exp "end" ["in"]
-        //     Exp = (*) "fix" Ident "->" Exp ["in"]
-        //     Exp = (*) "fun" Ident "->" Exp ["in"]
-        //     Exp = (*) "if" Exp "then" Exp "else" Exp ["in"]
-        //     Exp = (*) "let" Ident "=" Exp "in" Exp ["in"]
-        //     Exp = "let" Ident "=" (*) Exp "in" Exp [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) Cmp ["in"]
+        //     Expr = (*) "begin" Expr "end" ["in"]
+        //     Expr = (*) "fix" Ident "->" Expr ["in"]
+        //     Expr = (*) "fun" Ident "->" Expr ["in"]
+        //     Expr = (*) "if" Expr "then" Expr "else" Expr ["in"]
+        //     Expr = (*) "let" Ident "=" Expr "in" Expr ["in"]
+        //     Expr = "let" Ident "=" (*) Expr "in" Expr [")", "else", "end", "in", "then", EOF]
         //     Ident = (*) "Iden" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "in", "true"]
         //     Int = (*) Num ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "in", "true"]
         //     List = (*) App ["*", "+", "-", "<", "=", ">", "in"]
@@ -2215,9 +2215,9 @@ mod __parse__Program {
         0, // on "then", error
         26, // on "true", goto 25
         // State 57
-        //     Exp = "fix" Ident "->" Exp (*) [")", "else", "end", "in", "then", EOF]
+        //     Expr = "fix" Ident "->" Expr (*) [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
-        -22, // on ")", reduce `Exp = "fix", Ident, "->", Exp => ActionFn(5);`
+        -22, // on ")", reduce `Expr = "fix", Ident, "->", Expr => ActionFn(5);`
         0, // on "*", error
         0, // on "+", error
         0, // on ",", error
@@ -2230,24 +2230,24 @@ mod __parse__Program {
         0, // on "Iden", error
         0, // on "Num", error
         0, // on "begin", error
-        -22, // on "else", reduce `Exp = "fix", Ident, "->", Exp => ActionFn(5);`
+        -22, // on "else", reduce `Expr = "fix", Ident, "->", Expr => ActionFn(5);`
         0, // on "empty", error
         0, // on "empty?", error
-        -22, // on "end", reduce `Exp = "fix", Ident, "->", Exp => ActionFn(5);`
+        -22, // on "end", reduce `Expr = "fix", Ident, "->", Expr => ActionFn(5);`
         0, // on "false", error
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        -22, // on "in", reduce `Exp = "fix", Ident, "->", Exp => ActionFn(5);`
+        -22, // on "in", reduce `Expr = "fix", Ident, "->", Expr => ActionFn(5);`
         0, // on "let", error
         0, // on "tail", error
-        -22, // on "then", reduce `Exp = "fix", Ident, "->", Exp => ActionFn(5);`
+        -22, // on "then", reduce `Expr = "fix", Ident, "->", Expr => ActionFn(5);`
         0, // on "true", error
         // State 58
-        //     Exp = "fun" Ident "->" Exp (*) [")", "else", "end", "in", "then", EOF]
+        //     Expr = "fun" Ident "->" Expr (*) [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
-        -21, // on ")", reduce `Exp = "fun", Ident, "->", Exp => ActionFn(4);`
+        -21, // on ")", reduce `Expr = "fun", Ident, "->", Expr => ActionFn(4);`
         0, // on "*", error
         0, // on "+", error
         0, // on ",", error
@@ -2260,22 +2260,22 @@ mod __parse__Program {
         0, // on "Iden", error
         0, // on "Num", error
         0, // on "begin", error
-        -21, // on "else", reduce `Exp = "fun", Ident, "->", Exp => ActionFn(4);`
+        -21, // on "else", reduce `Expr = "fun", Ident, "->", Expr => ActionFn(4);`
         0, // on "empty", error
         0, // on "empty?", error
-        -21, // on "end", reduce `Exp = "fun", Ident, "->", Exp => ActionFn(4);`
+        -21, // on "end", reduce `Expr = "fun", Ident, "->", Expr => ActionFn(4);`
         0, // on "false", error
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        -21, // on "in", reduce `Exp = "fun", Ident, "->", Exp => ActionFn(4);`
+        -21, // on "in", reduce `Expr = "fun", Ident, "->", Expr => ActionFn(4);`
         0, // on "let", error
         0, // on "tail", error
-        -21, // on "then", reduce `Exp = "fun", Ident, "->", Exp => ActionFn(4);`
+        -21, // on "then", reduce `Expr = "fun", Ident, "->", Expr => ActionFn(4);`
         0, // on "true", error
         // State 59
-        //     Exp = "if" Exp "then" Exp (*) "else" Exp [")", "else", "end", "in", "then", EOF]
+        //     Expr = "if" Expr "then" Expr (*) "else" Expr [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
         0, // on ")", error
         0, // on "*", error
@@ -2305,7 +2305,7 @@ mod __parse__Program {
         0, // on "then", error
         0, // on "true", error
         // State 60
-        //     Exp = "let" Ident "=" Exp (*) "in" Exp [")", "else", "end", "in", "then", EOF]
+        //     Expr = "let" Ident "=" Expr (*) "in" Expr [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
         0, // on ")", error
         0, // on "*", error
@@ -2345,7 +2345,7 @@ mod __parse__Program {
         //     App = (*) "tail" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "(" Exps ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
@@ -2353,13 +2353,13 @@ mod __parse__Program {
         //     Cmp = (*) Add "<" Cmp [")", "else", "end", "in", "then", EOF]
         //     Cmp = (*) Add "=" Cmp [")", "else", "end", "in", "then", EOF]
         //     Cmp = (*) Add ">" Cmp [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) Cmp [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) "begin" Exp "end" [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) "fix" Ident "->" Exp [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) "fun" Ident "->" Exp [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) "if" Exp "then" Exp "else" Exp [")", "else", "end", "in", "then", EOF]
-        //     Exp = "if" Exp "then" Exp "else" (*) Exp [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) "let" Ident "=" Exp "in" Exp [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) Cmp [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) "begin" Expr "end" [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) "fix" Ident "->" Expr [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) "fun" Ident "->" Expr [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) "if" Expr "then" Expr "else" Expr [")", "else", "end", "in", "then", EOF]
+        //     Expr = "if" Expr "then" Expr "else" (*) Expr [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) "let" Ident "=" Expr "in" Expr [")", "else", "end", "in", "then", EOF]
         //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Int = (*) Num ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     List = (*) App [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
@@ -2406,7 +2406,7 @@ mod __parse__Program {
         //     App = (*) "tail" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "(" Exps ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
@@ -2414,13 +2414,13 @@ mod __parse__Program {
         //     Cmp = (*) Add "<" Cmp [")", "else", "end", "in", "then", EOF]
         //     Cmp = (*) Add "=" Cmp [")", "else", "end", "in", "then", EOF]
         //     Cmp = (*) Add ">" Cmp [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) Cmp [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) "begin" Exp "end" [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) "fix" Ident "->" Exp [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) "fun" Ident "->" Exp [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) "if" Exp "then" Exp "else" Exp [")", "else", "end", "in", "then", EOF]
-        //     Exp = (*) "let" Ident "=" Exp "in" Exp [")", "else", "end", "in", "then", EOF]
-        //     Exp = "let" Ident "=" Exp "in" (*) Exp [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) Cmp [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) "begin" Expr "end" [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) "fix" Ident "->" Expr [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) "fun" Ident "->" Expr [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) "if" Expr "then" Expr "else" Expr [")", "else", "end", "in", "then", EOF]
+        //     Expr = (*) "let" Ident "=" Expr "in" Expr [")", "else", "end", "in", "then", EOF]
+        //     Expr = "let" Ident "=" Expr "in" (*) Expr [")", "else", "end", "in", "then", EOF]
         //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Int = (*) Num ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     List = (*) App [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
@@ -2457,9 +2457,9 @@ mod __parse__Program {
         0, // on "then", error
         26, // on "true", goto 25
         // State 63
-        //     Exp = "if" Exp "then" Exp "else" Exp (*) [")", "else", "end", "in", "then", EOF]
+        //     Expr = "if" Expr "then" Expr "else" Expr (*) [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
-        -19, // on ")", reduce `Exp = "if", Exp, "then", Exp, "else", Exp => ActionFn(2);`
+        -19, // on ")", reduce `Expr = "if", Expr, "then", Expr, "else", Expr => ActionFn(2);`
         0, // on "*", error
         0, // on "+", error
         0, // on ",", error
@@ -2472,24 +2472,24 @@ mod __parse__Program {
         0, // on "Iden", error
         0, // on "Num", error
         0, // on "begin", error
-        -19, // on "else", reduce `Exp = "if", Exp, "then", Exp, "else", Exp => ActionFn(2);`
+        -19, // on "else", reduce `Expr = "if", Expr, "then", Expr, "else", Expr => ActionFn(2);`
         0, // on "empty", error
         0, // on "empty?", error
-        -19, // on "end", reduce `Exp = "if", Exp, "then", Exp, "else", Exp => ActionFn(2);`
+        -19, // on "end", reduce `Expr = "if", Expr, "then", Expr, "else", Expr => ActionFn(2);`
         0, // on "false", error
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        -19, // on "in", reduce `Exp = "if", Exp, "then", Exp, "else", Exp => ActionFn(2);`
+        -19, // on "in", reduce `Expr = "if", Expr, "then", Expr, "else", Expr => ActionFn(2);`
         0, // on "let", error
         0, // on "tail", error
-        -19, // on "then", reduce `Exp = "if", Exp, "then", Exp, "else", Exp => ActionFn(2);`
+        -19, // on "then", reduce `Expr = "if", Expr, "then", Expr, "else", Expr => ActionFn(2);`
         0, // on "true", error
         // State 64
-        //     Exp = "let" Ident "=" Exp "in" Exp (*) [")", "else", "end", "in", "then", EOF]
+        //     Expr = "let" Ident "=" Expr "in" Expr (*) [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
-        -20, // on ")", reduce `Exp = "let", Ident, "=", Exp, "in", Exp => ActionFn(3);`
+        -20, // on ")", reduce `Expr = "let", Ident, "=", Expr, "in", Expr => ActionFn(3);`
         0, // on "*", error
         0, // on "+", error
         0, // on ",", error
@@ -2502,19 +2502,19 @@ mod __parse__Program {
         0, // on "Iden", error
         0, // on "Num", error
         0, // on "begin", error
-        -20, // on "else", reduce `Exp = "let", Ident, "=", Exp, "in", Exp => ActionFn(3);`
+        -20, // on "else", reduce `Expr = "let", Ident, "=", Expr, "in", Expr => ActionFn(3);`
         0, // on "empty", error
         0, // on "empty?", error
-        -20, // on "end", reduce `Exp = "let", Ident, "=", Exp, "in", Exp => ActionFn(3);`
+        -20, // on "end", reduce `Expr = "let", Ident, "=", Expr, "in", Expr => ActionFn(3);`
         0, // on "false", error
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        -20, // on "in", reduce `Exp = "let", Ident, "=", Exp, "in", Exp => ActionFn(3);`
+        -20, // on "in", reduce `Expr = "let", Ident, "=", Expr, "in", Expr => ActionFn(3);`
         0, // on "let", error
         0, // on "tail", error
-        -20, // on "then", reduce `Exp = "let", Ident, "=", Exp, "in", Exp => ActionFn(3);`
+        -20, // on "then", reduce `Expr = "let", Ident, "=", Expr, "in", Expr => ActionFn(3);`
         0, // on "true", error
     ];
     const __EOF_ACTION: &'static [i32] = &[
@@ -2522,8 +2522,8 @@ mod __parse__Program {
         -18, // on EOF, reduce `Cmp = Add => ActionFn(11);`
         -29, // on EOF, reduce `List = App => ActionFn(18);`
         -8, // on EOF, reduce `App = Atom => ActionFn(23);`
-        -24, // on EOF, reduce `Exp = Cmp => ActionFn(7);`
-        -33, // on EOF, reduce `Program = Exp => ActionFn(1);`
+        -24, // on EOF, reduce `Expr = Cmp => ActionFn(7);`
+        -33, // on EOF, reduce `Program = Expr => ActionFn(1);`
         -9, // on EOF, reduce `Atom = Ident => ActionFn(24);`
         -14, // on EOF, reduce `Atom = Int => ActionFn(29);`
         -31, // on EOF, reduce `Mul = List => ActionFn(16);`
@@ -2569,20 +2569,20 @@ mod __parse__Program {
         -17, // on EOF, reduce `Cmp = Add, ">", Cmp => ActionFn(10);`
         -28, // on EOF, reduce `List = App, "::", List => ActionFn(17);`
         -30, // on EOF, reduce `Mul = Mul, "*", List => ActionFn(15);`
-        -13, // on EOF, reduce `Atom = "(", Exps, ")" => ActionFn(28);`
-        -23, // on EOF, reduce `Exp = "begin", Exp, "end" => ActionFn(6);`
+        -13, // on EOF, reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
+        -23, // on EOF, reduce `Expr = "begin", Expr, "end" => ActionFn(6);`
         0, // on EOF, error
         0, // on EOF, error
         0, // on EOF, error
         0, // on EOF, error
-        -22, // on EOF, reduce `Exp = "fix", Ident, "->", Exp => ActionFn(5);`
-        -21, // on EOF, reduce `Exp = "fun", Ident, "->", Exp => ActionFn(4);`
+        -22, // on EOF, reduce `Expr = "fix", Ident, "->", Expr => ActionFn(5);`
+        -21, // on EOF, reduce `Expr = "fun", Ident, "->", Expr => ActionFn(4);`
         0, // on EOF, error
         0, // on EOF, error
         0, // on EOF, error
         0, // on EOF, error
-        -19, // on EOF, reduce `Exp = "if", Exp, "then", Exp, "else", Exp => ActionFn(2);`
-        -20, // on EOF, reduce `Exp = "let", Ident, "=", Exp, "in", Exp => ActionFn(3);`
+        -19, // on EOF, reduce `Expr = "if", Expr, "then", Expr, "else", Expr => ActionFn(2);`
+        -20, // on EOF, reduce `Expr = "let", Ident, "=", Expr, "in", Expr => ActionFn(3);`
     ];
     const __GOTO: &'static [i32] = &[
         // State 0
@@ -2590,8 +2590,8 @@ mod __parse__Program {
         3, // on App, goto 2
         4, // on Atom, goto 3
         5, // on Cmp, goto 4
-        6, // on Exp, goto 5
-        0, // on Exps, error
+        6, // on Expr, goto 5
+        0, // on Exprs, error
         7, // on Ident, goto 6
         8, // on Int, goto 7
         9, // on List, goto 8
@@ -2604,8 +2604,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2618,8 +2618,8 @@ mod __parse__Program {
         0, // on App, error
         32, // on Atom, goto 31
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         7, // on Ident, goto 6
         8, // on Int, goto 7
         0, // on List, error
@@ -2632,8 +2632,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2646,8 +2646,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2660,8 +2660,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2674,8 +2674,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2688,8 +2688,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2702,8 +2702,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2716,8 +2716,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2730,8 +2730,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2744,8 +2744,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2758,8 +2758,8 @@ mod __parse__Program {
         3, // on App, goto 2
         4, // on Atom, goto 3
         5, // on Cmp, goto 4
-        35, // on Exp, goto 34
-        36, // on Exps, goto 35
+        35, // on Expr, goto 34
+        36, // on Exprs, goto 35
         7, // on Ident, goto 6
         8, // on Int, goto 7
         9, // on List, goto 8
@@ -2772,8 +2772,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2786,8 +2786,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2800,8 +2800,8 @@ mod __parse__Program {
         3, // on App, goto 2
         4, // on Atom, goto 3
         5, // on Cmp, goto 4
-        37, // on Exp, goto 36
-        0, // on Exps, error
+        37, // on Expr, goto 36
+        0, // on Exprs, error
         7, // on Ident, goto 6
         8, // on Int, goto 7
         9, // on List, goto 8
@@ -2814,8 +2814,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2828,8 +2828,8 @@ mod __parse__Program {
         0, // on App, error
         38, // on Atom, goto 37
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         7, // on Ident, goto 6
         8, // on Int, goto 7
         0, // on List, error
@@ -2842,8 +2842,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2856,8 +2856,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         39, // on Ident, goto 38
         0, // on Int, error
         0, // on List, error
@@ -2870,8 +2870,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         40, // on Ident, goto 39
         0, // on Int, error
         0, // on List, error
@@ -2884,8 +2884,8 @@ mod __parse__Program {
         0, // on App, error
         41, // on Atom, goto 40
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         7, // on Ident, goto 6
         8, // on Int, goto 7
         0, // on List, error
@@ -2898,8 +2898,8 @@ mod __parse__Program {
         3, // on App, goto 2
         4, // on Atom, goto 3
         5, // on Cmp, goto 4
-        42, // on Exp, goto 41
-        0, // on Exps, error
+        42, // on Expr, goto 41
+        0, // on Exprs, error
         7, // on Ident, goto 6
         8, // on Int, goto 7
         9, // on List, goto 8
@@ -2912,8 +2912,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         43, // on Ident, goto 42
         0, // on Int, error
         0, // on List, error
@@ -2926,8 +2926,8 @@ mod __parse__Program {
         0, // on App, error
         44, // on Atom, goto 43
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         7, // on Ident, goto 6
         8, // on Int, goto 7
         0, // on List, error
@@ -2940,8 +2940,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2954,8 +2954,8 @@ mod __parse__Program {
         3, // on App, goto 2
         4, // on Atom, goto 3
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         7, // on Ident, goto 6
         8, // on Int, goto 7
         9, // on List, goto 8
@@ -2968,8 +2968,8 @@ mod __parse__Program {
         3, // on App, goto 2
         4, // on Atom, goto 3
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         7, // on Ident, goto 6
         8, // on Int, goto 7
         9, // on List, goto 8
@@ -2982,8 +2982,8 @@ mod __parse__Program {
         3, // on App, goto 2
         4, // on Atom, goto 3
         47, // on Cmp, goto 46
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         7, // on Ident, goto 6
         8, // on Int, goto 7
         9, // on List, goto 8
@@ -2996,8 +2996,8 @@ mod __parse__Program {
         3, // on App, goto 2
         4, // on Atom, goto 3
         48, // on Cmp, goto 47
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         7, // on Ident, goto 6
         8, // on Int, goto 7
         9, // on List, goto 8
@@ -3010,8 +3010,8 @@ mod __parse__Program {
         3, // on App, goto 2
         4, // on Atom, goto 3
         49, // on Cmp, goto 48
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         7, // on Ident, goto 6
         8, // on Int, goto 7
         9, // on List, goto 8
@@ -3024,8 +3024,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3038,8 +3038,8 @@ mod __parse__Program {
         3, // on App, goto 2
         4, // on Atom, goto 3
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         7, // on Ident, goto 6
         8, // on Int, goto 7
         50, // on List, goto 49
@@ -3052,8 +3052,8 @@ mod __parse__Program {
         3, // on App, goto 2
         4, // on Atom, goto 3
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         7, // on Ident, goto 6
         8, // on Int, goto 7
         51, // on List, goto 50
@@ -3066,8 +3066,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3080,8 +3080,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3094,8 +3094,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3108,8 +3108,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3122,8 +3122,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3136,8 +3136,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3150,8 +3150,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3164,8 +3164,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3178,8 +3178,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3192,8 +3192,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3206,8 +3206,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3220,8 +3220,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3234,8 +3234,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3248,8 +3248,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3262,8 +3262,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3276,8 +3276,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3290,8 +3290,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3304,8 +3304,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3318,8 +3318,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3332,8 +3332,8 @@ mod __parse__Program {
         3, // on App, goto 2
         4, // on Atom, goto 3
         5, // on Cmp, goto 4
-        58, // on Exp, goto 57
-        0, // on Exps, error
+        58, // on Expr, goto 57
+        0, // on Exprs, error
         7, // on Ident, goto 6
         8, // on Int, goto 7
         9, // on List, goto 8
@@ -3346,8 +3346,8 @@ mod __parse__Program {
         3, // on App, goto 2
         4, // on Atom, goto 3
         5, // on Cmp, goto 4
-        59, // on Exp, goto 58
-        0, // on Exps, error
+        59, // on Expr, goto 58
+        0, // on Exprs, error
         7, // on Ident, goto 6
         8, // on Int, goto 7
         9, // on List, goto 8
@@ -3360,8 +3360,8 @@ mod __parse__Program {
         3, // on App, goto 2
         4, // on Atom, goto 3
         5, // on Cmp, goto 4
-        60, // on Exp, goto 59
-        0, // on Exps, error
+        60, // on Expr, goto 59
+        0, // on Exprs, error
         7, // on Ident, goto 6
         8, // on Int, goto 7
         9, // on List, goto 8
@@ -3374,8 +3374,8 @@ mod __parse__Program {
         3, // on App, goto 2
         4, // on Atom, goto 3
         5, // on Cmp, goto 4
-        61, // on Exp, goto 60
-        0, // on Exps, error
+        61, // on Expr, goto 60
+        0, // on Exprs, error
         7, // on Ident, goto 6
         8, // on Int, goto 7
         9, // on List, goto 8
@@ -3388,8 +3388,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3402,8 +3402,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3416,8 +3416,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3430,8 +3430,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3444,8 +3444,8 @@ mod __parse__Program {
         3, // on App, goto 2
         4, // on Atom, goto 3
         5, // on Cmp, goto 4
-        64, // on Exp, goto 63
-        0, // on Exps, error
+        64, // on Expr, goto 63
+        0, // on Exprs, error
         7, // on Ident, goto 6
         8, // on Int, goto 7
         9, // on List, goto 8
@@ -3458,8 +3458,8 @@ mod __parse__Program {
         3, // on App, goto 2
         4, // on Atom, goto 3
         5, // on Cmp, goto 4
-        65, // on Exp, goto 64
-        0, // on Exps, error
+        65, // on Expr, goto 64
+        0, // on Exprs, error
         7, // on Ident, goto 6
         8, // on Int, goto 7
         9, // on List, goto 8
@@ -3472,8 +3472,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3486,8 +3486,8 @@ mod __parse__Program {
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
-        0, // on Exp, error
-        0, // on Exps, error
+        0, // on Expr, error
+        0, // on Exprs, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3503,7 +3503,7 @@ mod __parse__Program {
     >(
         text: &'input str,
         __tokens0: __TOKENS,
-    ) -> Result<Box<Exp>, __lalrpop_util::ParseError<usize,Tok<'input>,tok::Error>>
+    ) -> Result<Box<Expr>, __lalrpop_util::ParseError<usize,Tok<'input>,tok::Error>>
     {
         let __tokens = __tokens0.into_iter();
         let mut __tokens = __tokens.map(|t| __ToTriple::to_triple(t));
@@ -3709,7 +3709,7 @@ mod __parse__Program {
         __states: &mut ::std::vec::Vec<i32>,
         __symbols: &mut ::std::vec::Vec<(usize,__Symbol<'input>,usize)>,
         _: ::std::marker::PhantomData<()>,
-    ) -> Option<Result<Box<Exp>,__lalrpop_util::ParseError<usize,Tok<'input>,tok::Error>>>
+    ) -> Option<Result<Box<Expr>,__lalrpop_util::ParseError<usize,Tok<'input>,tok::Error>>>
     {
         let __nonterminal = match -__action {
             1 => {
@@ -3853,9 +3853,9 @@ mod __parse__Program {
                 2
             }
             13 => {
-                // Atom = "(", Exps, ")" => ActionFn(28);
+                // Atom = "(", Exprs, ")" => ActionFn(28);
                 let __sym2 = __pop_Term_22_29_22(__symbols);
-                let __sym1 = __pop_NtExps(__symbols);
+                let __sym1 = __pop_NtExprs(__symbols);
                 let __sym0 = __pop_Term_22_28_22(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym2.2.clone();
@@ -3927,26 +3927,26 @@ mod __parse__Program {
                 3
             }
             19 => {
-                // Exp = "if", Exp, "then", Exp, "else", Exp => ActionFn(2);
-                let __sym5 = __pop_NtExp(__symbols);
+                // Expr = "if", Expr, "then", Expr, "else", Expr => ActionFn(2);
+                let __sym5 = __pop_NtExpr(__symbols);
                 let __sym4 = __pop_Term_22else_22(__symbols);
-                let __sym3 = __pop_NtExp(__symbols);
+                let __sym3 = __pop_NtExpr(__symbols);
                 let __sym2 = __pop_Term_22then_22(__symbols);
-                let __sym1 = __pop_NtExp(__symbols);
+                let __sym1 = __pop_NtExpr(__symbols);
                 let __sym0 = __pop_Term_22if_22(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym5.2.clone();
                 let __nt = super::__action2::<>(text, __sym0, __sym1, __sym2, __sym3, __sym4, __sym5);
                 let __states_len = __states.len();
                 __states.truncate(__states_len - 6);
-                __symbols.push((__start, __Symbol::NtExp(__nt), __end));
+                __symbols.push((__start, __Symbol::NtExpr(__nt), __end));
                 4
             }
             20 => {
-                // Exp = "let", Ident, "=", Exp, "in", Exp => ActionFn(3);
-                let __sym5 = __pop_NtExp(__symbols);
+                // Expr = "let", Ident, "=", Expr, "in", Expr => ActionFn(3);
+                let __sym5 = __pop_NtExpr(__symbols);
                 let __sym4 = __pop_Term_22in_22(__symbols);
-                let __sym3 = __pop_NtExp(__symbols);
+                let __sym3 = __pop_NtExpr(__symbols);
                 let __sym2 = __pop_Term_22_3d_22(__symbols);
                 let __sym1 = __pop_NtIdent(__symbols);
                 let __sym0 = __pop_Term_22let_22(__symbols);
@@ -3955,12 +3955,12 @@ mod __parse__Program {
                 let __nt = super::__action3::<>(text, __sym0, __sym1, __sym2, __sym3, __sym4, __sym5);
                 let __states_len = __states.len();
                 __states.truncate(__states_len - 6);
-                __symbols.push((__start, __Symbol::NtExp(__nt), __end));
+                __symbols.push((__start, __Symbol::NtExpr(__nt), __end));
                 4
             }
             21 => {
-                // Exp = "fun", Ident, "->", Exp => ActionFn(4);
-                let __sym3 = __pop_NtExp(__symbols);
+                // Expr = "fun", Ident, "->", Expr => ActionFn(4);
+                let __sym3 = __pop_NtExpr(__symbols);
                 let __sym2 = __pop_Term_22_2d_3e_22(__symbols);
                 let __sym1 = __pop_NtIdent(__symbols);
                 let __sym0 = __pop_Term_22fun_22(__symbols);
@@ -3969,12 +3969,12 @@ mod __parse__Program {
                 let __nt = super::__action4::<>(text, __sym0, __sym1, __sym2, __sym3);
                 let __states_len = __states.len();
                 __states.truncate(__states_len - 4);
-                __symbols.push((__start, __Symbol::NtExp(__nt), __end));
+                __symbols.push((__start, __Symbol::NtExpr(__nt), __end));
                 4
             }
             22 => {
-                // Exp = "fix", Ident, "->", Exp => ActionFn(5);
-                let __sym3 = __pop_NtExp(__symbols);
+                // Expr = "fix", Ident, "->", Expr => ActionFn(5);
+                let __sym3 = __pop_NtExpr(__symbols);
                 let __sym2 = __pop_Term_22_2d_3e_22(__symbols);
                 let __sym1 = __pop_NtIdent(__symbols);
                 let __sym0 = __pop_Term_22fix_22(__symbols);
@@ -3983,42 +3983,42 @@ mod __parse__Program {
                 let __nt = super::__action5::<>(text, __sym0, __sym1, __sym2, __sym3);
                 let __states_len = __states.len();
                 __states.truncate(__states_len - 4);
-                __symbols.push((__start, __Symbol::NtExp(__nt), __end));
+                __symbols.push((__start, __Symbol::NtExpr(__nt), __end));
                 4
             }
             23 => {
-                // Exp = "begin", Exp, "end" => ActionFn(6);
+                // Expr = "begin", Expr, "end" => ActionFn(6);
                 let __sym2 = __pop_Term_22end_22(__symbols);
-                let __sym1 = __pop_NtExp(__symbols);
+                let __sym1 = __pop_NtExpr(__symbols);
                 let __sym0 = __pop_Term_22begin_22(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym2.2.clone();
                 let __nt = super::__action6::<>(text, __sym0, __sym1, __sym2);
                 let __states_len = __states.len();
                 __states.truncate(__states_len - 3);
-                __symbols.push((__start, __Symbol::NtExp(__nt), __end));
+                __symbols.push((__start, __Symbol::NtExpr(__nt), __end));
                 4
             }
             24 => {
-                // Exp = Cmp => ActionFn(7);
+                // Expr = Cmp => ActionFn(7);
                 let __sym0 = __pop_NtCmp(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym0.2.clone();
                 let __nt = super::__action7::<>(text, __sym0);
                 let __states_len = __states.len();
                 __states.truncate(__states_len - 1);
-                __symbols.push((__start, __Symbol::NtExp(__nt), __end));
+                __symbols.push((__start, __Symbol::NtExpr(__nt), __end));
                 4
             }
             25 => {
-                // Exps = Exp => ActionFn(30);
-                let __sym0 = __pop_NtExp(__symbols);
+                // Exprs = Expr => ActionFn(30);
+                let __sym0 = __pop_NtExpr(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym0.2.clone();
                 let __nt = super::__action30::<>(text, __sym0);
                 let __states_len = __states.len();
                 __states.truncate(__states_len - 1);
-                __symbols.push((__start, __Symbol::NtExps(__nt), __end));
+                __symbols.push((__start, __Symbol::NtExprs(__nt), __end));
                 5
             }
             26 => {
@@ -4103,8 +4103,8 @@ mod __parse__Program {
                 10
             }
             33 => {
-                // Program = Exp => ActionFn(1);
-                let __sym0 = __pop_NtExp(__symbols);
+                // Program = Expr => ActionFn(1);
+                let __sym0 = __pop_NtExpr(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym0.2.clone();
                 let __nt = super::__action1::<>(text, __sym0);
@@ -4412,7 +4412,7 @@ mod __parse__Program {
       'input,
     >(
         __symbols: &mut ::std::vec::Vec<(usize,__Symbol<'input>,usize)>
-    ) -> (usize, Box<Exp>, usize) {
+    ) -> (usize, Box<Expr>, usize) {
         match __symbols.pop().unwrap() {
             (__l, __Symbol::NtAdd(__v), __r) => (__l, __v, __r),
             _ => panic!("symbol type mismatch")
@@ -4422,7 +4422,7 @@ mod __parse__Program {
       'input,
     >(
         __symbols: &mut ::std::vec::Vec<(usize,__Symbol<'input>,usize)>
-    ) -> (usize, Box<Exp>, usize) {
+    ) -> (usize, Box<Expr>, usize) {
         match __symbols.pop().unwrap() {
             (__l, __Symbol::NtApp(__v), __r) => (__l, __v, __r),
             _ => panic!("symbol type mismatch")
@@ -4432,7 +4432,7 @@ mod __parse__Program {
       'input,
     >(
         __symbols: &mut ::std::vec::Vec<(usize,__Symbol<'input>,usize)>
-    ) -> (usize, Box<Exp>, usize) {
+    ) -> (usize, Box<Expr>, usize) {
         match __symbols.pop().unwrap() {
             (__l, __Symbol::NtAtom(__v), __r) => (__l, __v, __r),
             _ => panic!("symbol type mismatch")
@@ -4442,29 +4442,29 @@ mod __parse__Program {
       'input,
     >(
         __symbols: &mut ::std::vec::Vec<(usize,__Symbol<'input>,usize)>
-    ) -> (usize, Box<Exp>, usize) {
+    ) -> (usize, Box<Expr>, usize) {
         match __symbols.pop().unwrap() {
             (__l, __Symbol::NtCmp(__v), __r) => (__l, __v, __r),
             _ => panic!("symbol type mismatch")
         }
     }
-    fn __pop_NtExp<
+    fn __pop_NtExpr<
       'input,
     >(
         __symbols: &mut ::std::vec::Vec<(usize,__Symbol<'input>,usize)>
-    ) -> (usize, Box<Exp>, usize) {
+    ) -> (usize, Box<Expr>, usize) {
         match __symbols.pop().unwrap() {
-            (__l, __Symbol::NtExp(__v), __r) => (__l, __v, __r),
+            (__l, __Symbol::NtExpr(__v), __r) => (__l, __v, __r),
             _ => panic!("symbol type mismatch")
         }
     }
-    fn __pop_NtExps<
+    fn __pop_NtExprs<
       'input,
     >(
         __symbols: &mut ::std::vec::Vec<(usize,__Symbol<'input>,usize)>
-    ) -> (usize, Box<Exp>, usize) {
+    ) -> (usize, Box<Expr>, usize) {
         match __symbols.pop().unwrap() {
-            (__l, __Symbol::NtExps(__v), __r) => (__l, __v, __r),
+            (__l, __Symbol::NtExprs(__v), __r) => (__l, __v, __r),
             _ => panic!("symbol type mismatch")
         }
     }
@@ -4482,7 +4482,7 @@ mod __parse__Program {
       'input,
     >(
         __symbols: &mut ::std::vec::Vec<(usize,__Symbol<'input>,usize)>
-    ) -> (usize, Box<Exp>, usize) {
+    ) -> (usize, Box<Expr>, usize) {
         match __symbols.pop().unwrap() {
             (__l, __Symbol::NtInt(__v), __r) => (__l, __v, __r),
             _ => panic!("symbol type mismatch")
@@ -4492,7 +4492,7 @@ mod __parse__Program {
       'input,
     >(
         __symbols: &mut ::std::vec::Vec<(usize,__Symbol<'input>,usize)>
-    ) -> (usize, Box<Exp>, usize) {
+    ) -> (usize, Box<Expr>, usize) {
         match __symbols.pop().unwrap() {
             (__l, __Symbol::NtList(__v), __r) => (__l, __v, __r),
             _ => panic!("symbol type mismatch")
@@ -4502,7 +4502,7 @@ mod __parse__Program {
       'input,
     >(
         __symbols: &mut ::std::vec::Vec<(usize,__Symbol<'input>,usize)>
-    ) -> (usize, Box<Exp>, usize) {
+    ) -> (usize, Box<Expr>, usize) {
         match __symbols.pop().unwrap() {
             (__l, __Symbol::NtMul(__v), __r) => (__l, __v, __r),
             _ => panic!("symbol type mismatch")
@@ -4522,7 +4522,7 @@ mod __parse__Program {
       'input,
     >(
         __symbols: &mut ::std::vec::Vec<(usize,__Symbol<'input>,usize)>
-    ) -> (usize, Box<Exp>, usize) {
+    ) -> (usize, Box<Expr>, usize) {
         match __symbols.pop().unwrap() {
             (__l, __Symbol::NtProgram(__v), __r) => (__l, __v, __r),
             _ => panic!("symbol type mismatch")
@@ -4532,7 +4532,7 @@ mod __parse__Program {
       'input,
     >(
         __symbols: &mut ::std::vec::Vec<(usize,__Symbol<'input>,usize)>
-    ) -> (usize, Box<Exp>, usize) {
+    ) -> (usize, Box<Expr>, usize) {
         match __symbols.pop().unwrap() {
             (__l, __Symbol::Nt____Program(__v), __r) => (__l, __v, __r),
             _ => panic!("symbol type mismatch")
@@ -4546,8 +4546,8 @@ pub fn __action0<
     'input,
 >(
     text: &'input str,
-    (_, __0, _): (usize, Box<Exp>, usize),
-) -> Box<Exp>
+    (_, __0, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
 {
     (__0)
 }
@@ -4557,8 +4557,8 @@ pub fn __action1<
     'input,
 >(
     text: &'input str,
-    (_, __0, _): (usize, Box<Exp>, usize),
-) -> Box<Exp>
+    (_, __0, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
 {
     (__0)
 }
@@ -4569,12 +4569,12 @@ pub fn __action2<
 >(
     text: &'input str,
     (_, _, _): (usize, Tok<'input>, usize),
-    (_, c, _): (usize, Box<Exp>, usize),
+    (_, c, _): (usize, Box<Expr>, usize),
     (_, _, _): (usize, Tok<'input>, usize),
-    (_, t, _): (usize, Box<Exp>, usize),
+    (_, t, _): (usize, Box<Expr>, usize),
     (_, _, _): (usize, Tok<'input>, usize),
-    (_, f, _): (usize, Box<Exp>, usize),
-) -> Box<Exp>
+    (_, f, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
 {
     Box::new(If(c, t, f))
 }
@@ -4587,10 +4587,10 @@ pub fn __action3<
     (_, _, _): (usize, Tok<'input>, usize),
     (_, id, _): (usize, Id, usize),
     (_, _, _): (usize, Tok<'input>, usize),
-    (_, v, _): (usize, Box<Exp>, usize),
+    (_, v, _): (usize, Box<Expr>, usize),
     (_, _, _): (usize, Tok<'input>, usize),
-    (_, e, _): (usize, Box<Exp>, usize),
-) -> Box<Exp>
+    (_, e, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
 {
     Box::new(Let(id, v, e))
 }
@@ -4603,8 +4603,8 @@ pub fn __action4<
     (_, _, _): (usize, Tok<'input>, usize),
     (_, id, _): (usize, Id, usize),
     (_, _, _): (usize, Tok<'input>, usize),
-    (_, e, _): (usize, Box<Exp>, usize),
-) -> Box<Exp>
+    (_, e, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
 {
     Box::new(Fun(id, e))
 }
@@ -4617,8 +4617,8 @@ pub fn __action5<
     (_, _, _): (usize, Tok<'input>, usize),
     (_, id, _): (usize, Id, usize),
     (_, _, _): (usize, Tok<'input>, usize),
-    (_, e, _): (usize, Box<Exp>, usize),
-) -> Box<Exp>
+    (_, e, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
 {
     Box::new(Fix(id, e))
 }
@@ -4629,9 +4629,9 @@ pub fn __action6<
 >(
     text: &'input str,
     (_, _, _): (usize, Tok<'input>, usize),
-    (_, e, _): (usize, Box<Exp>, usize),
+    (_, e, _): (usize, Box<Expr>, usize),
     (_, _, _): (usize, Tok<'input>, usize),
-) -> Box<Exp>
+) -> Box<Expr>
 {
     e
 }
@@ -4641,8 +4641,8 @@ pub fn __action7<
     'input,
 >(
     text: &'input str,
-    (_, __0, _): (usize, Box<Exp>, usize),
-) -> Box<Exp>
+    (_, __0, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
 {
     (__0)
 }
@@ -4652,10 +4652,10 @@ pub fn __action8<
     'input,
 >(
     text: &'input str,
-    (_, l, _): (usize, Box<Exp>, usize),
+    (_, l, _): (usize, Box<Expr>, usize),
     (_, _, _): (usize, Tok<'input>, usize),
-    (_, r, _): (usize, Box<Exp>, usize),
-) -> Box<Exp>
+    (_, r, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
 {
     Box::new(Op2(Eq, l, r))
 }
@@ -4665,10 +4665,10 @@ pub fn __action9<
     'input,
 >(
     text: &'input str,
-    (_, l, _): (usize, Box<Exp>, usize),
+    (_, l, _): (usize, Box<Expr>, usize),
     (_, _, _): (usize, Tok<'input>, usize),
-    (_, r, _): (usize, Box<Exp>, usize),
-) -> Box<Exp>
+    (_, r, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
 {
     Box::new(Op2(LT, l, r))
 }
@@ -4678,10 +4678,10 @@ pub fn __action10<
     'input,
 >(
     text: &'input str,
-    (_, l, _): (usize, Box<Exp>, usize),
+    (_, l, _): (usize, Box<Expr>, usize),
     (_, _, _): (usize, Tok<'input>, usize),
-    (_, r, _): (usize, Box<Exp>, usize),
-) -> Box<Exp>
+    (_, r, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
 {
     Box::new(Op2(GT, l, r))
 }
@@ -4691,8 +4691,8 @@ pub fn __action11<
     'input,
 >(
     text: &'input str,
-    (_, __0, _): (usize, Box<Exp>, usize),
-) -> Box<Exp>
+    (_, __0, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
 {
     (__0)
 }
@@ -4702,10 +4702,10 @@ pub fn __action12<
     'input,
 >(
     text: &'input str,
-    (_, l, _): (usize, Box<Exp>, usize),
+    (_, l, _): (usize, Box<Expr>, usize),
     (_, _, _): (usize, Tok<'input>, usize),
-    (_, r, _): (usize, Box<Exp>, usize),
-) -> Box<Exp>
+    (_, r, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
 {
     Box::new(Op2(Sub, l, r))
 }
@@ -4715,10 +4715,10 @@ pub fn __action13<
     'input,
 >(
     text: &'input str,
-    (_, l, _): (usize, Box<Exp>, usize),
+    (_, l, _): (usize, Box<Expr>, usize),
     (_, _, _): (usize, Tok<'input>, usize),
-    (_, r, _): (usize, Box<Exp>, usize),
-) -> Box<Exp>
+    (_, r, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
 {
     Box::new(Op2(Add, l, r))
 }
@@ -4728,8 +4728,8 @@ pub fn __action14<
     'input,
 >(
     text: &'input str,
-    (_, __0, _): (usize, Box<Exp>, usize),
-) -> Box<Exp>
+    (_, __0, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
 {
     (__0)
 }
@@ -4739,10 +4739,10 @@ pub fn __action15<
     'input,
 >(
     text: &'input str,
-    (_, l, _): (usize, Box<Exp>, usize),
+    (_, l, _): (usize, Box<Expr>, usize),
     (_, _, _): (usize, Tok<'input>, usize),
-    (_, r, _): (usize, Box<Exp>, usize),
-) -> Box<Exp>
+    (_, r, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
 {
     Box::new(Op2(Mul, l, r))
 }
@@ -4752,8 +4752,8 @@ pub fn __action16<
     'input,
 >(
     text: &'input str,
-    (_, __0, _): (usize, Box<Exp>, usize),
-) -> Box<Exp>
+    (_, __0, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
 {
     (__0)
 }
@@ -4763,10 +4763,10 @@ pub fn __action17<
     'input,
 >(
     text: &'input str,
-    (_, hd, _): (usize, Box<Exp>, usize),
+    (_, hd, _): (usize, Box<Expr>, usize),
     (_, _, _): (usize, Tok<'input>, usize),
-    (_, tl, _): (usize, Box<Exp>, usize),
-) -> Box<Exp>
+    (_, tl, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
 {
     Box::new(Cons(hd, tl))
 }
@@ -4776,8 +4776,8 @@ pub fn __action18<
     'input,
 >(
     text: &'input str,
-    (_, __0, _): (usize, Box<Exp>, usize),
-) -> Box<Exp>
+    (_, __0, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
 {
     (__0)
 }
@@ -4788,8 +4788,8 @@ pub fn __action19<
 >(
     text: &'input str,
     (_, _, _): (usize, Tok<'input>, usize),
-    (_, l, _): (usize, Box<Exp>, usize),
-) -> Box<Exp>
+    (_, l, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
 {
     Box::new(Head(l))
 }
@@ -4800,8 +4800,8 @@ pub fn __action20<
 >(
     text: &'input str,
     (_, _, _): (usize, Tok<'input>, usize),
-    (_, l, _): (usize, Box<Exp>, usize),
-) -> Box<Exp>
+    (_, l, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
 {
     Box::new(Tail(l))
 }
@@ -4812,8 +4812,8 @@ pub fn __action21<
 >(
     text: &'input str,
     (_, _, _): (usize, Tok<'input>, usize),
-    (_, l, _): (usize, Box<Exp>, usize),
-) -> Box<Exp>
+    (_, l, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
 {
     Box::new(IsEmpty(l))
 }
@@ -4823,9 +4823,9 @@ pub fn __action22<
     'input,
 >(
     text: &'input str,
-    (_, a, _): (usize, Box<Exp>, usize),
-    (_, b, _): (usize, Box<Exp>, usize),
-) -> Box<Exp>
+    (_, a, _): (usize, Box<Expr>, usize),
+    (_, b, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
 {
     Box::new(App(a, b))
 }
@@ -4835,8 +4835,8 @@ pub fn __action23<
     'input,
 >(
     text: &'input str,
-    (_, __0, _): (usize, Box<Exp>, usize),
-) -> Box<Exp>
+    (_, __0, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
 {
     (__0)
 }
@@ -4847,7 +4847,7 @@ pub fn __action24<
 >(
     text: &'input str,
     (_, id, _): (usize, Id, usize),
-) -> Box<Exp>
+) -> Box<Expr>
 {
     Box::new(Var(id))
 }
@@ -4858,7 +4858,7 @@ pub fn __action25<
 >(
     text: &'input str,
     (_, __0, _): (usize, Tok<'input>, usize),
-) -> Box<Exp>
+) -> Box<Expr>
 {
     Box::new(Const(Bool(true)))
 }
@@ -4869,7 +4869,7 @@ pub fn __action26<
 >(
     text: &'input str,
     (_, __0, _): (usize, Tok<'input>, usize),
-) -> Box<Exp>
+) -> Box<Expr>
 {
     Box::new(Const(Bool(true)))
 }
@@ -4880,7 +4880,7 @@ pub fn __action27<
 >(
     text: &'input str,
     (_, __0, _): (usize, Tok<'input>, usize),
-) -> Box<Exp>
+) -> Box<Expr>
 {
     Box::new(Empty)
 }
@@ -4891,9 +4891,9 @@ pub fn __action28<
 >(
     text: &'input str,
     (_, _, _): (usize, Tok<'input>, usize),
-    (_, __0, _): (usize, Box<Exp>, usize),
+    (_, __0, _): (usize, Box<Expr>, usize),
     (_, _, _): (usize, Tok<'input>, usize),
-) -> Box<Exp>
+) -> Box<Expr>
 {
     (__0)
 }
@@ -4903,8 +4903,8 @@ pub fn __action29<
     'input,
 >(
     text: &'input str,
-    (_, __0, _): (usize, Box<Exp>, usize),
-) -> Box<Exp>
+    (_, __0, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
 {
     (__0)
 }
@@ -4914,8 +4914,8 @@ pub fn __action30<
     'input,
 >(
     text: &'input str,
-    (_, __0, _): (usize, Box<Exp>, usize),
-) -> Box<Exp>
+    (_, __0, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
 {
     (__0)
 }
@@ -4926,7 +4926,7 @@ pub fn __action31<
 >(
     text: &'input str,
     (_, __0, _): (usize, i64, usize),
-) -> Box<Exp>
+) -> Box<Expr>
 {
     Box::new(Const(Int(__0)))
 }

@@ -9,13 +9,13 @@ type Closure = HashMap<String, Value>;
 pub enum Value {
     VInt(i32),
     VBool(bool),
-    VClosure(Box<Closure>, Box<explicit::Exp>),
+    VClosure(Box<Closure>, Box<explicit::Expr>),
     VCons(Box<Value>, Box<Value>),
     VEmpty,
 }
 
 
-// pub fn eval(exp: &explicit::Exp) ->
+// pub fn eval(exp: &explicit::Expr) ->
 
 // let rec eval' (ctx : env) (e : exp) : value =
 //   (* All of our binary operators work on ints *)
@@ -76,6 +76,6 @@ pub enum Value {
 //                     | IsEmpty (e)            -> is_empty (eval' ctx e)
 
 
-pub fn interpret(expr: &explicit::Exp) -> Value {
+pub fn interpret(expr: &explicit::Expr) -> Value {
     Value::VBool(false)
 }

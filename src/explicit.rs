@@ -12,20 +12,20 @@ pub enum Type {
 }
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
-pub enum Exp {
+pub enum Expr {
     Var(Id),
     Const(Const),
-    Op2(Op2, Box<Exp>, Box<Exp>),
-    Fun(Id, Type, Box<Exp>),
-    App(Box<Exp>, Box<Exp>),
-    If(Box<Exp>, Box<Exp>, Box<Exp>),
-    Let(Id, Box<Exp>, Box<Exp>),
-    Fix(Id, Type, Box<Exp>),
+    Op2(Op2, Box<Expr>, Box<Expr>),
+    Fun(Id, Type, Box<Expr>),
+    App(Box<Expr>, Box<Expr>),
+    If(Box<Expr>, Box<Expr>, Box<Expr>),
+    Let(Id, Box<Expr>, Box<Expr>),
+    Fix(Id, Type, Box<Expr>),
     Empty(Type),
-    Cons(Box<Exp>, Box<Exp>),
-    Head(Box<Exp>),
-    Tail(Box<Exp>),
-    IsEmpty(Box<Exp>),
+    Cons(Box<Expr>, Box<Expr>),
+    Head(Box<Expr>),
+    Tail(Box<Expr>),
+    IsEmpty(Box<Expr>),
 }
 
 // type abstraction
