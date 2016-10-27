@@ -5,7 +5,7 @@ use std::error;
 use implicit;
 use explicit;
 
-use explicit::{Typ, Metavar};
+use explicit::{Type, Metavar};
 
 
 #[cfg(test)]
@@ -29,16 +29,16 @@ impl<'a> MVEnv<'a> {
         }
     }
 
-    fn alloc(&mut self, s: &String) -> Typ {
+    fn alloc(&mut self, s: &String) -> Type {
         let id = self.next_id;
         self.next_id += 1;
-        Typ::TMetavar((id, s.clone()))
+        Type::TMetavar((id, s.clone()))
     }
 
-    fn alloc_empty(&mut self) -> Typ {
+    fn alloc_empty(&mut self) -> Type {
         let id = self.next_id;
         self.next_id += 1;
-        Typ::TMetavar((id, String::from(self.env_id)))
+        Type::TMetavar((id, String::from(self.env_id)))
     }
 }
 
@@ -98,25 +98,25 @@ fn add_metavars(exp: &implicit::Exp) -> Box<explicit::Exp> {
 }
 
 fn gen_constraints<'a>(m: &mut MVEnv,
-                       env: &mut HashMap<&'a str, Typ>,
+                       env: &mut HashMap<&'a str, Type>,
                        exp: &'a explicit::Exp)
-                       -> Result<(Vec<(Typ, Typ)>, Typ)> {
+                       -> Result<(Vec<(Type, Type)>, Type)> {
     use common::{Const, Op2};
     use explicit::Exp as E;
 
     let result = match *exp {
-        E::Const(Const::Int(_)) => (Vec::new(), Typ::TInt),
-        E::Const(Const::Bool(_)) => (Vec::new(), Typ::TBool),
+        E::Const(Const::Int(_)) => (Vec::new(), Type::TInt),
+        E::Const(Const::Bool(_)) => (Vec::new(), Type::TBool),
         E::Op2(op, ref e1, ref e2) => {
             let opty = match op {
-                Op2::LT | Op2::GT | Op2::Eq => Typ::TBool,
-                Op2::Add | Op2::Sub | Op2::Mul => Typ::TInt,
+                Op2::LT | Op2::GT | Op2::Eq => Type::TBool,
+                Op2::Add | Op2::Sub | Op2::Mul => Type::TInt,
             };
             let (mut c1, t1) = gen_constraints(m, env, e1)?;
             let (mut c2, t2) = gen_constraints(m, env, e2)?;
             c1.append(&mut c2);
-            c1.push((t1, Typ::TInt));
-            c1.push((t2, Typ::TInt));
+            c1.push((t1, Type::TInt));
+            c1.push((t2, Type::TInt));
             (c1, opty)
         }
         E::If(ref e1, ref e2, ref e3) => {
@@ -125,7 +125,7 @@ fn gen_constraints<'a>(m: &mut MVEnv,
             let (mut c3, t3) = gen_constraints(m, env, e3)?;
             c1.append(&mut c2);
             c1.append(&mut c3);
-            c1.push((t1, Typ::TBool));
+            c1.push((t1, Type::TBool));
             c1.push((t2, t3.clone()));
             (c1, t3)
         }
@@ -149,7 +149,7 @@ fn gen_constraints<'a>(m: &mut MVEnv,
             env.insert(&id, t1.clone());
             let (c, t2) = gen_constraints(m, env, e)?;
             env.remove::<str>(&id);
-            (c, Typ::TFun(box t1.clone(), box t2))
+            (c, Type::TFun(box t1.clone(), box t2))
         }
         E::Fix(ref id, ref t1, ref e) => {
             env.insert(&id, t1.clone());
@@ -163,44 +163,44 @@ fn gen_constraints<'a>(m: &mut MVEnv,
             let (mut c1, t1) = gen_constraints(m, env, e1)?;
             let (mut c2, t2) = gen_constraints(m, env, e2)?;
             c1.append(&mut c2);
-            c1.push((t1.clone(), Typ::TFun(box t2.clone(), box mv.clone())));
+            c1.push((t1.clone(), Type::TFun(box t2.clone(), box mv.clone())));
             (c1, mv)
         }
-        E::Empty(ref t1) => (Vec::new(), Typ::TList(box t1.clone())),
+        E::Empty(ref t1) => (Vec::new(), Type::TList(box t1.clone())),
         E::Cons(ref e1, ref e2) => {
             let mv = m.alloc_empty();
             let (mut c1, t1) = gen_constraints(m, env, e1)?;
             let (mut c2, t2) = gen_constraints(m, env, e2)?;
             c1.append(&mut c2);
             c1.push((t1, mv.clone()));
-            c1.push((t2, Typ::TList(box mv.clone())));
-            (c1, Typ::TList(box mv))
+            c1.push((t2, Type::TList(box mv.clone())));
+            (c1, Type::TList(box mv))
         }
         E::Head(ref e) => {
             let mv = m.alloc_empty();
             let (mut c, t) = gen_constraints(m, env, e)?;
-            c.push((t, Typ::TList(box mv.clone())));
+            c.push((t, Type::TList(box mv.clone())));
             (c, mv)
         }
         E::Tail(ref e) => {
             let mv = m.alloc_empty();
             let (mut c, t) = gen_constraints(m, env, e)?;
-            c.push((t, Typ::TList(box mv.clone())));
-            (c, Typ::TList(box mv))
+            c.push((t, Type::TList(box mv.clone())));
+            (c, Type::TList(box mv))
         }
         E::IsEmpty(ref e) => {
             let mv = m.alloc_empty();
             let (mut c, t) = gen_constraints(m, env, e)?;
-            c.push((t, Typ::TList(box mv.clone())));
-            (c, Typ::TBool)
+            c.push((t, Type::TList(box mv.clone())));
+            (c, Type::TBool)
         }
     };
 
     Ok(result)
 }
 
-fn apply(env: &HashMap<Metavar, Typ>, typ_in: &Typ) -> Typ {
-    use explicit::Typ::*;
+fn apply(env: &HashMap<Metavar, Type>, typ_in: &Type) -> Type {
+    use explicit::Type::*;
 
     match *typ_in {
         TMetavar(ref mv) => {
@@ -218,12 +218,12 @@ fn apply(env: &HashMap<Metavar, Typ>, typ_in: &Typ) -> Typ {
     }
 }
 
-fn compose(env1: &HashMap<Metavar, Typ>, env2: &HashMap<Metavar, Typ>) -> HashMap<Metavar, Typ> {
+fn compose(env1: &HashMap<Metavar, Type>, env2: &HashMap<Metavar, Type>) -> HashMap<Metavar, Type> {
     let mut r = HashMap::new();
 
     for (mv, typ) in env1.iter() {
         if env2.contains_key(mv) {
-            if let Some(&Typ::TMetavar(ref mv2)) = env2.get(mv) {
+            if let Some(&Type::TMetavar(ref mv2)) = env2.get(mv) {
                 r.insert(mv2.clone(), typ.clone());
             }
         }
@@ -242,8 +242,8 @@ fn compose(env1: &HashMap<Metavar, Typ>, env2: &HashMap<Metavar, Typ>) -> HashMa
     r
 }
 
-fn occurs(mv: &Metavar, t: &Typ) -> bool {
-    use explicit::Typ::*;
+fn occurs(mv: &Metavar, t: &Type) -> bool {
+    use explicit::Type::*;
 
     match t {
         &TMetavar(ref mv2) => mv == mv2,
@@ -253,10 +253,10 @@ fn occurs(mv: &Metavar, t: &Typ) -> bool {
     }
 }
 
-fn unify(t1: &Typ, t2: &Typ) -> Result<HashMap<Metavar, Typ>> {
-    use explicit::Typ::*;
+fn unify(t1: &Type, t2: &Type) -> Result<HashMap<Metavar, Type>> {
+    use explicit::Type::*;
 
-    let mut env: HashMap<Metavar, Typ> = HashMap::new();
+    let mut env: HashMap<Metavar, Type> = HashMap::new();
 
     match (t1, t2) {
         (&TInt, &TInt) => {}
@@ -292,8 +292,8 @@ fn unify(t1: &Typ, t2: &Typ) -> Result<HashMap<Metavar, Typ>> {
     Ok(env)
 }
 
-fn unify_all(constraints: &[(Typ, Typ)]) -> Result<HashMap<Metavar, Typ>> {
-    let r: HashMap<Metavar, Typ> = if let Some((&(ref t1, ref t2), rest)) =
+fn unify_all(constraints: &[(Type, Type)]) -> Result<HashMap<Metavar, Type>> {
+    let r: HashMap<Metavar, Type> = if let Some((&(ref t1, ref t2), rest)) =
         constraints.split_first() {
         let rst = unify_all(rest)?;
         let fst = unify(t1, t2)?;
@@ -305,7 +305,7 @@ fn unify_all(constraints: &[(Typ, Typ)]) -> Result<HashMap<Metavar, Typ>> {
     Ok(r)
 }
 
-fn remove_metavars(env: &HashMap<Metavar, Typ>, exp: &explicit::Exp) -> Result<Box<explicit::Exp>> {
+fn remove_metavars(env: &HashMap<Metavar, Type>, exp: &explicit::Exp) -> Result<Box<explicit::Exp>> {
     use explicit::Exp as E;
 
     let result: E = match *exp {
@@ -450,7 +450,7 @@ fn implicit_parse() {
 #[test]
 fn unification() {
     use explicit::Metavar;
-    use explicit::Typ::*;
+    use explicit::Type::*;
 
     let x: Metavar = (0, String::from("x"));
     let y: Metavar = (1, String::from("y"));

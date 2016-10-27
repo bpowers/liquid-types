@@ -3,12 +3,12 @@ pub use common::{Id, Op2, Const};
 pub type Metavar = (i32, String);
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
-pub enum Typ {
+pub enum Type {
     TMetavar(Metavar),
     TInt,
     TBool,
-    TFun(Box<Typ>, Box<Typ>),
-    TList(Box<Typ>),
+    TFun(Box<Type>, Box<Type>),
+    TList(Box<Type>),
 }
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
@@ -16,12 +16,12 @@ pub enum Exp {
     Var(Id),
     Const(Const),
     Op2(Op2, Box<Exp>, Box<Exp>),
-    Fun(Id, Typ, Box<Exp>),
+    Fun(Id, Type, Box<Exp>),
     App(Box<Exp>, Box<Exp>),
     If(Box<Exp>, Box<Exp>, Box<Exp>),
     Let(Id, Box<Exp>, Box<Exp>),
-    Fix(Id, Typ, Box<Exp>),
-    Empty(Typ),
+    Fix(Id, Type, Box<Exp>),
+    Empty(Type),
     Cons(Box<Exp>, Box<Exp>),
     Head(Box<Exp>),
     Tail(Box<Exp>),
