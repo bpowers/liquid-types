@@ -12,7 +12,7 @@ pub enum Typ {
     TList(Box<Typ>),
 }
 
-#[derive(Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone)]
 pub enum Exp {
     Var(Id),
     Const(Const),

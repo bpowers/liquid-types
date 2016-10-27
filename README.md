@@ -9,12 +9,18 @@ polymorphism extended with liquid types.
 TODO
 ----
 
+- [ ] Remove pairs from the language
+- [ ] rename Exp -> Expr, Typ -> Type; make Expr generic w.r.t. Type
 - [ ] Add interpreter/evaluator
-- [ ] Add array intrinsics
-- [ ] Add refined::Exp?
+- [ ] Add intarray intrinsics, constructor array(len, fill_val), a[i] get(a, i), a[i] = v set(a, i, v)
+- [ ] Add refined::Expr
+- [ ] lower from explicit::Expr => refined::Expr w/ liquid type variables
 - [ ] Generate liquid type constraints
 - [ ] Solve constraints in z3
 - [ ] Report error or not
+- [ ] Replace liquid type variables w/ precise refinements
+- [ ] verify no liquid type vars remain
+- [ ] Polymorphic constraints for HM?  or does that already happen if I don't make sure metavars are removed?
 
 LICENSE
 -------

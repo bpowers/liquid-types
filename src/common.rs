@@ -2,7 +2,7 @@ use std::{fmt, error, result};
 
 pub type Id = String;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
 pub enum Op2 {
     LT,
     GT,
@@ -12,7 +12,7 @@ pub enum Op2 {
     Mul,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
 pub enum Const {
     Int(i64),
     Bool(bool),

@@ -17,6 +17,7 @@ mod tok;
 mod implicit;
 mod explicit;
 mod type_inference;
+mod eval;
 
 use common::{LiquidError, Result};
 use type_inference::infer_types;
@@ -100,4 +101,6 @@ fn main() {
     };
 
     println!("typed:\n\n{:?}\n", expr);
+
+    eval::interpret(&expr);
 }
