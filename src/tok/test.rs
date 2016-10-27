@@ -73,18 +73,13 @@ fn lists() {
 
 #[test]
 fn pairs() {
-    test("((3, -4), b).1.2", vec![
-        ("~               ", LParen),
-        (" ~              ", LParen),
-        ("  ~             ", Num(3)),
-        ("   ~            ", Comma),
-        ("     ~~         ", Num(-4)),
-        ("       ~        ", RParen),
-        ("        ~       ", Comma),
-        ("          ~     ", Ident("b")),
-        ("           ~    ", RParen),
-        ("            ~~  ", Dot1),
-        ("              ~~", Dot2),
+    test("((b) 1)", vec![
+        ("~      ", LParen),
+        (" ~     ", LParen),
+        ("  ~    ", Ident("b")),
+        ("   ~   ", RParen),
+        ("     ~ ", Num(1)),
+        ("      ~", RParen),
     ]);
 }
 

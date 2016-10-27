@@ -44,8 +44,6 @@ pub enum Tok<'input> {
     True,
     False,
     Empty,
-    Dot1,
-    Dot2,
     Comma,
     Ident(&'input str),
     Num(i64),
@@ -213,13 +211,6 @@ impl<'input> Iterator for Tokenizer<'input> {
                 Some((i, '(')) => consume!(self, i, LParen, 1),
                 Some((i, ')')) => consume!(self, i, RParen, 1),
                 Some((i, ',')) => consume!(self, i, Comma, 1),
-                Some((i, '.')) => {
-                    match self.bump() {
-                        Some((_, '1')) => consume!(self, i, Dot1, 2),
-                        Some((_, '2')) => consume!(self, i, Dot2, 2),
-                        _ => Some(error(UnrecognizedToken, i)),
-                    }
-                }
                 Some((i, c)) if is_digit(c) => Some(self.number(i)),
                 Some((i, c)) if is_identifier_start(c) => Some(self.identifierish(i)),
                 Some((_, c)) if c.is_whitespace() => {

@@ -57,14 +57,11 @@ Atom: Box<Exp> = {
     "true"        => Box::new(Const(Bool(true))),
     "false"       => Box::new(Const(Bool(true))),
     "empty"       => Box::new(Empty),
-    <p:Atom> ".1" => Box::new(ProjL(p)),
-    <p:Atom> ".2" => Box::new(ProjR(p)),
     "(" <Exps> ")",
     Int,
 };
 
 Exps: Box<Exp> = {
-    <l:Exp> "," <r:Exp> => Box::new(Pair(l, r)),
     Exp,
 };
 
@@ -110,8 +107,6 @@ extern {
         "true" => Tok::True,
         "false" => Tok::False,
         "empty" => Tok::Empty,
-        ".1" => Tok::Dot1,
-        ".2" => Tok::Dot2,
 
         "Iden" => Tok::Ident(<&'input str>),
         "Num" => Tok::Num(<i64>),

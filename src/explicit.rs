@@ -8,7 +8,6 @@ pub enum Typ {
     TInt,
     TBool,
     TFun(Box<Typ>, Box<Typ>),
-    TPair(Box<Typ>, Box<Typ>),
     TList(Box<Typ>),
 }
 
@@ -27,9 +26,6 @@ pub enum Exp {
     Head(Box<Exp>),
     Tail(Box<Exp>),
     IsEmpty(Box<Exp>),
-    Pair(Box<Exp>, Box<Exp>),
-    ProjL(Box<Exp>),
-    ProjR(Box<Exp>),
 }
 
 // type abstraction

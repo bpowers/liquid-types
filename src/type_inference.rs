@@ -89,13 +89,6 @@ fn add_metavars_in(env: &mut MVEnv, exp: &implicit::Exp) -> explicit::Exp {
         I::Head(ref e) => E::Head(box add_metavars_in(env, e)),
         I::Tail(ref e) => E::Tail(box add_metavars_in(env, e)),
         I::IsEmpty(ref e) => E::IsEmpty(box add_metavars_in(env, e)),
-        I::Pair(ref l, ref r) => {
-            let el = box add_metavars_in(env, l);
-            let er = box add_metavars_in(env, r);
-            E::Pair(el, er)
-        }
-        I::ProjL(ref e) => E::ProjL(box add_metavars_in(env, e)),
-        I::ProjR(ref e) => E::ProjR(box add_metavars_in(env, e)),
     }
 }
 
@@ -201,26 +194,6 @@ fn gen_constraints<'a>(m: &mut MVEnv,
             c.push((t, Typ::TList(box mv.clone())));
             (c, Typ::TBool)
         }
-        E::Pair(ref e1, ref e2) => {
-            let (mut c1, t1) = gen_constraints(m, env, e1)?;
-            let (mut c2, t2) = gen_constraints(m, env, e2)?;
-            c1.append(&mut c2);
-            (c1, Typ::TPair(box t1, box t2))
-        }
-        E::ProjL(ref e) => {
-            let mv1 = m.alloc_empty();
-            let mv2 = m.alloc_empty();
-            let (mut c, t) = gen_constraints(m, env, e)?;
-            c.push((t, Typ::TPair(box mv1.clone(), box mv2.clone())));
-            (c, mv1)
-        }
-        E::ProjR(ref e) => {
-            let mv1 = m.alloc_empty();
-            let mv2 = m.alloc_empty();
-            let (mut c, t) = gen_constraints(m, env, e)?;
-            c.push((t, Typ::TPair(box mv1.clone(), box mv2.clone())));
-            (c, mv2)
-        }
     };
 
     Ok(result)
@@ -240,7 +213,6 @@ fn apply(env: &HashMap<Metavar, Typ>, typ_in: &Typ) -> Typ {
             }
         }
         TFun(ref a, ref b) => TFun(box apply(env, a), box apply(env, b)),
-        TPair(ref a, ref b) => TPair(box apply(env, a), box apply(env, b)),
         TList(ref a) => TList(box apply(env, a)),
         TInt | TBool => typ_in.clone(),
     }
@@ -275,8 +247,7 @@ fn occurs(mv: &Metavar, t: &Typ) -> bool {
 
     match t {
         &TMetavar(ref mv2) => mv == mv2,
-        &TFun(ref a, ref b) |
-        &TPair(ref a, ref b) => occurs(mv, a) || occurs(mv, b),
+        &TFun(ref a, ref b) => occurs(mv, a) || occurs(mv, b),
         &TList(ref a) => occurs(mv, a),
         &TInt | &TBool => false,
     }
@@ -306,8 +277,7 @@ fn unify(t1: &Typ, t2: &Typ) -> Result<HashMap<Metavar, Typ>> {
         (_, &TMetavar(ref mv2)) => {
             return err!("occurs check failed for mv2 '{:?}' in '{:?}'", mv2, t1)
         }
-        (&TFun(ref s1, ref s2), &TFun(ref t1, ref t2)) |
-        (&TPair(ref s1, ref s2), &TPair(ref t1, ref t2)) => {
+        (&TFun(ref s1, ref s2), &TFun(ref t1, ref t2)) => {
             let pi = unify(s1, t1)?;
             let s2 = apply(&pi, s2);
             let t2 = apply(&pi, t2);
@@ -387,19 +357,6 @@ fn remove_metavars(env: &HashMap<Metavar, Typ>, exp: &explicit::Exp) -> Result<B
         E::IsEmpty(ref e) => {
             let e = remove_metavars(env, e)?;
             E::IsEmpty(e)
-        }
-        E::Pair(ref e1, ref e2) => {
-            let e1 = remove_metavars(env, e1)?;
-            let e2 = remove_metavars(env, e2)?;
-            E::Pair(e1, e2)
-        }
-        E::ProjL(ref e) => {
-            let e = remove_metavars(env, e)?;
-            E::ProjL(e)
-        }
-        E::ProjR(ref e) => {
-            let e = remove_metavars(env, e)?;
-            E::ProjR(e)
         }
     };
 

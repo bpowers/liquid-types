@@ -15,7 +15,4 @@ pub enum Exp {
     Head(Box<Exp>),
     Tail(Box<Exp>),
     IsEmpty(Box<Exp>),
-    Pair(Box<Exp>, Box<Exp>),
-    ProjL(Box<Exp>),
-    ProjR(Box<Exp>),
 }
