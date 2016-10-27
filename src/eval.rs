@@ -1,56 +1,131 @@
-
-use explicit;
-
+use common::{self,Op2};
+use explicit::Expr;
 use std::collections::HashMap;
 
 type Closure = HashMap<String, Value>;
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum Value {
-    VInt(i32),
+    VInt(i64),
     VBool(bool),
-    VClosure(Box<Closure>, Box<explicit::Expr>),
+    VClosure(Box<Closure>, String, Box<Expr>),
     VCons(Box<Value>, Box<Value>),
     VEmpty,
 }
 
+fn vint(v: Value) -> i64 {
+    match v {
+        Value::VInt(i) => i,
+        _ => panic!("unreachable -- expected int not {:?}", v)
+    }
+}
 
-// pub fn eval(exp: &explicit::Expr) ->
+fn vbool(v: Value) -> bool {
+    match v {
+        Value::VBool(b) => b,
+        _ => panic!("unreachable -- expected bool not {:?}", v)
+    }
+}
+
+fn vclosure(v: Value) -> (Box<Closure>, String, Box<Expr>) {
+    match v {
+        Value::VClosure(ctx, id, e) => (ctx, id, e),
+        _ => panic!("unreachable -- expected bool not {:?}", v)
+    }
+}
+
+
+fn op2_eval(ctx: &Closure, op: Op2, l: &Expr, r: &Expr) -> Value {
+    use common::Op2::*;
+    use self::Value::*;
+
+    // all binary ops operate on ints, and at this point have passed
+    // typechecking
+    let vl = vint(eval(ctx, l));
+    let vr = vint(eval(ctx, r));
+
+    match op {
+        LT => VBool(vl < vr),
+        GT => VBool(vl > vr),
+        Eq => VBool(vl == vr),
+        Add => VInt(vl + vr),
+        Sub => VInt(vl - vr),
+        Mul => VInt(vl * vr),
+    }
+}
+
+// fixpoint substitution
+fn subst(ctx: &Closure, id: &String, fix: &Expr, e: &Expr) -> Expr {
+    use typed::Expr::*;
+    match *e {
+        Const(ref c) => Const(c.clone()),
+        Op2(op, ref e1, ref e2) => {
+            let e1 = box subst(ctx, id, fix, e1);
+            let e2 = box subst(ctx, id, fix, e2);
+            Op2(op.clone(), e1, e2)
+        }
+        If(ref e1, ref e2, ref e3) => {
+            let e1 = box subst(ctx, id, fix, e1);
+            let e2 = box subst(ctx, id, fix, e2);
+            let e3 = box subst(ctx, id, fix, e3);
+            If(e1, e2, e3)
+        }
+        Var(ref x) => {
+            if x == id {
+                fix.clone()
+            } else {
+                Var(x.clone())
+            }
+        }
+        Let(ref id, ref e1, ref e2) => {
+            let e1 = box subst(ctx, id, fix, e1);
+            let e2 = box subst(ctx, id, fix, e2);
+            Let(id.clone(), e1, e2)
+        }
+        Fun(ref id, ref ty, ref e) => {
+            let e = box subst(ctx, id, fix, e);
+            Fun(id.clone(), ty.clone(), e)
+        }
+        Fix(ref id, ref ty, ref e) => {
+            let e = box subst(ctx, id, fix, e);
+            Fix(id.clone(), ty.clone(), e)
+        }
+        App(ref e1, ref e2) => {
+            let e1 = box subst(ctx, id, fix, e1);
+            let e2 = box subst(ctx, id, fix, e2);
+            App(e1, e2)
+        }
+        Empty(ref ty) => Empty(ty.clone()),
+        Cons(ref e1, ref e2) => {
+            let e1 = box subst(ctx, id, fix, e1);
+            let e2 = box subst(ctx, id, fix, e2);
+            Cons(e1, e2)
+        }
+        Head(ref e) => {
+            let e = box subst(ctx, id, fix, e);
+            Head(e)
+        }
+        Tail(ref e) => {
+            let e = box subst(ctx, id, fix, e);
+            Tail(e)
+        }
+        IsEmpty(ref e) => {
+            let e = box subst(ctx, id, fix, e);
+            IsEmpty(e)
+        }
+    }
+}
+
+fn is_empty(v: &Value) -> Value {
+    use self::Value::*;
+    match *v {
+        VEmpty => VBool(true),
+        VCons(_, _) => VBool(false),
+        _ => panic!("is_empty unreachable"),
+    }
+}
 
 // let rec eval' (ctx : env) (e : exp) : value =
-//   (* All of our binary operators work on ints *)
-//   let op2_eval (op2) (e1) (e2) : value =
-//     let v1 = vint (eval' ctx e1) in
-//     let v2 = vint (eval' ctx e2) in
-//     match op2 with
-//     | LT  -> VBool (v1 < v2)
-//     | GT  -> VBool (v1 > v2)
-//     | Eq  -> VBool (v1 = v2)
-//     | Add -> VInt (v1 + v2)
-//     | Sub -> VInt (v1 - v2)
-//     | Mul -> VInt (v1 * v2)
-//   in
-//   (* used when evaluating fixpoint functions *)
-//   let rec subst (id: id) (fix: exp) (e: exp) : exp = match e with
-//     | Id curr           -> if curr = id then fix else e
-//     | Const _           -> e
-//     | Op2 (op, e1, e2)  -> Op2 (op, subst id fix e1, subst id fix e2)
-//     | If (e1, e2, e3)   -> If (subst id fix e1, subst id fix e2, subst id fix e3)
-//     | Let (iid, e1, e2) -> Let (iid, subst id fix e1, subst id fix e2)
-//     | Fun (iid, ty, e)  -> Fun (iid, ty, subst id fix e)
-//     | Fix (iid, ty, e)  -> Fix (iid, ty, subst id fix e)
-//     | App (e1, e2)      -> App (subst id fix e1, subst id fix e2)
-//     | Empty _           -> e
-//     | Cons (e1, e2)     -> Cons (subst id fix e1, subst id fix e2)
-//     | Head e            -> Head (subst id fix e)
-//     | Tail e            -> Tail (subst id fix e)
-//     | IsEmpty e         -> IsEmpty (subst id fix e)
-//   in
-//   let is_empty (v) : value = match v with
-//     | VEmpty _     -> VBool true
-//     | VCons (_, _) -> VBool false
-//     | _ -> failwith "is_empty unreachable"
-//   in
 //   match e with
 //   | Id      (id)           -> lookup ctx id
 //   | Const   (Int v)        -> VInt (v)
@@ -76,6 +151,67 @@ pub enum Value {
 //                     | IsEmpty (e)            -> is_empty (eval' ctx e)
 
 
-pub fn interpret(expr: &explicit::Expr) -> Value {
-    Value::VBool(false)
+fn eval(ctx: &Closure, expr: &Expr) -> Value {
+    use self::Value::*;
+    use typed::Expr::*;
+    match *expr {
+        Const(common::Const::Int(i)) => VInt(i),
+        Const(common::Const::Bool(b)) => VBool(b),
+        Op2(op, ref e1, ref e2) => op2_eval(ctx, op, e1, e2),
+        If(ref e1, ref e2, ref e3) => {
+            if vbool(eval(ctx, e1)) {
+                eval(ctx, e2)
+            } else {
+                eval(ctx, e3)
+            }
+        }
+        Var(ref x) => ctx.get(x).unwrap().clone(),
+        Let(ref id, ref e1, ref e2) => {
+            let v1 = eval(ctx, e1);
+            let mut new_ctx = ctx.clone();
+            new_ctx.insert(id.clone(), v1);
+            eval(&new_ctx, e2)
+        }
+        Fun(ref id, _, ref e) => {
+            VClosure(box ctx.clone(), id.clone(), e.clone())
+        }
+        Fix(ref id, _, ref e) => {
+            let inner = eval(ctx, e);
+            let (_, iid, ie) = vclosure(inner);
+            let substituted_exp = box subst(ctx, id, e, &ie);
+            VClosure(box ctx.clone(), iid, substituted_exp)
+        }
+        App(ref e1, ref e2) => {
+            let v = eval(ctx, e2);
+            let (ctx, id, e) = vclosure(eval(ctx, e1));
+            let mut new_ctx = ctx.clone();
+            new_ctx.insert(id, v);
+            eval(&new_ctx, &e)
+        }
+        Empty(_) => VEmpty,
+        Cons(ref e1, ref e2) => VCons(box eval(ctx, e1), box eval(ctx, e2)),
+        Head(ref e) => {
+            if let VCons(ref hd, _) = eval(ctx, e) {
+                *hd.clone()
+            } else {
+                panic!("unreachable - head w/o cons: {:?}", e)
+            }
+        }
+        Tail(ref e) => {
+            if let VCons(_, ref tl) = eval(ctx, e) {
+                *tl.clone()
+            } else {
+                panic!("unreachable - tail w/o cons")
+            }
+        }
+        IsEmpty(ref e) => {
+            is_empty(&eval(ctx, e))
+        }
+    }
+}
+
+pub fn interpret(expr: &Expr) -> Value {
+    let ctx: Closure = HashMap::new();
+
+    eval(&ctx, expr)
 }

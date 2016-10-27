@@ -103,5 +103,7 @@ fn main() {
 
     println!("typed:\n\n{:?}\n", expr);
 
-    eval::interpret(&expr);
+    let val = eval::interpret(&expr);
+
+    println!("result:\n\n{:?}\n", val);
 }
