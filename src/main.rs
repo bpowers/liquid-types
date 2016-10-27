@@ -13,6 +13,7 @@ pub mod implicit_parse; // synthesized by LALRPOP
 
 #[macro_use]
 mod common;
+mod typed;
 mod tok;
 mod implicit;
 mod explicit;

@@ -44,7 +44,7 @@ impl<'a> MVEnv<'a> {
 
 fn add_metavars_in(env: &mut MVEnv, exp: &implicit::Expr) -> explicit::Expr {
     use implicit::Expr as I;
-    use explicit::Expr as E;
+    use typed::Expr as E;
 
     match *exp {
         I::Var(ref id) => E::Var(id.clone()),
@@ -102,7 +102,7 @@ fn gen_constraints<'a>(m: &mut MVEnv,
                        exp: &'a explicit::Expr)
                        -> Result<(Vec<(Type, Type)>, Type)> {
     use common::{Const, Op2};
-    use explicit::Expr as E;
+    use typed::Expr as E;
 
     let result = match *exp {
         E::Const(Const::Int(_)) => (Vec::new(), Type::TInt),
@@ -306,9 +306,9 @@ fn unify_all(constraints: &[(Type, Type)]) -> Result<HashMap<Metavar, Type>> {
 }
 
 fn remove_metavars(env: &HashMap<Metavar, Type>, exp: &explicit::Expr) -> Result<Box<explicit::Expr>> {
-    use explicit::Expr as E;
+    use typed::Expr as E;
 
-    let result: E = match *exp {
+    let result: explicit::Expr = match *exp {
         E::Const(ref c) => E::Const(c.clone()),
         E::Op2(op, ref e1, ref e2) => {
             let e1 = remove_metavars(env, e1)?;
