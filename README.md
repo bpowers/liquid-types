@@ -9,7 +9,9 @@ polymorphism extended with liquid types.
 TODO
 ----
 
+- [ ] Shape(\Gamma)
 - [ ] Add refined::Expr
+- [ ] Builtin functions - in the builtin type environment and evaluation context
 - [ ] lower from explicit::Expr => refined::Expr w/ liquid type variables
 - [ ] Generate liquid type constraints
 - [ ] Solve constraints in z3
@@ -17,6 +19,13 @@ TODO
 - [ ] Replace liquid type variables w/ precise refinements
 - [ ] verify no liquid type vars remain
 - [ ] Polymorphic constraints for HM?  or does that already happen if I don't make sure metavars are removed?
+
+NOT IMPLEMENTED
+---------------
+
+- Polymorphic Types
+- A-Normalization (which means our refinements aren't as refined as they could be)
+
 
 LICENSE
 -------

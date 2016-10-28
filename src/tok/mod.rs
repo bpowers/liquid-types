@@ -50,6 +50,7 @@ pub enum Tok<'input> {
     Empty,
     Comma,
     Set,
+    Rec,
     Ident(&'input str),
     Num(i64),
 }
@@ -91,6 +92,7 @@ const KEYWORDS: &'static [(&'static str, Tok<'static>)] = &[
     ("false", False),
     ("array", Array),
     ("set", Set),
+    ("rec", Rec),
     ];
 
 impl<'input> Tokenizer<'input> {

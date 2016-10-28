@@ -162,7 +162,14 @@ fn eval(ctx: &Closure, expr: &Expr) -> Value {
                 eval(ctx, e3)
             }
         }
-        Var(ref x) => ctx.get(x).unwrap().clone(),
+        Var(ref x) => {
+            match ctx.get(x) {
+                Some(v) => v.clone(),
+                None => {
+                    panic!("variable not in our environment? {:?}", x);
+                }
+            }
+        }
         Let(ref id, ref e1, ref e2) => {
             let v1 = eval(ctx, e1);
             let mut new_ctx = ctx.clone();
@@ -172,10 +179,10 @@ fn eval(ctx: &Closure, expr: &Expr) -> Value {
         Fun(ref id, _, ref e) => {
             VClosure(box ctx.clone(), id.clone(), e.clone())
         }
-        Fix(ref id, _, ref e) => {
-            let inner = eval(ctx, e);
+        Fix(ref id, _, ref e1) => {
+            let inner = eval(ctx, e1);
             let (_, iid, ie) = vclosure(inner);
-            let substituted_exp = box subst(ctx, id, e, &ie);
+            let substituted_exp = box subst(ctx, id, expr, &ie);
             VClosure(box ctx.clone(), iid, substituted_exp)
         }
         App(ref e1, ref e2) => {

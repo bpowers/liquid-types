@@ -22,11 +22,12 @@ fn test(input: &str, expected: Vec<(&str, Tok)>) {
 
 #[test]
 fn basic() {
-    test("let x in empty", vec![
-        ("~~~           ", Let),
-        ("    ~         ", Ident("x")),
-        ("      ~~      ", In),
-        ("         ~~~~~", Empty),
+    test("let rec x in empty", vec![
+        ("~~~               ", Let),
+        ("    ~~~           ", Rec),
+        ("        ~         ", Ident("x")),
+        ("          ~~      ", In),
+        ("             ~~~~~", Empty),
     ]);
 }
 

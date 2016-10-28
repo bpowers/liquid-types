@@ -13,11 +13,12 @@ pub Program: Box<Expr> = {
 };
 
 Expr: Box<Expr> = {
-    "if" <c:Expr> "then" <t:Expr> "else" <f:Expr> => Box::new(If(c, t, f)),
-    "let" <id:Ident> "=" <v:Expr> "in" <e:Expr>   => Box::new(Let(id, v, e)),
-    "fun" <id:Ident> "->" <e:Expr>                => Box::new(Fun(id, e)),
-    "fix" <id:Ident> "->" <e:Expr>                => Box::new(Fix(id, e)),
-    "begin" <e:Expr> "end"                        => e,
+    "if" <c:Expr> "then" <t:Expr> "else" <f:Expr>    => Box::new(If(c, t, f)),
+    "let" <id:Ident> "=" <v:Expr> "in" <e:Expr>      => Box::new(Let(id, v, e)),
+    "let" "rec" <f:Ident> "=" <v:Expr> "in" <e:Expr> => Box::new(Let(f.clone(), Box::new(Fix(f, v)), e)),
+    "fun" <id:Ident> "->" <e:Expr>                   => Box::new(Fun(id, e)),
+    "fix" <id:Ident> "->" <e:Expr>                   => Box::new(Fix(id, e)),
+    "begin" <e:Expr> "end"                           => e,
     Cmp,
 };
 
@@ -119,6 +120,7 @@ extern {
         "empty" => Tok::Empty,
         "array" => Tok::Array,
         "set" => Tok::Set,
+        "rec" => Tok::Rec,
 
         "Iden" => Tok::Ident(<&'input str>),
         "Num" => Tok::Num(<i64>),
