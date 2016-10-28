@@ -9,11 +9,12 @@ polymorphism extended with liquid types.
 TODO
 ----
 
-- [ ] Shape(\Gamma)
-- [ ] Add refined::Expr
+- [ ] Does Γ include both Dependent Types AND Liquid Types?
 - [ ] Builtin functions - in the builtin type environment and evaluation context
+- [ ] Add refined::Expr
 - [ ] lower from explicit::Expr => refined::Expr w/ liquid type variables
 - [ ] Generate liquid type constraints
+- [ ] Weirdness/unexpected parse of (k-1) (App('k', '-1')) instead of (Op2(-, 'k', 1))
 - [ ] Solve constraints in z3
 - [ ] Report error or not
 - [ ] Replace liquid type variables w/ precise refinements

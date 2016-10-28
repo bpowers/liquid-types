@@ -84,18 +84,18 @@ fn subst(ctx: &Closure, id: &String, fix: &Expr, e: &Expr) -> Expr {
                 Var(x.clone())
             }
         }
-        Let(ref id, ref e1, ref e2) => {
+        Let(ref vid, ref e1, ref e2) => {
             let e1 = box subst(ctx, id, fix, e1);
             let e2 = box subst(ctx, id, fix, e2);
-            Let(id.clone(), e1, e2)
+            Let(vid.clone(), e1, e2)
         }
-        Fun(ref id, ref ty, ref e) => {
+        Fun(ref vid, ref ty, ref e) => {
             let e = box subst(ctx, id, fix, e);
-            Fun(id.clone(), ty.clone(), e)
+            Fun(vid.clone(), ty.clone(), e)
         }
-        Fix(ref id, ref ty, ref e) => {
+        Fix(ref vid, ref ty, ref e) => {
             let e = box subst(ctx, id, fix, e);
-            Fix(id.clone(), ty.clone(), e)
+            Fix(vid.clone(), ty.clone(), e)
         }
         App(ref e1, ref e2) => {
             let e1 = box subst(ctx, id, fix, e1);
