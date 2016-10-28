@@ -9,7 +9,6 @@ polymorphism extended with liquid types.
 TODO
 ----
 
-- [ ] Add intarray intrinsics, constructor array(len, fill_val), a[i] get(a, i), a[i] = v set(a, i, v)
 - [ ] Add refined::Expr
 - [ ] lower from explicit::Expr => refined::Expr w/ liquid type variables
 - [ ] Generate liquid type constraints

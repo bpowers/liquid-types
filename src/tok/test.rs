@@ -99,3 +99,20 @@ fn block() {
         ("        ~~~", End),
     ]);
 }
+
+#[test]
+fn arrays() {
+    test("array(1, 1)[2] = 3", vec![
+        ("~~~~~             ", Array),
+        ("     ~            ", LParen),
+        ("      ~           ", Num(1)),
+        ("       ~          ", Comma),
+        ("         ~        ", Num(1)),
+        ("          ~       ", RParen),
+        ("           ~      ", LBracket),
+        ("            ~     ", Num(2)),
+        ("             ~    ", RBracket),
+        ("               ~  ", Eq),
+        ("                 ~", Num(3)),
+    ]);
+}

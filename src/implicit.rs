@@ -15,4 +15,7 @@ pub enum Expr {
     Head(Box<Expr>),
     Tail(Box<Expr>),
     IsEmpty(Box<Expr>),
+    MkArray(Box<Expr>, Box<Expr>),
+    GetArray(Box<Expr>, Box<Expr>),
+    SetArray(Box<Expr>, Box<Expr>, Box<Expr>),
 }

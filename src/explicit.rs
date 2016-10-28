@@ -7,6 +7,7 @@ pub enum Type {
     TMetavar(Metavar),
     TInt,
     TBool,
+    TIntArray,
     TFun(Box<Type>, Box<Type>),
     TList(Box<Type>),
 }

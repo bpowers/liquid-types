@@ -89,6 +89,22 @@ fn add_metavars_in(env: &mut MVEnv, exp: &implicit::Expr) -> explicit::Expr {
         I::Head(ref e) => E::Head(box add_metavars_in(env, e)),
         I::Tail(ref e) => E::Tail(box add_metavars_in(env, e)),
         I::IsEmpty(ref e) => E::IsEmpty(box add_metavars_in(env, e)),
+        I::MkArray(ref sz, ref n) => {
+            let sz = box add_metavars_in(env, sz);
+            let n = box add_metavars_in(env, n);
+            E::MkArray(sz, n)
+        }
+        I::GetArray(ref id, ref idx) => {
+            let id = box add_metavars_in(env, id);
+            let idx = box add_metavars_in(env, idx);
+            E::GetArray(id, idx)
+        }
+        I::SetArray(ref id, ref idx, ref v) => {
+            let id = box add_metavars_in(env, id);
+            let idx = box add_metavars_in(env, idx);
+            let v = box add_metavars_in(env, v);
+            E::SetArray(id, idx, v)
+        }
     }
 }
 
@@ -194,6 +210,33 @@ fn gen_constraints<'a>(m: &mut MVEnv,
             c.push((t, Type::TList(box mv.clone())));
             (c, Type::TBool)
         }
+        E::MkArray(ref sz, ref n) => {
+            let (mut c1, t1) = gen_constraints(m, env, sz)?;
+            let (mut c2, t2) = gen_constraints(m, env, n)?;
+            c1.append(&mut c2);
+            c1.push((t1, Type::TInt));
+            c1.push((t2, Type::TInt));
+            (c1, Type::TIntArray)
+        }
+        E::GetArray(ref id, ref idx) => {
+            let (mut c1, t1) = gen_constraints(m, env, id)?;
+            let (mut c2, t2) = gen_constraints(m, env, idx)?;
+            c1.append(&mut c2);
+            c1.push((t1, Type::TIntArray));
+            c1.push((t2, Type::TInt));
+            (c1, Type::TInt)
+        }
+        E::SetArray(ref id, ref idx, ref v) => {
+            let (mut c1, t1) = gen_constraints(m, env, id)?;
+            let (mut c2, t2) = gen_constraints(m, env, idx)?;
+            let (mut c3, t3) = gen_constraints(m, env, v)?;
+            c1.append(&mut c2);
+            c1.append(&mut c3);
+            c1.push((t1, Type::TIntArray));
+            c1.push((t2, Type::TInt));
+            c1.push((t3, Type::TInt));
+            (c1, Type::TIntArray)
+        }
     };
 
     Ok(result)
@@ -214,7 +257,7 @@ fn apply(env: &HashMap<Metavar, Type>, typ_in: &Type) -> Type {
         }
         TFun(ref a, ref b) => TFun(box apply(env, a), box apply(env, b)),
         TList(ref a) => TList(box apply(env, a)),
-        TInt | TBool => typ_in.clone(),
+        TIntArray | TInt | TBool => typ_in.clone(),
     }
 }
 
@@ -249,7 +292,7 @@ fn occurs(mv: &Metavar, t: &Type) -> bool {
         &TMetavar(ref mv2) => mv == mv2,
         &TFun(ref a, ref b) => occurs(mv, a) || occurs(mv, b),
         &TList(ref a) => occurs(mv, a),
-        &TInt | &TBool => false,
+        &TIntArray | &TInt | &TBool => false,
     }
 }
 
@@ -261,6 +304,7 @@ fn unify(t1: &Type, t2: &Type) -> Result<HashMap<Metavar, Type>> {
     match (t1, t2) {
         (&TInt, &TInt) => {}
         (&TBool, &TBool) => {}
+        (&TIntArray, &TIntArray) => {}
         (&TMetavar(ref mv1), &TMetavar(ref mv2)) if mv1 == mv2 => {}
         (&TMetavar(ref mv1), &TMetavar(_)) => {
             env.insert(mv1.clone(), t2.clone());
@@ -357,6 +401,22 @@ fn remove_metavars(env: &HashMap<Metavar, Type>, exp: &explicit::Expr) -> Result
         E::IsEmpty(ref e) => {
             let e = remove_metavars(env, e)?;
             E::IsEmpty(e)
+        }
+        E::MkArray(ref sz, ref n) => {
+            let sz = remove_metavars(env, sz)?;
+            let n = remove_metavars(env, n)?;
+            E::MkArray(sz, n)
+        }
+        E::GetArray(ref id, ref idx) => {
+            let id = remove_metavars(env, id)?;
+            let idx = remove_metavars(env, idx)?;
+            E::GetArray(id, idx)
+        }
+        E::SetArray(ref id, ref idx, ref v) => {
+            let id = remove_metavars(env, id)?;
+            let idx = remove_metavars(env, idx)?;
+            let v = remove_metavars(env, v)?;
+            E::SetArray(id, idx, v)
         }
     };
 

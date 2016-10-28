@@ -28,10 +28,14 @@ mod __parse__Program {
         Term_22_2d_3e_22(Tok<'input>),
         Term_22_3a_3a_22(Tok<'input>),
         Term_22_3c_22(Tok<'input>),
+        Term_22_3c_2d_22(Tok<'input>),
         Term_22_3d_22(Tok<'input>),
         Term_22_3e_22(Tok<'input>),
         Term_22Iden_22(&'input str),
         Term_22Num_22(i64),
+        Term_22_5b_22(Tok<'input>),
+        Term_22_5d_22(Tok<'input>),
+        Term_22array_22(Tok<'input>),
         Term_22begin_22(Tok<'input>),
         Term_22else_22(Tok<'input>),
         Term_22empty_22(Tok<'input>),
@@ -44,6 +48,7 @@ mod __parse__Program {
         Term_22if_22(Tok<'input>),
         Term_22in_22(Tok<'input>),
         Term_22let_22(Tok<'input>),
+        Term_22set_22(Tok<'input>),
         Term_22tail_22(Tok<'input>),
         Term_22then_22(Tok<'input>),
         Term_22true_22(Tok<'input>),
@@ -53,6 +58,7 @@ mod __parse__Program {
         NtCmp(Box<Expr>),
         NtExpr(Box<Expr>),
         NtExprs(Box<Expr>),
+        NtGet(Box<Expr>),
         NtIdent(Id),
         NtInt(Box<Expr>),
         NtList(Box<Expr>),
@@ -68,6 +74,7 @@ mod __parse__Program {
         //     Add = (*) Mul ["+", "-", "<", "=", ">", EOF]
         //     App = (*) App Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true", EOF]
         //     App = (*) Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true", EOF]
+        //     App = (*) "array" "(" Add "," Add ")" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true", EOF]
         //     App = (*) "empty?" Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true", EOF]
         //     App = (*) "head" Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true", EOF]
         //     App = (*) "tail" Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true", EOF]
@@ -87,16 +94,19 @@ mod __parse__Program {
         //     Expr = (*) "fun" Ident "->" Expr [EOF]
         //     Expr = (*) "if" Expr "then" Expr "else" Expr [EOF]
         //     Expr = (*) "let" Ident "=" Expr "in" Expr [EOF]
-        //     Ident = (*) "Iden" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true", EOF]
+        //     Get = (*) App ["*", "+", "-", "::", "<", "=", ">", EOF]
+        //     Get = (*) Ident "[" Add "]" ["*", "+", "-", "::", "<", "=", ">", EOF]
+        //     Get = (*) Ident "[" Add "]" "<-" Atom ["*", "+", "-", "::", "<", "=", ">", EOF]
+        //     Ident = (*) "Iden" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "[", "empty", "false", "true", EOF]
         //     Int = (*) Num ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true", EOF]
-        //     List = (*) App ["*", "+", "-", "<", "=", ">", EOF]
-        //     List = (*) App "::" List ["*", "+", "-", "<", "=", ">", EOF]
+        //     List = (*) Get ["*", "+", "-", "<", "=", ">", EOF]
+        //     List = (*) Get "::" List ["*", "+", "-", "<", "=", ">", EOF]
         //     Mul = (*) List ["*", "+", "-", "<", "=", ">", EOF]
         //     Mul = (*) Mul "*" List ["*", "+", "-", "<", "=", ">", EOF]
         //     Num = (*) "Num" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true", EOF]
         //     Program = (*) Expr [EOF]
         //     __Program = (*) Program [EOF]
-        13, // on "(", goto 12
+        14, // on "(", goto 13
         0, // on ")", error
         0, // on "*", error
         0, // on "+", error
@@ -105,25 +115,30 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
-        14, // on "Iden", goto 13
-        15, // on "Num", goto 14
-        16, // on "begin", goto 15
+        15, // on "Iden", goto 14
+        16, // on "Num", goto 15
+        0, // on "[", error
+        0, // on "]", error
+        17, // on "array", goto 16
+        18, // on "begin", goto 17
         0, // on "else", error
-        17, // on "empty", goto 16
-        18, // on "empty?", goto 17
+        19, // on "empty", goto 18
+        20, // on "empty?", goto 19
         0, // on "end", error
-        19, // on "false", goto 18
-        20, // on "fix", goto 19
-        21, // on "fun", goto 20
-        22, // on "head", goto 21
-        23, // on "if", goto 22
+        21, // on "false", goto 20
+        22, // on "fix", goto 21
+        23, // on "fun", goto 22
+        24, // on "head", goto 23
+        25, // on "if", goto 24
         0, // on "in", error
-        24, // on "let", goto 23
-        25, // on "tail", goto 24
+        26, // on "let", goto 25
+        0, // on "set", error
+        27, // on "tail", goto 26
         0, // on "then", error
-        26, // on "true", goto 25
+        28, // on "true", goto 27
         // State 1
         //     Add = Add (*) "+" Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Add = Add (*) "-" Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
@@ -132,108 +147,122 @@ mod __parse__Program {
         //     Cmp = Add (*) "=" Cmp [")", "else", "end", "in", "then", EOF]
         //     Cmp = Add (*) ">" Cmp [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
-        -18, // on ")", reduce `Cmp = Add => ActionFn(11);`
+        -19, // on ")", reduce `Cmp = Add => ActionFn(11);`
         0, // on "*", error
-        27, // on "+", goto 26
+        29, // on "+", goto 28
         0, // on ",", error
-        28, // on "-", goto 27
+        30, // on "-", goto 29
         0, // on "->", error
         0, // on "::", error
-        29, // on "<", goto 28
-        30, // on "=", goto 29
-        31, // on ">", goto 30
+        31, // on "<", goto 30
+        0, // on "<-", error
+        32, // on "=", goto 31
+        33, // on ">", goto 32
         0, // on "Iden", error
         0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
         0, // on "begin", error
-        -18, // on "else", reduce `Cmp = Add => ActionFn(11);`
+        -19, // on "else", reduce `Cmp = Add => ActionFn(11);`
         0, // on "empty", error
         0, // on "empty?", error
-        -18, // on "end", reduce `Cmp = Add => ActionFn(11);`
+        -19, // on "end", reduce `Cmp = Add => ActionFn(11);`
         0, // on "false", error
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        -18, // on "in", reduce `Cmp = Add => ActionFn(11);`
+        -19, // on "in", reduce `Cmp = Add => ActionFn(11);`
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
-        -18, // on "then", reduce `Cmp = Add => ActionFn(11);`
+        -19, // on "then", reduce `Cmp = Add => ActionFn(11);`
         0, // on "true", error
         // State 2
-        //     App = App (*) Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Int = (*) Num ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     List = App (*) [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     List = App (*) "::" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     Num = (*) "Num" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        13, // on "(", goto 12
-        -29, // on ")", reduce `List = App => ActionFn(18);`
-        -29, // on "*", reduce `List = App => ActionFn(18);`
-        -29, // on "+", reduce `List = App => ActionFn(18);`
-        0, // on ",", error
-        -29, // on "-", reduce `List = App => ActionFn(18);`
+        //     App = App (*) Atom ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) Ident ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) Int ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "empty" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "false" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "true" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Get = App (*) [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Ident = (*) "Iden" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Int = (*) Num ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Num = (*) "Num" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        14, // on "(", goto 13
+        -29, // on ")", reduce `Get = App => ActionFn(21);`
+        -29, // on "*", reduce `Get = App => ActionFn(21);`
+        -29, // on "+", reduce `Get = App => ActionFn(21);`
+        -29, // on ",", reduce `Get = App => ActionFn(21);`
+        -29, // on "-", reduce `Get = App => ActionFn(21);`
         0, // on "->", error
-        33, // on "::", goto 32
-        -29, // on "<", reduce `List = App => ActionFn(18);`
-        -29, // on "=", reduce `List = App => ActionFn(18);`
-        -29, // on ">", reduce `List = App => ActionFn(18);`
-        14, // on "Iden", goto 13
-        15, // on "Num", goto 14
+        -29, // on "::", reduce `Get = App => ActionFn(21);`
+        -29, // on "<", reduce `Get = App => ActionFn(21);`
+        0, // on "<-", error
+        -29, // on "=", reduce `Get = App => ActionFn(21);`
+        -29, // on ">", reduce `Get = App => ActionFn(21);`
+        15, // on "Iden", goto 14
+        16, // on "Num", goto 15
+        0, // on "[", error
+        -29, // on "]", reduce `Get = App => ActionFn(21);`
+        0, // on "array", error
         0, // on "begin", error
-        -29, // on "else", reduce `List = App => ActionFn(18);`
-        17, // on "empty", goto 16
+        -29, // on "else", reduce `Get = App => ActionFn(21);`
+        19, // on "empty", goto 18
         0, // on "empty?", error
-        -29, // on "end", reduce `List = App => ActionFn(18);`
-        19, // on "false", goto 18
+        -29, // on "end", reduce `Get = App => ActionFn(21);`
+        21, // on "false", goto 20
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        -29, // on "in", reduce `List = App => ActionFn(18);`
+        -29, // on "in", reduce `Get = App => ActionFn(21);`
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
-        -29, // on "then", reduce `List = App => ActionFn(18);`
-        26, // on "true", goto 25
+        -29, // on "then", reduce `Get = App => ActionFn(21);`
+        28, // on "true", goto 27
         // State 3
-        //     App = Atom (*) ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        -8, // on "(", reduce `App = Atom => ActionFn(23);`
-        -8, // on ")", reduce `App = Atom => ActionFn(23);`
-        -8, // on "*", reduce `App = Atom => ActionFn(23);`
-        -8, // on "+", reduce `App = Atom => ActionFn(23);`
-        0, // on ",", error
-        -8, // on "-", reduce `App = Atom => ActionFn(23);`
+        //     App = Atom (*) ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        -9, // on "(", reduce `App = Atom => ActionFn(27);`
+        -9, // on ")", reduce `App = Atom => ActionFn(27);`
+        -9, // on "*", reduce `App = Atom => ActionFn(27);`
+        -9, // on "+", reduce `App = Atom => ActionFn(27);`
+        -9, // on ",", reduce `App = Atom => ActionFn(27);`
+        -9, // on "-", reduce `App = Atom => ActionFn(27);`
         0, // on "->", error
-        -8, // on "::", reduce `App = Atom => ActionFn(23);`
-        -8, // on "<", reduce `App = Atom => ActionFn(23);`
-        -8, // on "=", reduce `App = Atom => ActionFn(23);`
-        -8, // on ">", reduce `App = Atom => ActionFn(23);`
-        -8, // on "Iden", reduce `App = Atom => ActionFn(23);`
-        -8, // on "Num", reduce `App = Atom => ActionFn(23);`
+        -9, // on "::", reduce `App = Atom => ActionFn(27);`
+        -9, // on "<", reduce `App = Atom => ActionFn(27);`
+        0, // on "<-", error
+        -9, // on "=", reduce `App = Atom => ActionFn(27);`
+        -9, // on ">", reduce `App = Atom => ActionFn(27);`
+        -9, // on "Iden", reduce `App = Atom => ActionFn(27);`
+        -9, // on "Num", reduce `App = Atom => ActionFn(27);`
+        0, // on "[", error
+        -9, // on "]", reduce `App = Atom => ActionFn(27);`
+        0, // on "array", error
         0, // on "begin", error
-        -8, // on "else", reduce `App = Atom => ActionFn(23);`
-        -8, // on "empty", reduce `App = Atom => ActionFn(23);`
+        -9, // on "else", reduce `App = Atom => ActionFn(27);`
+        -9, // on "empty", reduce `App = Atom => ActionFn(27);`
         0, // on "empty?", error
-        -8, // on "end", reduce `App = Atom => ActionFn(23);`
-        -8, // on "false", reduce `App = Atom => ActionFn(23);`
+        -9, // on "end", reduce `App = Atom => ActionFn(27);`
+        -9, // on "false", reduce `App = Atom => ActionFn(27);`
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        -8, // on "in", reduce `App = Atom => ActionFn(23);`
+        -9, // on "in", reduce `App = Atom => ActionFn(27);`
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
-        -8, // on "then", reduce `App = Atom => ActionFn(23);`
-        -8, // on "true", reduce `App = Atom => ActionFn(23);`
+        -9, // on "then", reduce `App = Atom => ActionFn(27);`
+        -9, // on "true", reduce `App = Atom => ActionFn(27);`
         // State 4
         //     Expr = Cmp (*) [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
-        -24, // on ")", reduce `Expr = Cmp => ActionFn(7);`
+        -25, // on ")", reduce `Expr = Cmp => ActionFn(7);`
         0, // on "*", error
         0, // on "+", error
         0, // on ",", error
@@ -241,24 +270,29 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
         0, // on "Iden", error
         0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
         0, // on "begin", error
-        -24, // on "else", reduce `Expr = Cmp => ActionFn(7);`
+        -25, // on "else", reduce `Expr = Cmp => ActionFn(7);`
         0, // on "empty", error
         0, // on "empty?", error
-        -24, // on "end", reduce `Expr = Cmp => ActionFn(7);`
+        -25, // on "end", reduce `Expr = Cmp => ActionFn(7);`
         0, // on "false", error
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        -24, // on "in", reduce `Expr = Cmp => ActionFn(7);`
+        -25, // on "in", reduce `Expr = Cmp => ActionFn(7);`
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
-        -24, // on "then", reduce `Expr = Cmp => ActionFn(7);`
+        -25, // on "then", reduce `Expr = Cmp => ActionFn(7);`
         0, // on "true", error
         // State 5
         //     Program = Expr (*) [EOF]
@@ -271,10 +305,14 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
         0, // on "Iden", error
         0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
         0, // on "begin", error
         0, // on "else", error
         0, // on "empty", error
@@ -287,115 +325,173 @@ mod __parse__Program {
         0, // on "if", error
         0, // on "in", error
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
         0, // on "then", error
         0, // on "true", error
         // State 6
-        //     Atom = Ident (*) ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        -9, // on "(", reduce `Atom = Ident => ActionFn(24);`
-        -9, // on ")", reduce `Atom = Ident => ActionFn(24);`
-        -9, // on "*", reduce `Atom = Ident => ActionFn(24);`
-        -9, // on "+", reduce `Atom = Ident => ActionFn(24);`
-        0, // on ",", error
-        -9, // on "-", reduce `Atom = Ident => ActionFn(24);`
-        0, // on "->", error
-        -9, // on "::", reduce `Atom = Ident => ActionFn(24);`
-        -9, // on "<", reduce `Atom = Ident => ActionFn(24);`
-        -9, // on "=", reduce `Atom = Ident => ActionFn(24);`
-        -9, // on ">", reduce `Atom = Ident => ActionFn(24);`
-        -9, // on "Iden", reduce `Atom = Ident => ActionFn(24);`
-        -9, // on "Num", reduce `Atom = Ident => ActionFn(24);`
-        0, // on "begin", error
-        -9, // on "else", reduce `Atom = Ident => ActionFn(24);`
-        -9, // on "empty", reduce `Atom = Ident => ActionFn(24);`
-        0, // on "empty?", error
-        -9, // on "end", reduce `Atom = Ident => ActionFn(24);`
-        -9, // on "false", reduce `Atom = Ident => ActionFn(24);`
-        0, // on "fix", error
-        0, // on "fun", error
-        0, // on "head", error
-        0, // on "if", error
-        -9, // on "in", reduce `Atom = Ident => ActionFn(24);`
-        0, // on "let", error
-        0, // on "tail", error
-        -9, // on "then", reduce `Atom = Ident => ActionFn(24);`
-        -9, // on "true", reduce `Atom = Ident => ActionFn(24);`
-        // State 7
-        //     Atom = Int (*) ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        -14, // on "(", reduce `Atom = Int => ActionFn(29);`
-        -14, // on ")", reduce `Atom = Int => ActionFn(29);`
-        -14, // on "*", reduce `Atom = Int => ActionFn(29);`
-        -14, // on "+", reduce `Atom = Int => ActionFn(29);`
-        0, // on ",", error
-        -14, // on "-", reduce `Atom = Int => ActionFn(29);`
-        0, // on "->", error
-        -14, // on "::", reduce `Atom = Int => ActionFn(29);`
-        -14, // on "<", reduce `Atom = Int => ActionFn(29);`
-        -14, // on "=", reduce `Atom = Int => ActionFn(29);`
-        -14, // on ">", reduce `Atom = Int => ActionFn(29);`
-        -14, // on "Iden", reduce `Atom = Int => ActionFn(29);`
-        -14, // on "Num", reduce `Atom = Int => ActionFn(29);`
-        0, // on "begin", error
-        -14, // on "else", reduce `Atom = Int => ActionFn(29);`
-        -14, // on "empty", reduce `Atom = Int => ActionFn(29);`
-        0, // on "empty?", error
-        -14, // on "end", reduce `Atom = Int => ActionFn(29);`
-        -14, // on "false", reduce `Atom = Int => ActionFn(29);`
-        0, // on "fix", error
-        0, // on "fun", error
-        0, // on "head", error
-        0, // on "if", error
-        -14, // on "in", reduce `Atom = Int => ActionFn(29);`
-        0, // on "let", error
-        0, // on "tail", error
-        -14, // on "then", reduce `Atom = Int => ActionFn(29);`
-        -14, // on "true", reduce `Atom = Int => ActionFn(29);`
-        // State 8
-        //     Mul = List (*) [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     List = Get (*) [")", "*", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     List = Get (*) "::" List [")", "*", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
         0, // on "(", error
-        -31, // on ")", reduce `Mul = List => ActionFn(16);`
-        -31, // on "*", reduce `Mul = List => ActionFn(16);`
-        -31, // on "+", reduce `Mul = List => ActionFn(16);`
-        0, // on ",", error
-        -31, // on "-", reduce `Mul = List => ActionFn(16);`
+        -33, // on ")", reduce `List = Get => ActionFn(18);`
+        -33, // on "*", reduce `List = Get => ActionFn(18);`
+        -33, // on "+", reduce `List = Get => ActionFn(18);`
+        -33, // on ",", reduce `List = Get => ActionFn(18);`
+        -33, // on "-", reduce `List = Get => ActionFn(18);`
         0, // on "->", error
-        0, // on "::", error
-        -31, // on "<", reduce `Mul = List => ActionFn(16);`
-        -31, // on "=", reduce `Mul = List => ActionFn(16);`
-        -31, // on ">", reduce `Mul = List => ActionFn(16);`
+        36, // on "::", goto 35
+        -33, // on "<", reduce `List = Get => ActionFn(18);`
+        0, // on "<-", error
+        -33, // on "=", reduce `List = Get => ActionFn(18);`
+        -33, // on ">", reduce `List = Get => ActionFn(18);`
         0, // on "Iden", error
         0, // on "Num", error
+        0, // on "[", error
+        -33, // on "]", reduce `List = Get => ActionFn(18);`
+        0, // on "array", error
         0, // on "begin", error
-        -31, // on "else", reduce `Mul = List => ActionFn(16);`
+        -33, // on "else", reduce `List = Get => ActionFn(18);`
         0, // on "empty", error
         0, // on "empty?", error
-        -31, // on "end", reduce `Mul = List => ActionFn(16);`
+        -33, // on "end", reduce `List = Get => ActionFn(18);`
         0, // on "false", error
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        -31, // on "in", reduce `Mul = List => ActionFn(16);`
+        -33, // on "in", reduce `List = Get => ActionFn(18);`
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
-        -31, // on "then", reduce `Mul = List => ActionFn(16);`
+        -33, // on "then", reduce `List = Get => ActionFn(18);`
         0, // on "true", error
+        // State 7
+        //     Atom = Ident (*) ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Get = Ident (*) "[" Add "]" [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Get = Ident (*) "[" Add "]" "<-" Atom [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        -10, // on "(", reduce `Atom = Ident => ActionFn(28);`
+        -10, // on ")", reduce `Atom = Ident => ActionFn(28);`
+        -10, // on "*", reduce `Atom = Ident => ActionFn(28);`
+        -10, // on "+", reduce `Atom = Ident => ActionFn(28);`
+        -10, // on ",", reduce `Atom = Ident => ActionFn(28);`
+        -10, // on "-", reduce `Atom = Ident => ActionFn(28);`
+        0, // on "->", error
+        -10, // on "::", reduce `Atom = Ident => ActionFn(28);`
+        -10, // on "<", reduce `Atom = Ident => ActionFn(28);`
+        0, // on "<-", error
+        -10, // on "=", reduce `Atom = Ident => ActionFn(28);`
+        -10, // on ">", reduce `Atom = Ident => ActionFn(28);`
+        -10, // on "Iden", reduce `Atom = Ident => ActionFn(28);`
+        -10, // on "Num", reduce `Atom = Ident => ActionFn(28);`
+        37, // on "[", goto 36
+        -10, // on "]", reduce `Atom = Ident => ActionFn(28);`
+        0, // on "array", error
+        0, // on "begin", error
+        -10, // on "else", reduce `Atom = Ident => ActionFn(28);`
+        -10, // on "empty", reduce `Atom = Ident => ActionFn(28);`
+        0, // on "empty?", error
+        -10, // on "end", reduce `Atom = Ident => ActionFn(28);`
+        -10, // on "false", reduce `Atom = Ident => ActionFn(28);`
+        0, // on "fix", error
+        0, // on "fun", error
+        0, // on "head", error
+        0, // on "if", error
+        -10, // on "in", reduce `Atom = Ident => ActionFn(28);`
+        0, // on "let", error
+        0, // on "set", error
+        0, // on "tail", error
+        -10, // on "then", reduce `Atom = Ident => ActionFn(28);`
+        -10, // on "true", reduce `Atom = Ident => ActionFn(28);`
+        // State 8
+        //     Atom = Int (*) ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        -15, // on "(", reduce `Atom = Int => ActionFn(33);`
+        -15, // on ")", reduce `Atom = Int => ActionFn(33);`
+        -15, // on "*", reduce `Atom = Int => ActionFn(33);`
+        -15, // on "+", reduce `Atom = Int => ActionFn(33);`
+        -15, // on ",", reduce `Atom = Int => ActionFn(33);`
+        -15, // on "-", reduce `Atom = Int => ActionFn(33);`
+        0, // on "->", error
+        -15, // on "::", reduce `Atom = Int => ActionFn(33);`
+        -15, // on "<", reduce `Atom = Int => ActionFn(33);`
+        0, // on "<-", error
+        -15, // on "=", reduce `Atom = Int => ActionFn(33);`
+        -15, // on ">", reduce `Atom = Int => ActionFn(33);`
+        -15, // on "Iden", reduce `Atom = Int => ActionFn(33);`
+        -15, // on "Num", reduce `Atom = Int => ActionFn(33);`
+        0, // on "[", error
+        -15, // on "]", reduce `Atom = Int => ActionFn(33);`
+        0, // on "array", error
+        0, // on "begin", error
+        -15, // on "else", reduce `Atom = Int => ActionFn(33);`
+        -15, // on "empty", reduce `Atom = Int => ActionFn(33);`
+        0, // on "empty?", error
+        -15, // on "end", reduce `Atom = Int => ActionFn(33);`
+        -15, // on "false", reduce `Atom = Int => ActionFn(33);`
+        0, // on "fix", error
+        0, // on "fun", error
+        0, // on "head", error
+        0, // on "if", error
+        -15, // on "in", reduce `Atom = Int => ActionFn(33);`
+        0, // on "let", error
+        0, // on "set", error
+        0, // on "tail", error
+        -15, // on "then", reduce `Atom = Int => ActionFn(33);`
+        -15, // on "true", reduce `Atom = Int => ActionFn(33);`
         // State 9
-        //     Add = Mul (*) [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     Mul = Mul (*) "*" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     Mul = List (*) [")", "*", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        0, // on "(", error
+        -35, // on ")", reduce `Mul = List => ActionFn(16);`
+        -35, // on "*", reduce `Mul = List => ActionFn(16);`
+        -35, // on "+", reduce `Mul = List => ActionFn(16);`
+        -35, // on ",", reduce `Mul = List => ActionFn(16);`
+        -35, // on "-", reduce `Mul = List => ActionFn(16);`
+        0, // on "->", error
+        0, // on "::", error
+        -35, // on "<", reduce `Mul = List => ActionFn(16);`
+        0, // on "<-", error
+        -35, // on "=", reduce `Mul = List => ActionFn(16);`
+        -35, // on ">", reduce `Mul = List => ActionFn(16);`
+        0, // on "Iden", error
+        0, // on "Num", error
+        0, // on "[", error
+        -35, // on "]", reduce `Mul = List => ActionFn(16);`
+        0, // on "array", error
+        0, // on "begin", error
+        -35, // on "else", reduce `Mul = List => ActionFn(16);`
+        0, // on "empty", error
+        0, // on "empty?", error
+        -35, // on "end", reduce `Mul = List => ActionFn(16);`
+        0, // on "false", error
+        0, // on "fix", error
+        0, // on "fun", error
+        0, // on "head", error
+        0, // on "if", error
+        -35, // on "in", reduce `Mul = List => ActionFn(16);`
+        0, // on "let", error
+        0, // on "set", error
+        0, // on "tail", error
+        -35, // on "then", reduce `Mul = List => ActionFn(16);`
+        0, // on "true", error
+        // State 10
+        //     Add = Mul (*) [")", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Mul = Mul (*) "*" List [")", "*", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
         0, // on "(", error
         -3, // on ")", reduce `Add = Mul => ActionFn(14);`
-        34, // on "*", goto 33
+        38, // on "*", goto 37
         -3, // on "+", reduce `Add = Mul => ActionFn(14);`
-        0, // on ",", error
+        -3, // on ",", reduce `Add = Mul => ActionFn(14);`
         -3, // on "-", reduce `Add = Mul => ActionFn(14);`
         0, // on "->", error
         0, // on "::", error
         -3, // on "<", reduce `Add = Mul => ActionFn(14);`
+        0, // on "<-", error
         -3, // on "=", reduce `Add = Mul => ActionFn(14);`
         -3, // on ">", reduce `Add = Mul => ActionFn(14);`
         0, // on "Iden", error
         0, // on "Num", error
+        0, // on "[", error
+        -3, // on "]", reduce `Add = Mul => ActionFn(14);`
+        0, // on "array", error
         0, // on "begin", error
         -3, // on "else", reduce `Add = Mul => ActionFn(14);`
         0, // on "empty", error
@@ -408,40 +504,46 @@ mod __parse__Program {
         0, // on "if", error
         -3, // on "in", reduce `Add = Mul => ActionFn(14);`
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
         -3, // on "then", reduce `Add = Mul => ActionFn(14);`
         0, // on "true", error
-        // State 10
-        //     Int = Num (*) ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        -27, // on "(", reduce `Int = Num => ActionFn(31);`
-        -27, // on ")", reduce `Int = Num => ActionFn(31);`
-        -27, // on "*", reduce `Int = Num => ActionFn(31);`
-        -27, // on "+", reduce `Int = Num => ActionFn(31);`
-        0, // on ",", error
-        -27, // on "-", reduce `Int = Num => ActionFn(31);`
+        // State 11
+        //     Int = Num (*) ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        -31, // on "(", reduce `Int = Num => ActionFn(35);`
+        -31, // on ")", reduce `Int = Num => ActionFn(35);`
+        -31, // on "*", reduce `Int = Num => ActionFn(35);`
+        -31, // on "+", reduce `Int = Num => ActionFn(35);`
+        -31, // on ",", reduce `Int = Num => ActionFn(35);`
+        -31, // on "-", reduce `Int = Num => ActionFn(35);`
         0, // on "->", error
-        -27, // on "::", reduce `Int = Num => ActionFn(31);`
-        -27, // on "<", reduce `Int = Num => ActionFn(31);`
-        -27, // on "=", reduce `Int = Num => ActionFn(31);`
-        -27, // on ">", reduce `Int = Num => ActionFn(31);`
-        -27, // on "Iden", reduce `Int = Num => ActionFn(31);`
-        -27, // on "Num", reduce `Int = Num => ActionFn(31);`
+        -31, // on "::", reduce `Int = Num => ActionFn(35);`
+        -31, // on "<", reduce `Int = Num => ActionFn(35);`
+        0, // on "<-", error
+        -31, // on "=", reduce `Int = Num => ActionFn(35);`
+        -31, // on ">", reduce `Int = Num => ActionFn(35);`
+        -31, // on "Iden", reduce `Int = Num => ActionFn(35);`
+        -31, // on "Num", reduce `Int = Num => ActionFn(35);`
+        0, // on "[", error
+        -31, // on "]", reduce `Int = Num => ActionFn(35);`
+        0, // on "array", error
         0, // on "begin", error
-        -27, // on "else", reduce `Int = Num => ActionFn(31);`
-        -27, // on "empty", reduce `Int = Num => ActionFn(31);`
+        -31, // on "else", reduce `Int = Num => ActionFn(35);`
+        -31, // on "empty", reduce `Int = Num => ActionFn(35);`
         0, // on "empty?", error
-        -27, // on "end", reduce `Int = Num => ActionFn(31);`
-        -27, // on "false", reduce `Int = Num => ActionFn(31);`
+        -31, // on "end", reduce `Int = Num => ActionFn(35);`
+        -31, // on "false", reduce `Int = Num => ActionFn(35);`
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        -27, // on "in", reduce `Int = Num => ActionFn(31);`
+        -31, // on "in", reduce `Int = Num => ActionFn(35);`
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
-        -27, // on "then", reduce `Int = Num => ActionFn(31);`
-        -27, // on "true", reduce `Int = Num => ActionFn(31);`
-        // State 11
+        -31, // on "then", reduce `Int = Num => ActionFn(35);`
+        -31, // on "true", reduce `Int = Num => ActionFn(35);`
+        // State 12
         //     __Program = Program (*) [EOF]
         0, // on "(", error
         0, // on ")", error
@@ -452,10 +554,14 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
         0, // on "Iden", error
         0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
         0, // on "begin", error
         0, // on "else", error
         0, // on "empty", error
@@ -468,22 +574,24 @@ mod __parse__Program {
         0, // on "if", error
         0, // on "in", error
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
         0, // on "then", error
         0, // on "true", error
-        // State 12
+        // State 13
         //     Add = (*) Add "+" Mul [")", "+", "-", "<", "=", ">"]
         //     Add = (*) Add "-" Mul [")", "+", "-", "<", "=", ">"]
         //     Add = (*) Mul [")", "+", "-", "<", "=", ">"]
         //     App = (*) App Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true"]
         //     App = (*) Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true"]
+        //     App = (*) "array" "(" Add "," Add ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true"]
         //     App = (*) "empty?" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true"]
         //     App = (*) "head" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true"]
         //     App = (*) "tail" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true"]
         //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true"]
         //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true"]
         //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true"]
-        //     Atom = "(" (*) Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = "(" (*) Exprs ")" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true"]
         //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true"]
         //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true"]
@@ -498,14 +606,17 @@ mod __parse__Program {
         //     Expr = (*) "if" Expr "then" Expr "else" Expr [")"]
         //     Expr = (*) "let" Ident "=" Expr "in" Expr [")"]
         //     Exprs = (*) Expr [")"]
-        //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true"]
+        //     Get = (*) App [")", "*", "+", "-", "::", "<", "=", ">"]
+        //     Get = (*) Ident "[" Add "]" [")", "*", "+", "-", "::", "<", "=", ">"]
+        //     Get = (*) Ident "[" Add "]" "<-" Atom [")", "*", "+", "-", "::", "<", "=", ">"]
+        //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "[", "empty", "false", "true"]
         //     Int = (*) Num ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true"]
-        //     List = (*) App [")", "*", "+", "-", "<", "=", ">"]
-        //     List = (*) App "::" List [")", "*", "+", "-", "<", "=", ">"]
+        //     List = (*) Get [")", "*", "+", "-", "<", "=", ">"]
+        //     List = (*) Get "::" List [")", "*", "+", "-", "<", "=", ">"]
         //     Mul = (*) List [")", "*", "+", "-", "<", "=", ">"]
         //     Mul = (*) Mul "*" List [")", "*", "+", "-", "<", "=", ">"]
         //     Num = (*) "Num" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "true"]
-        13, // on "(", goto 12
+        14, // on "(", goto 13
         0, // on ")", error
         0, // on "*", error
         0, // on "+", error
@@ -514,91 +625,142 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
-        14, // on "Iden", goto 13
-        15, // on "Num", goto 14
-        16, // on "begin", goto 15
+        15, // on "Iden", goto 14
+        16, // on "Num", goto 15
+        0, // on "[", error
+        0, // on "]", error
+        17, // on "array", goto 16
+        18, // on "begin", goto 17
         0, // on "else", error
-        17, // on "empty", goto 16
-        18, // on "empty?", goto 17
+        19, // on "empty", goto 18
+        20, // on "empty?", goto 19
         0, // on "end", error
-        19, // on "false", goto 18
-        20, // on "fix", goto 19
-        21, // on "fun", goto 20
-        22, // on "head", goto 21
-        23, // on "if", goto 22
+        21, // on "false", goto 20
+        22, // on "fix", goto 21
+        23, // on "fun", goto 22
+        24, // on "head", goto 23
+        25, // on "if", goto 24
         0, // on "in", error
-        24, // on "let", goto 23
-        25, // on "tail", goto 24
+        26, // on "let", goto 25
+        0, // on "set", error
+        27, // on "tail", goto 26
         0, // on "then", error
-        26, // on "true", goto 25
-        // State 13
-        //     Ident = "Iden" (*) ["(", ")", "*", "+", "-", "->", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        -26, // on "(", reduce `Ident = "Iden" => ActionFn(32);`
-        -26, // on ")", reduce `Ident = "Iden" => ActionFn(32);`
-        -26, // on "*", reduce `Ident = "Iden" => ActionFn(32);`
-        -26, // on "+", reduce `Ident = "Iden" => ActionFn(32);`
-        0, // on ",", error
-        -26, // on "-", reduce `Ident = "Iden" => ActionFn(32);`
-        -26, // on "->", reduce `Ident = "Iden" => ActionFn(32);`
-        -26, // on "::", reduce `Ident = "Iden" => ActionFn(32);`
-        -26, // on "<", reduce `Ident = "Iden" => ActionFn(32);`
-        -26, // on "=", reduce `Ident = "Iden" => ActionFn(32);`
-        -26, // on ">", reduce `Ident = "Iden" => ActionFn(32);`
-        -26, // on "Iden", reduce `Ident = "Iden" => ActionFn(32);`
-        -26, // on "Num", reduce `Ident = "Iden" => ActionFn(32);`
-        0, // on "begin", error
-        -26, // on "else", reduce `Ident = "Iden" => ActionFn(32);`
-        -26, // on "empty", reduce `Ident = "Iden" => ActionFn(32);`
-        0, // on "empty?", error
-        -26, // on "end", reduce `Ident = "Iden" => ActionFn(32);`
-        -26, // on "false", reduce `Ident = "Iden" => ActionFn(32);`
-        0, // on "fix", error
-        0, // on "fun", error
-        0, // on "head", error
-        0, // on "if", error
-        -26, // on "in", reduce `Ident = "Iden" => ActionFn(32);`
-        0, // on "let", error
-        0, // on "tail", error
-        -26, // on "then", reduce `Ident = "Iden" => ActionFn(32);`
-        -26, // on "true", reduce `Ident = "Iden" => ActionFn(32);`
+        28, // on "true", goto 27
         // State 14
-        //     Num = "Num" (*) ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        -32, // on "(", reduce `Num = "Num" => ActionFn(33);`
-        -32, // on ")", reduce `Num = "Num" => ActionFn(33);`
-        -32, // on "*", reduce `Num = "Num" => ActionFn(33);`
-        -32, // on "+", reduce `Num = "Num" => ActionFn(33);`
-        0, // on ",", error
-        -32, // on "-", reduce `Num = "Num" => ActionFn(33);`
-        0, // on "->", error
-        -32, // on "::", reduce `Num = "Num" => ActionFn(33);`
-        -32, // on "<", reduce `Num = "Num" => ActionFn(33);`
-        -32, // on "=", reduce `Num = "Num" => ActionFn(33);`
-        -32, // on ">", reduce `Num = "Num" => ActionFn(33);`
-        -32, // on "Iden", reduce `Num = "Num" => ActionFn(33);`
-        -32, // on "Num", reduce `Num = "Num" => ActionFn(33);`
+        //     Ident = "Iden" (*) ["(", ")", "*", "+", ",", "-", "->", "::", "<", "=", ">", "Iden", "Num", "[", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        -30, // on "(", reduce `Ident = "Iden" => ActionFn(36);`
+        -30, // on ")", reduce `Ident = "Iden" => ActionFn(36);`
+        -30, // on "*", reduce `Ident = "Iden" => ActionFn(36);`
+        -30, // on "+", reduce `Ident = "Iden" => ActionFn(36);`
+        -30, // on ",", reduce `Ident = "Iden" => ActionFn(36);`
+        -30, // on "-", reduce `Ident = "Iden" => ActionFn(36);`
+        -30, // on "->", reduce `Ident = "Iden" => ActionFn(36);`
+        -30, // on "::", reduce `Ident = "Iden" => ActionFn(36);`
+        -30, // on "<", reduce `Ident = "Iden" => ActionFn(36);`
+        0, // on "<-", error
+        -30, // on "=", reduce `Ident = "Iden" => ActionFn(36);`
+        -30, // on ">", reduce `Ident = "Iden" => ActionFn(36);`
+        -30, // on "Iden", reduce `Ident = "Iden" => ActionFn(36);`
+        -30, // on "Num", reduce `Ident = "Iden" => ActionFn(36);`
+        -30, // on "[", reduce `Ident = "Iden" => ActionFn(36);`
+        -30, // on "]", reduce `Ident = "Iden" => ActionFn(36);`
+        0, // on "array", error
         0, // on "begin", error
-        -32, // on "else", reduce `Num = "Num" => ActionFn(33);`
-        -32, // on "empty", reduce `Num = "Num" => ActionFn(33);`
+        -30, // on "else", reduce `Ident = "Iden" => ActionFn(36);`
+        -30, // on "empty", reduce `Ident = "Iden" => ActionFn(36);`
         0, // on "empty?", error
-        -32, // on "end", reduce `Num = "Num" => ActionFn(33);`
-        -32, // on "false", reduce `Num = "Num" => ActionFn(33);`
+        -30, // on "end", reduce `Ident = "Iden" => ActionFn(36);`
+        -30, // on "false", reduce `Ident = "Iden" => ActionFn(36);`
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        -32, // on "in", reduce `Num = "Num" => ActionFn(33);`
+        -30, // on "in", reduce `Ident = "Iden" => ActionFn(36);`
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
-        -32, // on "then", reduce `Num = "Num" => ActionFn(33);`
-        -32, // on "true", reduce `Num = "Num" => ActionFn(33);`
+        -30, // on "then", reduce `Ident = "Iden" => ActionFn(36);`
+        -30, // on "true", reduce `Ident = "Iden" => ActionFn(36);`
         // State 15
+        //     Num = "Num" (*) ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        -36, // on "(", reduce `Num = "Num" => ActionFn(37);`
+        -36, // on ")", reduce `Num = "Num" => ActionFn(37);`
+        -36, // on "*", reduce `Num = "Num" => ActionFn(37);`
+        -36, // on "+", reduce `Num = "Num" => ActionFn(37);`
+        -36, // on ",", reduce `Num = "Num" => ActionFn(37);`
+        -36, // on "-", reduce `Num = "Num" => ActionFn(37);`
+        0, // on "->", error
+        -36, // on "::", reduce `Num = "Num" => ActionFn(37);`
+        -36, // on "<", reduce `Num = "Num" => ActionFn(37);`
+        0, // on "<-", error
+        -36, // on "=", reduce `Num = "Num" => ActionFn(37);`
+        -36, // on ">", reduce `Num = "Num" => ActionFn(37);`
+        -36, // on "Iden", reduce `Num = "Num" => ActionFn(37);`
+        -36, // on "Num", reduce `Num = "Num" => ActionFn(37);`
+        0, // on "[", error
+        -36, // on "]", reduce `Num = "Num" => ActionFn(37);`
+        0, // on "array", error
+        0, // on "begin", error
+        -36, // on "else", reduce `Num = "Num" => ActionFn(37);`
+        -36, // on "empty", reduce `Num = "Num" => ActionFn(37);`
+        0, // on "empty?", error
+        -36, // on "end", reduce `Num = "Num" => ActionFn(37);`
+        -36, // on "false", reduce `Num = "Num" => ActionFn(37);`
+        0, // on "fix", error
+        0, // on "fun", error
+        0, // on "head", error
+        0, // on "if", error
+        -36, // on "in", reduce `Num = "Num" => ActionFn(37);`
+        0, // on "let", error
+        0, // on "set", error
+        0, // on "tail", error
+        -36, // on "then", reduce `Num = "Num" => ActionFn(37);`
+        -36, // on "true", reduce `Num = "Num" => ActionFn(37);`
+        // State 16
+        //     App = "array" (*) "(" Add "," Add ")" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        41, // on "(", goto 40
+        0, // on ")", error
+        0, // on "*", error
+        0, // on "+", error
+        0, // on ",", error
+        0, // on "-", error
+        0, // on "->", error
+        0, // on "::", error
+        0, // on "<", error
+        0, // on "<-", error
+        0, // on "=", error
+        0, // on ">", error
+        0, // on "Iden", error
+        0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
+        0, // on "begin", error
+        0, // on "else", error
+        0, // on "empty", error
+        0, // on "empty?", error
+        0, // on "end", error
+        0, // on "false", error
+        0, // on "fix", error
+        0, // on "fun", error
+        0, // on "head", error
+        0, // on "if", error
+        0, // on "in", error
+        0, // on "let", error
+        0, // on "set", error
+        0, // on "tail", error
+        0, // on "then", error
+        0, // on "true", error
+        // State 17
         //     Add = (*) Add "+" Mul ["+", "-", "<", "=", ">", "end"]
         //     Add = (*) Add "-" Mul ["+", "-", "<", "=", ">", "end"]
         //     Add = (*) Mul ["+", "-", "<", "=", ">", "end"]
         //     App = (*) App Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "end", "false", "true"]
         //     App = (*) Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "end", "false", "true"]
+        //     App = (*) "array" "(" Add "," Add ")" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "end", "false", "true"]
         //     App = (*) "empty?" Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "end", "false", "true"]
         //     App = (*) "head" Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "end", "false", "true"]
         //     App = (*) "tail" Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "end", "false", "true"]
@@ -619,14 +781,17 @@ mod __parse__Program {
         //     Expr = (*) "fun" Ident "->" Expr ["end"]
         //     Expr = (*) "if" Expr "then" Expr "else" Expr ["end"]
         //     Expr = (*) "let" Ident "=" Expr "in" Expr ["end"]
-        //     Ident = (*) "Iden" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "end", "false", "true"]
+        //     Get = (*) App ["*", "+", "-", "::", "<", "=", ">", "end"]
+        //     Get = (*) Ident "[" Add "]" ["*", "+", "-", "::", "<", "=", ">", "end"]
+        //     Get = (*) Ident "[" Add "]" "<-" Atom ["*", "+", "-", "::", "<", "=", ">", "end"]
+        //     Ident = (*) "Iden" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "[", "empty", "end", "false", "true"]
         //     Int = (*) Num ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "end", "false", "true"]
-        //     List = (*) App ["*", "+", "-", "<", "=", ">", "end"]
-        //     List = (*) App "::" List ["*", "+", "-", "<", "=", ">", "end"]
+        //     List = (*) Get ["*", "+", "-", "<", "=", ">", "end"]
+        //     List = (*) Get "::" List ["*", "+", "-", "<", "=", ">", "end"]
         //     Mul = (*) List ["*", "+", "-", "<", "=", ">", "end"]
         //     Mul = (*) Mul "*" List ["*", "+", "-", "<", "=", ">", "end"]
         //     Num = (*) "Num" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "end", "false", "true"]
-        13, // on "(", goto 12
+        14, // on "(", goto 13
         0, // on ")", error
         0, // on "*", error
         0, // on "+", error
@@ -635,125 +800,145 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
-        14, // on "Iden", goto 13
-        15, // on "Num", goto 14
-        16, // on "begin", goto 15
+        15, // on "Iden", goto 14
+        16, // on "Num", goto 15
+        0, // on "[", error
+        0, // on "]", error
+        17, // on "array", goto 16
+        18, // on "begin", goto 17
         0, // on "else", error
-        17, // on "empty", goto 16
-        18, // on "empty?", goto 17
+        19, // on "empty", goto 18
+        20, // on "empty?", goto 19
         0, // on "end", error
-        19, // on "false", goto 18
-        20, // on "fix", goto 19
-        21, // on "fun", goto 20
-        22, // on "head", goto 21
-        23, // on "if", goto 22
+        21, // on "false", goto 20
+        22, // on "fix", goto 21
+        23, // on "fun", goto 22
+        24, // on "head", goto 23
+        25, // on "if", goto 24
         0, // on "in", error
-        24, // on "let", goto 23
-        25, // on "tail", goto 24
+        26, // on "let", goto 25
+        0, // on "set", error
+        27, // on "tail", goto 26
         0, // on "then", error
-        26, // on "true", goto 25
-        // State 16
-        //     Atom = "empty" (*) ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        -12, // on "(", reduce `Atom = "empty" => ActionFn(27);`
-        -12, // on ")", reduce `Atom = "empty" => ActionFn(27);`
-        -12, // on "*", reduce `Atom = "empty" => ActionFn(27);`
-        -12, // on "+", reduce `Atom = "empty" => ActionFn(27);`
-        0, // on ",", error
-        -12, // on "-", reduce `Atom = "empty" => ActionFn(27);`
-        0, // on "->", error
-        -12, // on "::", reduce `Atom = "empty" => ActionFn(27);`
-        -12, // on "<", reduce `Atom = "empty" => ActionFn(27);`
-        -12, // on "=", reduce `Atom = "empty" => ActionFn(27);`
-        -12, // on ">", reduce `Atom = "empty" => ActionFn(27);`
-        -12, // on "Iden", reduce `Atom = "empty" => ActionFn(27);`
-        -12, // on "Num", reduce `Atom = "empty" => ActionFn(27);`
-        0, // on "begin", error
-        -12, // on "else", reduce `Atom = "empty" => ActionFn(27);`
-        -12, // on "empty", reduce `Atom = "empty" => ActionFn(27);`
-        0, // on "empty?", error
-        -12, // on "end", reduce `Atom = "empty" => ActionFn(27);`
-        -12, // on "false", reduce `Atom = "empty" => ActionFn(27);`
-        0, // on "fix", error
-        0, // on "fun", error
-        0, // on "head", error
-        0, // on "if", error
-        -12, // on "in", reduce `Atom = "empty" => ActionFn(27);`
-        0, // on "let", error
-        0, // on "tail", error
-        -12, // on "then", reduce `Atom = "empty" => ActionFn(27);`
-        -12, // on "true", reduce `Atom = "empty" => ActionFn(27);`
-        // State 17
-        //     App = "empty?" (*) Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Int = (*) Num ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Num = (*) "Num" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        13, // on "(", goto 12
-        0, // on ")", error
-        0, // on "*", error
-        0, // on "+", error
-        0, // on ",", error
-        0, // on "-", error
-        0, // on "->", error
-        0, // on "::", error
-        0, // on "<", error
-        0, // on "=", error
-        0, // on ">", error
-        14, // on "Iden", goto 13
-        15, // on "Num", goto 14
-        0, // on "begin", error
-        0, // on "else", error
-        17, // on "empty", goto 16
-        0, // on "empty?", error
-        0, // on "end", error
-        19, // on "false", goto 18
-        0, // on "fix", error
-        0, // on "fun", error
-        0, // on "head", error
-        0, // on "if", error
-        0, // on "in", error
-        0, // on "let", error
-        0, // on "tail", error
-        0, // on "then", error
-        26, // on "true", goto 25
+        28, // on "true", goto 27
         // State 18
-        //     Atom = "false" (*) ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        -11, // on "(", reduce `Atom = "false" => ActionFn(26);`
-        -11, // on ")", reduce `Atom = "false" => ActionFn(26);`
-        -11, // on "*", reduce `Atom = "false" => ActionFn(26);`
-        -11, // on "+", reduce `Atom = "false" => ActionFn(26);`
-        0, // on ",", error
-        -11, // on "-", reduce `Atom = "false" => ActionFn(26);`
+        //     Atom = "empty" (*) ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        -13, // on "(", reduce `Atom = "empty" => ActionFn(31);`
+        -13, // on ")", reduce `Atom = "empty" => ActionFn(31);`
+        -13, // on "*", reduce `Atom = "empty" => ActionFn(31);`
+        -13, // on "+", reduce `Atom = "empty" => ActionFn(31);`
+        -13, // on ",", reduce `Atom = "empty" => ActionFn(31);`
+        -13, // on "-", reduce `Atom = "empty" => ActionFn(31);`
         0, // on "->", error
-        -11, // on "::", reduce `Atom = "false" => ActionFn(26);`
-        -11, // on "<", reduce `Atom = "false" => ActionFn(26);`
-        -11, // on "=", reduce `Atom = "false" => ActionFn(26);`
-        -11, // on ">", reduce `Atom = "false" => ActionFn(26);`
-        -11, // on "Iden", reduce `Atom = "false" => ActionFn(26);`
-        -11, // on "Num", reduce `Atom = "false" => ActionFn(26);`
+        -13, // on "::", reduce `Atom = "empty" => ActionFn(31);`
+        -13, // on "<", reduce `Atom = "empty" => ActionFn(31);`
+        0, // on "<-", error
+        -13, // on "=", reduce `Atom = "empty" => ActionFn(31);`
+        -13, // on ">", reduce `Atom = "empty" => ActionFn(31);`
+        -13, // on "Iden", reduce `Atom = "empty" => ActionFn(31);`
+        -13, // on "Num", reduce `Atom = "empty" => ActionFn(31);`
+        0, // on "[", error
+        -13, // on "]", reduce `Atom = "empty" => ActionFn(31);`
+        0, // on "array", error
         0, // on "begin", error
-        -11, // on "else", reduce `Atom = "false" => ActionFn(26);`
-        -11, // on "empty", reduce `Atom = "false" => ActionFn(26);`
+        -13, // on "else", reduce `Atom = "empty" => ActionFn(31);`
+        -13, // on "empty", reduce `Atom = "empty" => ActionFn(31);`
         0, // on "empty?", error
-        -11, // on "end", reduce `Atom = "false" => ActionFn(26);`
-        -11, // on "false", reduce `Atom = "false" => ActionFn(26);`
+        -13, // on "end", reduce `Atom = "empty" => ActionFn(31);`
+        -13, // on "false", reduce `Atom = "empty" => ActionFn(31);`
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        -11, // on "in", reduce `Atom = "false" => ActionFn(26);`
+        -13, // on "in", reduce `Atom = "empty" => ActionFn(31);`
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
-        -11, // on "then", reduce `Atom = "false" => ActionFn(26);`
-        -11, // on "true", reduce `Atom = "false" => ActionFn(26);`
+        -13, // on "then", reduce `Atom = "empty" => ActionFn(31);`
+        -13, // on "true", reduce `Atom = "empty" => ActionFn(31);`
         // State 19
+        //     App = "empty?" (*) Atom ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) Ident ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) Int ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "empty" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "false" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "true" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Ident = (*) "Iden" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Int = (*) Num ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Num = (*) "Num" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        14, // on "(", goto 13
+        0, // on ")", error
+        0, // on "*", error
+        0, // on "+", error
+        0, // on ",", error
+        0, // on "-", error
+        0, // on "->", error
+        0, // on "::", error
+        0, // on "<", error
+        0, // on "<-", error
+        0, // on "=", error
+        0, // on ">", error
+        15, // on "Iden", goto 14
+        16, // on "Num", goto 15
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
+        0, // on "begin", error
+        0, // on "else", error
+        19, // on "empty", goto 18
+        0, // on "empty?", error
+        0, // on "end", error
+        21, // on "false", goto 20
+        0, // on "fix", error
+        0, // on "fun", error
+        0, // on "head", error
+        0, // on "if", error
+        0, // on "in", error
+        0, // on "let", error
+        0, // on "set", error
+        0, // on "tail", error
+        0, // on "then", error
+        28, // on "true", goto 27
+        // State 20
+        //     Atom = "false" (*) ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        -12, // on "(", reduce `Atom = "false" => ActionFn(30);`
+        -12, // on ")", reduce `Atom = "false" => ActionFn(30);`
+        -12, // on "*", reduce `Atom = "false" => ActionFn(30);`
+        -12, // on "+", reduce `Atom = "false" => ActionFn(30);`
+        -12, // on ",", reduce `Atom = "false" => ActionFn(30);`
+        -12, // on "-", reduce `Atom = "false" => ActionFn(30);`
+        0, // on "->", error
+        -12, // on "::", reduce `Atom = "false" => ActionFn(30);`
+        -12, // on "<", reduce `Atom = "false" => ActionFn(30);`
+        0, // on "<-", error
+        -12, // on "=", reduce `Atom = "false" => ActionFn(30);`
+        -12, // on ">", reduce `Atom = "false" => ActionFn(30);`
+        -12, // on "Iden", reduce `Atom = "false" => ActionFn(30);`
+        -12, // on "Num", reduce `Atom = "false" => ActionFn(30);`
+        0, // on "[", error
+        -12, // on "]", reduce `Atom = "false" => ActionFn(30);`
+        0, // on "array", error
+        0, // on "begin", error
+        -12, // on "else", reduce `Atom = "false" => ActionFn(30);`
+        -12, // on "empty", reduce `Atom = "false" => ActionFn(30);`
+        0, // on "empty?", error
+        -12, // on "end", reduce `Atom = "false" => ActionFn(30);`
+        -12, // on "false", reduce `Atom = "false" => ActionFn(30);`
+        0, // on "fix", error
+        0, // on "fun", error
+        0, // on "head", error
+        0, // on "if", error
+        -12, // on "in", reduce `Atom = "false" => ActionFn(30);`
+        0, // on "let", error
+        0, // on "set", error
+        0, // on "tail", error
+        -12, // on "then", reduce `Atom = "false" => ActionFn(30);`
+        -12, // on "true", reduce `Atom = "false" => ActionFn(30);`
+        // State 21
         //     Expr = "fix" (*) Ident "->" Expr [")", "else", "end", "in", "then", EOF]
         //     Ident = (*) "Iden" ["->"]
         0, // on "(", error
@@ -765,10 +950,14 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
-        14, // on "Iden", goto 13
+        15, // on "Iden", goto 14
         0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
         0, // on "begin", error
         0, // on "else", error
         0, // on "empty", error
@@ -781,10 +970,11 @@ mod __parse__Program {
         0, // on "if", error
         0, // on "in", error
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
         0, // on "then", error
         0, // on "true", error
-        // State 20
+        // State 22
         //     Expr = "fun" (*) Ident "->" Expr [")", "else", "end", "in", "then", EOF]
         //     Ident = (*) "Iden" ["->"]
         0, // on "(", error
@@ -796,10 +986,14 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
-        14, // on "Iden", goto 13
+        15, // on "Iden", goto 14
         0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
         0, // on "begin", error
         0, // on "else", error
         0, // on "empty", error
@@ -812,21 +1006,22 @@ mod __parse__Program {
         0, // on "if", error
         0, // on "in", error
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
         0, // on "then", error
         0, // on "true", error
-        // State 21
-        //     App = "head" (*) Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Int = (*) Num ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Num = (*) "Num" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        13, // on "(", goto 12
+        // State 23
+        //     App = "head" (*) Atom ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) Ident ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) Int ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "empty" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "false" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "true" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Ident = (*) "Iden" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Int = (*) Num ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Num = (*) "Num" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        14, // on "(", goto 13
         0, // on ")", error
         0, // on "*", error
         0, // on "+", error
@@ -835,31 +1030,37 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
-        14, // on "Iden", goto 13
-        15, // on "Num", goto 14
+        15, // on "Iden", goto 14
+        16, // on "Num", goto 15
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
         0, // on "begin", error
         0, // on "else", error
-        17, // on "empty", goto 16
+        19, // on "empty", goto 18
         0, // on "empty?", error
         0, // on "end", error
-        19, // on "false", goto 18
+        21, // on "false", goto 20
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
         0, // on "in", error
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
         0, // on "then", error
-        26, // on "true", goto 25
-        // State 22
+        28, // on "true", goto 27
+        // State 24
         //     Add = (*) Add "+" Mul ["+", "-", "<", "=", ">", "then"]
         //     Add = (*) Add "-" Mul ["+", "-", "<", "=", ">", "then"]
         //     Add = (*) Mul ["+", "-", "<", "=", ">", "then"]
         //     App = (*) App Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "then", "true"]
         //     App = (*) Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "then", "true"]
+        //     App = (*) "array" "(" Add "," Add ")" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "then", "true"]
         //     App = (*) "empty?" Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "then", "true"]
         //     App = (*) "head" Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "then", "true"]
         //     App = (*) "tail" Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "then", "true"]
@@ -880,14 +1081,17 @@ mod __parse__Program {
         //     Expr = (*) "if" Expr "then" Expr "else" Expr ["then"]
         //     Expr = "if" (*) Expr "then" Expr "else" Expr [")", "else", "end", "in", "then", EOF]
         //     Expr = (*) "let" Ident "=" Expr "in" Expr ["then"]
-        //     Ident = (*) "Iden" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "then", "true"]
+        //     Get = (*) App ["*", "+", "-", "::", "<", "=", ">", "then"]
+        //     Get = (*) Ident "[" Add "]" ["*", "+", "-", "::", "<", "=", ">", "then"]
+        //     Get = (*) Ident "[" Add "]" "<-" Atom ["*", "+", "-", "::", "<", "=", ">", "then"]
+        //     Ident = (*) "Iden" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "[", "empty", "false", "then", "true"]
         //     Int = (*) Num ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "then", "true"]
-        //     List = (*) App ["*", "+", "-", "<", "=", ">", "then"]
-        //     List = (*) App "::" List ["*", "+", "-", "<", "=", ">", "then"]
+        //     List = (*) Get ["*", "+", "-", "<", "=", ">", "then"]
+        //     List = (*) Get "::" List ["*", "+", "-", "<", "=", ">", "then"]
         //     Mul = (*) List ["*", "+", "-", "<", "=", ">", "then"]
         //     Mul = (*) Mul "*" List ["*", "+", "-", "<", "=", ">", "then"]
         //     Num = (*) "Num" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "then", "true"]
-        13, // on "(", goto 12
+        14, // on "(", goto 13
         0, // on ")", error
         0, // on "*", error
         0, // on "+", error
@@ -896,26 +1100,31 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
-        14, // on "Iden", goto 13
-        15, // on "Num", goto 14
-        16, // on "begin", goto 15
+        15, // on "Iden", goto 14
+        16, // on "Num", goto 15
+        0, // on "[", error
+        0, // on "]", error
+        17, // on "array", goto 16
+        18, // on "begin", goto 17
         0, // on "else", error
-        17, // on "empty", goto 16
-        18, // on "empty?", goto 17
+        19, // on "empty", goto 18
+        20, // on "empty?", goto 19
         0, // on "end", error
-        19, // on "false", goto 18
-        20, // on "fix", goto 19
-        21, // on "fun", goto 20
-        22, // on "head", goto 21
-        23, // on "if", goto 22
+        21, // on "false", goto 20
+        22, // on "fix", goto 21
+        23, // on "fun", goto 22
+        24, // on "head", goto 23
+        25, // on "if", goto 24
         0, // on "in", error
-        24, // on "let", goto 23
-        25, // on "tail", goto 24
+        26, // on "let", goto 25
+        0, // on "set", error
+        27, // on "tail", goto 26
         0, // on "then", error
-        26, // on "true", goto 25
-        // State 23
+        28, // on "true", goto 27
+        // State 25
         //     Expr = "let" (*) Ident "=" Expr "in" Expr [")", "else", "end", "in", "then", EOF]
         //     Ident = (*) "Iden" ["="]
         0, // on "(", error
@@ -927,10 +1136,14 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
-        14, // on "Iden", goto 13
+        15, // on "Iden", goto 14
         0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
         0, // on "begin", error
         0, // on "else", error
         0, // on "empty", error
@@ -943,99 +1156,22 @@ mod __parse__Program {
         0, // on "if", error
         0, // on "in", error
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
         0, // on "then", error
         0, // on "true", error
-        // State 24
-        //     App = "tail" (*) Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Int = (*) Num ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Num = (*) "Num" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        13, // on "(", goto 12
-        0, // on ")", error
-        0, // on "*", error
-        0, // on "+", error
-        0, // on ",", error
-        0, // on "-", error
-        0, // on "->", error
-        0, // on "::", error
-        0, // on "<", error
-        0, // on "=", error
-        0, // on ">", error
-        14, // on "Iden", goto 13
-        15, // on "Num", goto 14
-        0, // on "begin", error
-        0, // on "else", error
-        17, // on "empty", goto 16
-        0, // on "empty?", error
-        0, // on "end", error
-        19, // on "false", goto 18
-        0, // on "fix", error
-        0, // on "fun", error
-        0, // on "head", error
-        0, // on "if", error
-        0, // on "in", error
-        0, // on "let", error
-        0, // on "tail", error
-        0, // on "then", error
-        26, // on "true", goto 25
-        // State 25
-        //     Atom = "true" (*) ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        -10, // on "(", reduce `Atom = "true" => ActionFn(25);`
-        -10, // on ")", reduce `Atom = "true" => ActionFn(25);`
-        -10, // on "*", reduce `Atom = "true" => ActionFn(25);`
-        -10, // on "+", reduce `Atom = "true" => ActionFn(25);`
-        0, // on ",", error
-        -10, // on "-", reduce `Atom = "true" => ActionFn(25);`
-        0, // on "->", error
-        -10, // on "::", reduce `Atom = "true" => ActionFn(25);`
-        -10, // on "<", reduce `Atom = "true" => ActionFn(25);`
-        -10, // on "=", reduce `Atom = "true" => ActionFn(25);`
-        -10, // on ">", reduce `Atom = "true" => ActionFn(25);`
-        -10, // on "Iden", reduce `Atom = "true" => ActionFn(25);`
-        -10, // on "Num", reduce `Atom = "true" => ActionFn(25);`
-        0, // on "begin", error
-        -10, // on "else", reduce `Atom = "true" => ActionFn(25);`
-        -10, // on "empty", reduce `Atom = "true" => ActionFn(25);`
-        0, // on "empty?", error
-        -10, // on "end", reduce `Atom = "true" => ActionFn(25);`
-        -10, // on "false", reduce `Atom = "true" => ActionFn(25);`
-        0, // on "fix", error
-        0, // on "fun", error
-        0, // on "head", error
-        0, // on "if", error
-        -10, // on "in", reduce `Atom = "true" => ActionFn(25);`
-        0, // on "let", error
-        0, // on "tail", error
-        -10, // on "then", reduce `Atom = "true" => ActionFn(25);`
-        -10, // on "true", reduce `Atom = "true" => ActionFn(25);`
         // State 26
-        //     Add = Add "+" (*) Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     App = (*) App Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     App = (*) Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     App = (*) "empty?" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     App = (*) "head" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     App = (*) "tail" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Int = (*) Num ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     List = (*) App [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     List = (*) App "::" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     Mul = (*) List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     Mul = (*) Mul "*" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     Num = (*) "Num" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        13, // on "(", goto 12
+        //     App = "tail" (*) Atom ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) Ident ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) Int ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "empty" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "false" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "true" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Ident = (*) "Iden" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Int = (*) Num ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Num = (*) "Num" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        14, // on "(", goto 13
         0, // on ")", error
         0, // on "*", error
         0, // on "+", error
@@ -1044,46 +1180,90 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
-        14, // on "Iden", goto 13
-        15, // on "Num", goto 14
+        15, // on "Iden", goto 14
+        16, // on "Num", goto 15
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
         0, // on "begin", error
         0, // on "else", error
-        17, // on "empty", goto 16
-        18, // on "empty?", goto 17
+        19, // on "empty", goto 18
+        0, // on "empty?", error
         0, // on "end", error
-        19, // on "false", goto 18
+        21, // on "false", goto 20
         0, // on "fix", error
         0, // on "fun", error
-        22, // on "head", goto 21
+        0, // on "head", error
         0, // on "if", error
         0, // on "in", error
         0, // on "let", error
-        25, // on "tail", goto 24
+        0, // on "set", error
+        0, // on "tail", error
         0, // on "then", error
-        26, // on "true", goto 25
+        28, // on "true", goto 27
         // State 27
-        //     Add = Add "-" (*) Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     App = (*) App Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     App = (*) Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     App = (*) "empty?" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     App = (*) "head" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     App = (*) "tail" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Int = (*) Num ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     List = (*) App [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     List = (*) App "::" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     Mul = (*) List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     Mul = (*) Mul "*" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     Num = (*) "Num" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        13, // on "(", goto 12
+        //     Atom = "true" (*) ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        -11, // on "(", reduce `Atom = "true" => ActionFn(29);`
+        -11, // on ")", reduce `Atom = "true" => ActionFn(29);`
+        -11, // on "*", reduce `Atom = "true" => ActionFn(29);`
+        -11, // on "+", reduce `Atom = "true" => ActionFn(29);`
+        -11, // on ",", reduce `Atom = "true" => ActionFn(29);`
+        -11, // on "-", reduce `Atom = "true" => ActionFn(29);`
+        0, // on "->", error
+        -11, // on "::", reduce `Atom = "true" => ActionFn(29);`
+        -11, // on "<", reduce `Atom = "true" => ActionFn(29);`
+        0, // on "<-", error
+        -11, // on "=", reduce `Atom = "true" => ActionFn(29);`
+        -11, // on ">", reduce `Atom = "true" => ActionFn(29);`
+        -11, // on "Iden", reduce `Atom = "true" => ActionFn(29);`
+        -11, // on "Num", reduce `Atom = "true" => ActionFn(29);`
+        0, // on "[", error
+        -11, // on "]", reduce `Atom = "true" => ActionFn(29);`
+        0, // on "array", error
+        0, // on "begin", error
+        -11, // on "else", reduce `Atom = "true" => ActionFn(29);`
+        -11, // on "empty", reduce `Atom = "true" => ActionFn(29);`
+        0, // on "empty?", error
+        -11, // on "end", reduce `Atom = "true" => ActionFn(29);`
+        -11, // on "false", reduce `Atom = "true" => ActionFn(29);`
+        0, // on "fix", error
+        0, // on "fun", error
+        0, // on "head", error
+        0, // on "if", error
+        -11, // on "in", reduce `Atom = "true" => ActionFn(29);`
+        0, // on "let", error
+        0, // on "set", error
+        0, // on "tail", error
+        -11, // on "then", reduce `Atom = "true" => ActionFn(29);`
+        -11, // on "true", reduce `Atom = "true" => ActionFn(29);`
+        // State 28
+        //     Add = Add "+" (*) Mul [")", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     App = (*) App Atom ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) Atom ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) "array" "(" Add "," Add ")" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) "empty?" Atom ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) "head" Atom ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) "tail" Atom ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) Ident ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) Int ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "empty" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "false" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "true" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Get = (*) App [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Get = (*) Ident "[" Add "]" [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Get = (*) Ident "[" Add "]" "<-" Atom [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Ident = (*) "Iden" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "[", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Int = (*) Num ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     List = (*) Get [")", "*", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     List = (*) Get "::" List [")", "*", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Mul = (*) List [")", "*", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Mul = (*) Mul "*" List [")", "*", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Num = (*) "Num" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        14, // on "(", goto 13
         0, // on ")", error
         0, // on "*", error
         0, // on "+", error
@@ -1092,31 +1272,94 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
-        14, // on "Iden", goto 13
-        15, // on "Num", goto 14
+        15, // on "Iden", goto 14
+        16, // on "Num", goto 15
+        0, // on "[", error
+        0, // on "]", error
+        17, // on "array", goto 16
         0, // on "begin", error
         0, // on "else", error
-        17, // on "empty", goto 16
-        18, // on "empty?", goto 17
+        19, // on "empty", goto 18
+        20, // on "empty?", goto 19
         0, // on "end", error
-        19, // on "false", goto 18
+        21, // on "false", goto 20
         0, // on "fix", error
         0, // on "fun", error
-        22, // on "head", goto 21
+        24, // on "head", goto 23
         0, // on "if", error
         0, // on "in", error
         0, // on "let", error
-        25, // on "tail", goto 24
+        0, // on "set", error
+        27, // on "tail", goto 26
         0, // on "then", error
-        26, // on "true", goto 25
-        // State 28
+        28, // on "true", goto 27
+        // State 29
+        //     Add = Add "-" (*) Mul [")", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     App = (*) App Atom ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) Atom ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) "array" "(" Add "," Add ")" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) "empty?" Atom ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) "head" Atom ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) "tail" Atom ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) Ident ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) Int ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "empty" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "false" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "true" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Get = (*) App [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Get = (*) Ident "[" Add "]" [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Get = (*) Ident "[" Add "]" "<-" Atom [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Ident = (*) "Iden" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "[", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Int = (*) Num ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     List = (*) Get [")", "*", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     List = (*) Get "::" List [")", "*", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Mul = (*) List [")", "*", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Mul = (*) Mul "*" List [")", "*", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Num = (*) "Num" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        14, // on "(", goto 13
+        0, // on ")", error
+        0, // on "*", error
+        0, // on "+", error
+        0, // on ",", error
+        0, // on "-", error
+        0, // on "->", error
+        0, // on "::", error
+        0, // on "<", error
+        0, // on "<-", error
+        0, // on "=", error
+        0, // on ">", error
+        15, // on "Iden", goto 14
+        16, // on "Num", goto 15
+        0, // on "[", error
+        0, // on "]", error
+        17, // on "array", goto 16
+        0, // on "begin", error
+        0, // on "else", error
+        19, // on "empty", goto 18
+        20, // on "empty?", goto 19
+        0, // on "end", error
+        21, // on "false", goto 20
+        0, // on "fix", error
+        0, // on "fun", error
+        24, // on "head", goto 23
+        0, // on "if", error
+        0, // on "in", error
+        0, // on "let", error
+        0, // on "set", error
+        27, // on "tail", goto 26
+        0, // on "then", error
+        28, // on "true", goto 27
+        // State 30
         //     Add = (*) Add "+" Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Add = (*) Add "-" Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Add = (*) Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     App = (*) App Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) "array" "(" Add "," Add ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) "empty?" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) "head" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) "tail" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
@@ -1131,14 +1374,17 @@ mod __parse__Program {
         //     Cmp = Add "<" (*) Cmp [")", "else", "end", "in", "then", EOF]
         //     Cmp = (*) Add "=" Cmp [")", "else", "end", "in", "then", EOF]
         //     Cmp = (*) Add ">" Cmp [")", "else", "end", "in", "then", EOF]
-        //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Get = (*) App [")", "*", "+", "-", "::", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     Get = (*) Ident "[" Add "]" [")", "*", "+", "-", "::", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     Get = (*) Ident "[" Add "]" "<-" Atom [")", "*", "+", "-", "::", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "[", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Int = (*) Num ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     List = (*) App [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     List = (*) App "::" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     List = (*) Get [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     List = (*) Get "::" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Mul = (*) List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Mul = (*) Mul "*" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Num = (*) "Num" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        13, // on "(", goto 12
+        14, // on "(", goto 13
         0, // on ")", error
         0, // on "*", error
         0, // on "+", error
@@ -1147,31 +1393,37 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
-        14, // on "Iden", goto 13
-        15, // on "Num", goto 14
+        15, // on "Iden", goto 14
+        16, // on "Num", goto 15
+        0, // on "[", error
+        0, // on "]", error
+        17, // on "array", goto 16
         0, // on "begin", error
         0, // on "else", error
-        17, // on "empty", goto 16
-        18, // on "empty?", goto 17
+        19, // on "empty", goto 18
+        20, // on "empty?", goto 19
         0, // on "end", error
-        19, // on "false", goto 18
+        21, // on "false", goto 20
         0, // on "fix", error
         0, // on "fun", error
-        22, // on "head", goto 21
+        24, // on "head", goto 23
         0, // on "if", error
         0, // on "in", error
         0, // on "let", error
-        25, // on "tail", goto 24
+        0, // on "set", error
+        27, // on "tail", goto 26
         0, // on "then", error
-        26, // on "true", goto 25
-        // State 29
+        28, // on "true", goto 27
+        // State 31
         //     Add = (*) Add "+" Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Add = (*) Add "-" Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Add = (*) Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     App = (*) App Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) "array" "(" Add "," Add ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) "empty?" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) "head" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) "tail" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
@@ -1186,14 +1438,17 @@ mod __parse__Program {
         //     Cmp = (*) Add "=" Cmp [")", "else", "end", "in", "then", EOF]
         //     Cmp = Add "=" (*) Cmp [")", "else", "end", "in", "then", EOF]
         //     Cmp = (*) Add ">" Cmp [")", "else", "end", "in", "then", EOF]
-        //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Get = (*) App [")", "*", "+", "-", "::", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     Get = (*) Ident "[" Add "]" [")", "*", "+", "-", "::", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     Get = (*) Ident "[" Add "]" "<-" Atom [")", "*", "+", "-", "::", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "[", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Int = (*) Num ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     List = (*) App [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     List = (*) App "::" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     List = (*) Get [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     List = (*) Get "::" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Mul = (*) List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Mul = (*) Mul "*" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Num = (*) "Num" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        13, // on "(", goto 12
+        14, // on "(", goto 13
         0, // on ")", error
         0, // on "*", error
         0, // on "+", error
@@ -1202,31 +1457,37 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
-        14, // on "Iden", goto 13
-        15, // on "Num", goto 14
+        15, // on "Iden", goto 14
+        16, // on "Num", goto 15
+        0, // on "[", error
+        0, // on "]", error
+        17, // on "array", goto 16
         0, // on "begin", error
         0, // on "else", error
-        17, // on "empty", goto 16
-        18, // on "empty?", goto 17
+        19, // on "empty", goto 18
+        20, // on "empty?", goto 19
         0, // on "end", error
-        19, // on "false", goto 18
+        21, // on "false", goto 20
         0, // on "fix", error
         0, // on "fun", error
-        22, // on "head", goto 21
+        24, // on "head", goto 23
         0, // on "if", error
         0, // on "in", error
         0, // on "let", error
-        25, // on "tail", goto 24
+        0, // on "set", error
+        27, // on "tail", goto 26
         0, // on "then", error
-        26, // on "true", goto 25
-        // State 30
+        28, // on "true", goto 27
+        // State 32
         //     Add = (*) Add "+" Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Add = (*) Add "-" Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Add = (*) Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     App = (*) App Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) "array" "(" Add "," Add ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) "empty?" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) "head" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) "tail" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
@@ -1241,14 +1502,17 @@ mod __parse__Program {
         //     Cmp = (*) Add "=" Cmp [")", "else", "end", "in", "then", EOF]
         //     Cmp = (*) Add ">" Cmp [")", "else", "end", "in", "then", EOF]
         //     Cmp = Add ">" (*) Cmp [")", "else", "end", "in", "then", EOF]
-        //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Get = (*) App [")", "*", "+", "-", "::", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     Get = (*) Ident "[" Add "]" [")", "*", "+", "-", "::", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     Get = (*) Ident "[" Add "]" "<-" Atom [")", "*", "+", "-", "::", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "[", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Int = (*) Num ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     List = (*) App [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     List = (*) App "::" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     List = (*) Get [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     List = (*) Get "::" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Mul = (*) List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Mul = (*) Mul "*" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Num = (*) "Num" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        13, // on "(", goto 12
+        14, // on "(", goto 13
         0, // on ")", error
         0, // on "*", error
         0, // on "+", error
@@ -1257,151 +1521,275 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
-        14, // on "Iden", goto 13
-        15, // on "Num", goto 14
+        15, // on "Iden", goto 14
+        16, // on "Num", goto 15
+        0, // on "[", error
+        0, // on "]", error
+        17, // on "array", goto 16
         0, // on "begin", error
         0, // on "else", error
-        17, // on "empty", goto 16
-        18, // on "empty?", goto 17
+        19, // on "empty", goto 18
+        20, // on "empty?", goto 19
         0, // on "end", error
-        19, // on "false", goto 18
+        21, // on "false", goto 20
         0, // on "fix", error
         0, // on "fun", error
-        22, // on "head", goto 21
+        24, // on "head", goto 23
         0, // on "if", error
         0, // on "in", error
         0, // on "let", error
-        25, // on "tail", goto 24
+        0, // on "set", error
+        27, // on "tail", goto 26
         0, // on "then", error
-        26, // on "true", goto 25
-        // State 31
-        //     App = App Atom (*) ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        -7, // on "(", reduce `App = App, Atom => ActionFn(22);`
-        -7, // on ")", reduce `App = App, Atom => ActionFn(22);`
-        -7, // on "*", reduce `App = App, Atom => ActionFn(22);`
-        -7, // on "+", reduce `App = App, Atom => ActionFn(22);`
-        0, // on ",", error
-        -7, // on "-", reduce `App = App, Atom => ActionFn(22);`
+        28, // on "true", goto 27
+        // State 33
+        //     App = App Atom (*) ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        -8, // on "(", reduce `App = App, Atom => ActionFn(26);`
+        -8, // on ")", reduce `App = App, Atom => ActionFn(26);`
+        -8, // on "*", reduce `App = App, Atom => ActionFn(26);`
+        -8, // on "+", reduce `App = App, Atom => ActionFn(26);`
+        -8, // on ",", reduce `App = App, Atom => ActionFn(26);`
+        -8, // on "-", reduce `App = App, Atom => ActionFn(26);`
         0, // on "->", error
-        -7, // on "::", reduce `App = App, Atom => ActionFn(22);`
-        -7, // on "<", reduce `App = App, Atom => ActionFn(22);`
-        -7, // on "=", reduce `App = App, Atom => ActionFn(22);`
-        -7, // on ">", reduce `App = App, Atom => ActionFn(22);`
-        -7, // on "Iden", reduce `App = App, Atom => ActionFn(22);`
-        -7, // on "Num", reduce `App = App, Atom => ActionFn(22);`
+        -8, // on "::", reduce `App = App, Atom => ActionFn(26);`
+        -8, // on "<", reduce `App = App, Atom => ActionFn(26);`
+        0, // on "<-", error
+        -8, // on "=", reduce `App = App, Atom => ActionFn(26);`
+        -8, // on ">", reduce `App = App, Atom => ActionFn(26);`
+        -8, // on "Iden", reduce `App = App, Atom => ActionFn(26);`
+        -8, // on "Num", reduce `App = App, Atom => ActionFn(26);`
+        0, // on "[", error
+        -8, // on "]", reduce `App = App, Atom => ActionFn(26);`
+        0, // on "array", error
         0, // on "begin", error
-        -7, // on "else", reduce `App = App, Atom => ActionFn(22);`
-        -7, // on "empty", reduce `App = App, Atom => ActionFn(22);`
+        -8, // on "else", reduce `App = App, Atom => ActionFn(26);`
+        -8, // on "empty", reduce `App = App, Atom => ActionFn(26);`
         0, // on "empty?", error
-        -7, // on "end", reduce `App = App, Atom => ActionFn(22);`
-        -7, // on "false", reduce `App = App, Atom => ActionFn(22);`
+        -8, // on "end", reduce `App = App, Atom => ActionFn(26);`
+        -8, // on "false", reduce `App = App, Atom => ActionFn(26);`
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        -7, // on "in", reduce `App = App, Atom => ActionFn(22);`
+        -8, // on "in", reduce `App = App, Atom => ActionFn(26);`
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
-        -7, // on "then", reduce `App = App, Atom => ActionFn(22);`
-        -7, // on "true", reduce `App = App, Atom => ActionFn(22);`
-        // State 32
-        //     App = (*) App Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     App = (*) Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     App = (*) "empty?" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     App = (*) "head" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     App = (*) "tail" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Int = (*) Num ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     List = (*) App [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     List = (*) App "::" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     List = App "::" (*) List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     Num = (*) "Num" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        13, // on "(", goto 12
-        0, // on ")", error
-        0, // on "*", error
-        0, // on "+", error
-        0, // on ",", error
-        0, // on "-", error
-        0, // on "->", error
-        0, // on "::", error
-        0, // on "<", error
-        0, // on "=", error
-        0, // on ">", error
-        14, // on "Iden", goto 13
-        15, // on "Num", goto 14
-        0, // on "begin", error
-        0, // on "else", error
-        17, // on "empty", goto 16
-        18, // on "empty?", goto 17
-        0, // on "end", error
-        19, // on "false", goto 18
-        0, // on "fix", error
-        0, // on "fun", error
-        22, // on "head", goto 21
-        0, // on "if", error
-        0, // on "in", error
-        0, // on "let", error
-        25, // on "tail", goto 24
-        0, // on "then", error
-        26, // on "true", goto 25
-        // State 33
-        //     App = (*) App Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     App = (*) Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     App = (*) "empty?" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     App = (*) "head" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     App = (*) "tail" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     Int = (*) Num ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     List = (*) App [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     List = (*) App "::" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     Mul = Mul "*" (*) List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     Num = (*) "Num" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        13, // on "(", goto 12
-        0, // on ")", error
-        0, // on "*", error
-        0, // on "+", error
-        0, // on ",", error
-        0, // on "-", error
-        0, // on "->", error
-        0, // on "::", error
-        0, // on "<", error
-        0, // on "=", error
-        0, // on ">", error
-        14, // on "Iden", goto 13
-        15, // on "Num", goto 14
-        0, // on "begin", error
-        0, // on "else", error
-        17, // on "empty", goto 16
-        18, // on "empty?", goto 17
-        0, // on "end", error
-        19, // on "false", goto 18
-        0, // on "fix", error
-        0, // on "fun", error
-        22, // on "head", goto 21
-        0, // on "if", error
-        0, // on "in", error
-        0, // on "let", error
-        25, // on "tail", goto 24
-        0, // on "then", error
-        26, // on "true", goto 25
+        -8, // on "then", reduce `App = App, Atom => ActionFn(26);`
+        -8, // on "true", reduce `App = App, Atom => ActionFn(26);`
         // State 34
+        //     Atom = Ident (*) ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        -10, // on "(", reduce `Atom = Ident => ActionFn(28);`
+        -10, // on ")", reduce `Atom = Ident => ActionFn(28);`
+        -10, // on "*", reduce `Atom = Ident => ActionFn(28);`
+        -10, // on "+", reduce `Atom = Ident => ActionFn(28);`
+        -10, // on ",", reduce `Atom = Ident => ActionFn(28);`
+        -10, // on "-", reduce `Atom = Ident => ActionFn(28);`
+        0, // on "->", error
+        -10, // on "::", reduce `Atom = Ident => ActionFn(28);`
+        -10, // on "<", reduce `Atom = Ident => ActionFn(28);`
+        0, // on "<-", error
+        -10, // on "=", reduce `Atom = Ident => ActionFn(28);`
+        -10, // on ">", reduce `Atom = Ident => ActionFn(28);`
+        -10, // on "Iden", reduce `Atom = Ident => ActionFn(28);`
+        -10, // on "Num", reduce `Atom = Ident => ActionFn(28);`
+        0, // on "[", error
+        -10, // on "]", reduce `Atom = Ident => ActionFn(28);`
+        0, // on "array", error
+        0, // on "begin", error
+        -10, // on "else", reduce `Atom = Ident => ActionFn(28);`
+        -10, // on "empty", reduce `Atom = Ident => ActionFn(28);`
+        0, // on "empty?", error
+        -10, // on "end", reduce `Atom = Ident => ActionFn(28);`
+        -10, // on "false", reduce `Atom = Ident => ActionFn(28);`
+        0, // on "fix", error
+        0, // on "fun", error
+        0, // on "head", error
+        0, // on "if", error
+        -10, // on "in", reduce `Atom = Ident => ActionFn(28);`
+        0, // on "let", error
+        0, // on "set", error
+        0, // on "tail", error
+        -10, // on "then", reduce `Atom = Ident => ActionFn(28);`
+        -10, // on "true", reduce `Atom = Ident => ActionFn(28);`
+        // State 35
+        //     App = (*) App Atom ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) Atom ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) "array" "(" Add "," Add ")" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) "empty?" Atom ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) "head" Atom ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) "tail" Atom ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) Ident ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) Int ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "empty" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "false" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "true" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Get = (*) App [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Get = (*) Ident "[" Add "]" [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Get = (*) Ident "[" Add "]" "<-" Atom [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Ident = (*) "Iden" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "[", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Int = (*) Num ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     List = (*) Get [")", "*", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     List = (*) Get "::" List [")", "*", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     List = Get "::" (*) List [")", "*", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Num = (*) "Num" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        14, // on "(", goto 13
+        0, // on ")", error
+        0, // on "*", error
+        0, // on "+", error
+        0, // on ",", error
+        0, // on "-", error
+        0, // on "->", error
+        0, // on "::", error
+        0, // on "<", error
+        0, // on "<-", error
+        0, // on "=", error
+        0, // on ">", error
+        15, // on "Iden", goto 14
+        16, // on "Num", goto 15
+        0, // on "[", error
+        0, // on "]", error
+        17, // on "array", goto 16
+        0, // on "begin", error
+        0, // on "else", error
+        19, // on "empty", goto 18
+        20, // on "empty?", goto 19
+        0, // on "end", error
+        21, // on "false", goto 20
+        0, // on "fix", error
+        0, // on "fun", error
+        24, // on "head", goto 23
+        0, // on "if", error
+        0, // on "in", error
+        0, // on "let", error
+        0, // on "set", error
+        27, // on "tail", goto 26
+        0, // on "then", error
+        28, // on "true", goto 27
+        // State 36
+        //     Add = (*) Add "+" Mul ["+", "-", "]"]
+        //     Add = (*) Add "-" Mul ["+", "-", "]"]
+        //     Add = (*) Mul ["+", "-", "]"]
+        //     App = (*) App Atom ["(", "*", "+", "-", "::", "Iden", "Num", "]", "empty", "false", "true"]
+        //     App = (*) Atom ["(", "*", "+", "-", "::", "Iden", "Num", "]", "empty", "false", "true"]
+        //     App = (*) "array" "(" Add "," Add ")" ["(", "*", "+", "-", "::", "Iden", "Num", "]", "empty", "false", "true"]
+        //     App = (*) "empty?" Atom ["(", "*", "+", "-", "::", "Iden", "Num", "]", "empty", "false", "true"]
+        //     App = (*) "head" Atom ["(", "*", "+", "-", "::", "Iden", "Num", "]", "empty", "false", "true"]
+        //     App = (*) "tail" Atom ["(", "*", "+", "-", "::", "Iden", "Num", "]", "empty", "false", "true"]
+        //     Atom = (*) Ident ["(", "*", "+", "-", "::", "Iden", "Num", "]", "empty", "false", "true"]
+        //     Atom = (*) Int ["(", "*", "+", "-", "::", "Iden", "Num", "]", "empty", "false", "true"]
+        //     Atom = (*) "(" Exprs ")" ["(", "*", "+", "-", "::", "Iden", "Num", "]", "empty", "false", "true"]
+        //     Atom = (*) "empty" ["(", "*", "+", "-", "::", "Iden", "Num", "]", "empty", "false", "true"]
+        //     Atom = (*) "false" ["(", "*", "+", "-", "::", "Iden", "Num", "]", "empty", "false", "true"]
+        //     Atom = (*) "true" ["(", "*", "+", "-", "::", "Iden", "Num", "]", "empty", "false", "true"]
+        //     Get = (*) App ["*", "+", "-", "::", "]"]
+        //     Get = (*) Ident "[" Add "]" ["*", "+", "-", "::", "]"]
+        //     Get = Ident "[" (*) Add "]" [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Get = (*) Ident "[" Add "]" "<-" Atom ["*", "+", "-", "::", "]"]
+        //     Get = Ident "[" (*) Add "]" "<-" Atom [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Ident = (*) "Iden" ["(", "*", "+", "-", "::", "Iden", "Num", "[", "]", "empty", "false", "true"]
+        //     Int = (*) Num ["(", "*", "+", "-", "::", "Iden", "Num", "]", "empty", "false", "true"]
+        //     List = (*) Get ["*", "+", "-", "]"]
+        //     List = (*) Get "::" List ["*", "+", "-", "]"]
+        //     Mul = (*) List ["*", "+", "-", "]"]
+        //     Mul = (*) Mul "*" List ["*", "+", "-", "]"]
+        //     Num = (*) "Num" ["(", "*", "+", "-", "::", "Iden", "Num", "]", "empty", "false", "true"]
+        14, // on "(", goto 13
+        0, // on ")", error
+        0, // on "*", error
+        0, // on "+", error
+        0, // on ",", error
+        0, // on "-", error
+        0, // on "->", error
+        0, // on "::", error
+        0, // on "<", error
+        0, // on "<-", error
+        0, // on "=", error
+        0, // on ">", error
+        15, // on "Iden", goto 14
+        16, // on "Num", goto 15
+        0, // on "[", error
+        0, // on "]", error
+        17, // on "array", goto 16
+        0, // on "begin", error
+        0, // on "else", error
+        19, // on "empty", goto 18
+        20, // on "empty?", goto 19
+        0, // on "end", error
+        21, // on "false", goto 20
+        0, // on "fix", error
+        0, // on "fun", error
+        24, // on "head", goto 23
+        0, // on "if", error
+        0, // on "in", error
+        0, // on "let", error
+        0, // on "set", error
+        27, // on "tail", goto 26
+        0, // on "then", error
+        28, // on "true", goto 27
+        // State 37
+        //     App = (*) App Atom ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) Atom ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) "array" "(" Add "," Add ")" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) "empty?" Atom ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) "head" Atom ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) "tail" Atom ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) Ident ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) Int ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "empty" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "false" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Atom = (*) "true" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Get = (*) App [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Get = (*) Ident "[" Add "]" [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Get = (*) Ident "[" Add "]" "<-" Atom [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Ident = (*) "Iden" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "[", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Int = (*) Num ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     List = (*) Get [")", "*", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     List = (*) Get "::" List [")", "*", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Mul = Mul "*" (*) List [")", "*", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Num = (*) "Num" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        14, // on "(", goto 13
+        0, // on ")", error
+        0, // on "*", error
+        0, // on "+", error
+        0, // on ",", error
+        0, // on "-", error
+        0, // on "->", error
+        0, // on "::", error
+        0, // on "<", error
+        0, // on "<-", error
+        0, // on "=", error
+        0, // on ">", error
+        15, // on "Iden", goto 14
+        16, // on "Num", goto 15
+        0, // on "[", error
+        0, // on "]", error
+        17, // on "array", goto 16
+        0, // on "begin", error
+        0, // on "else", error
+        19, // on "empty", goto 18
+        20, // on "empty?", goto 19
+        0, // on "end", error
+        21, // on "false", goto 20
+        0, // on "fix", error
+        0, // on "fun", error
+        24, // on "head", goto 23
+        0, // on "if", error
+        0, // on "in", error
+        0, // on "let", error
+        0, // on "set", error
+        27, // on "tail", goto 26
+        0, // on "then", error
+        28, // on "true", goto 27
+        // State 38
         //     Exprs = Expr (*) [")"]
         0, // on "(", error
-        -25, // on ")", reduce `Exprs = Expr => ActionFn(30);`
+        -26, // on ")", reduce `Exprs = Expr => ActionFn(34);`
         0, // on "*", error
         0, // on "+", error
         0, // on ",", error
@@ -1409,10 +1797,14 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
         0, // on "Iden", error
         0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
         0, // on "begin", error
         0, // on "else", error
         0, // on "empty", error
@@ -1425,13 +1817,14 @@ mod __parse__Program {
         0, // on "if", error
         0, // on "in", error
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
         0, // on "then", error
         0, // on "true", error
-        // State 35
-        //     Atom = "(" Exprs (*) ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        // State 39
+        //     Atom = "(" Exprs (*) ")" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
         0, // on "(", error
-        52, // on ")", goto 51
+        58, // on ")", goto 57
         0, // on "*", error
         0, // on "+", error
         0, // on ",", error
@@ -1439,10 +1832,14 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
         0, // on "Iden", error
         0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
         0, // on "begin", error
         0, // on "else", error
         0, // on "empty", error
@@ -1455,10 +1852,71 @@ mod __parse__Program {
         0, // on "if", error
         0, // on "in", error
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
         0, // on "then", error
         0, // on "true", error
-        // State 36
+        // State 40
+        //     Add = (*) Add "+" Mul ["+", ",", "-"]
+        //     Add = (*) Add "-" Mul ["+", ",", "-"]
+        //     Add = (*) Mul ["+", ",", "-"]
+        //     App = (*) App Atom ["(", "*", "+", ",", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     App = (*) Atom ["(", "*", "+", ",", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     App = (*) "array" "(" Add "," Add ")" ["(", "*", "+", ",", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     App = "array" "(" (*) Add "," Add ")" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) "empty?" Atom ["(", "*", "+", ",", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     App = (*) "head" Atom ["(", "*", "+", ",", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     App = (*) "tail" Atom ["(", "*", "+", ",", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     Atom = (*) Ident ["(", "*", "+", ",", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     Atom = (*) Int ["(", "*", "+", ",", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     Atom = (*) "(" Exprs ")" ["(", "*", "+", ",", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     Atom = (*) "empty" ["(", "*", "+", ",", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     Atom = (*) "false" ["(", "*", "+", ",", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     Atom = (*) "true" ["(", "*", "+", ",", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     Get = (*) App ["*", "+", ",", "-", "::"]
+        //     Get = (*) Ident "[" Add "]" ["*", "+", ",", "-", "::"]
+        //     Get = (*) Ident "[" Add "]" "<-" Atom ["*", "+", ",", "-", "::"]
+        //     Ident = (*) "Iden" ["(", "*", "+", ",", "-", "::", "Iden", "Num", "[", "empty", "false", "true"]
+        //     Int = (*) Num ["(", "*", "+", ",", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     List = (*) Get ["*", "+", ",", "-"]
+        //     List = (*) Get "::" List ["*", "+", ",", "-"]
+        //     Mul = (*) List ["*", "+", ",", "-"]
+        //     Mul = (*) Mul "*" List ["*", "+", ",", "-"]
+        //     Num = (*) "Num" ["(", "*", "+", ",", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        14, // on "(", goto 13
+        0, // on ")", error
+        0, // on "*", error
+        0, // on "+", error
+        0, // on ",", error
+        0, // on "-", error
+        0, // on "->", error
+        0, // on "::", error
+        0, // on "<", error
+        0, // on "<-", error
+        0, // on "=", error
+        0, // on ">", error
+        15, // on "Iden", goto 14
+        16, // on "Num", goto 15
+        0, // on "[", error
+        0, // on "]", error
+        17, // on "array", goto 16
+        0, // on "begin", error
+        0, // on "else", error
+        19, // on "empty", goto 18
+        20, // on "empty?", goto 19
+        0, // on "end", error
+        21, // on "false", goto 20
+        0, // on "fix", error
+        0, // on "fun", error
+        24, // on "head", goto 23
+        0, // on "if", error
+        0, // on "in", error
+        0, // on "let", error
+        0, // on "set", error
+        27, // on "tail", goto 26
+        0, // on "then", error
+        28, // on "true", goto 27
+        // State 41
         //     Expr = "begin" Expr (*) "end" [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
         0, // on ")", error
@@ -1469,15 +1927,19 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
         0, // on "Iden", error
         0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
         0, // on "begin", error
         0, // on "else", error
         0, // on "empty", error
         0, // on "empty?", error
-        53, // on "end", goto 52
+        60, // on "end", goto 59
         0, // on "false", error
         0, // on "fix", error
         0, // on "fun", error
@@ -1485,40 +1947,46 @@ mod __parse__Program {
         0, // on "if", error
         0, // on "in", error
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
         0, // on "then", error
         0, // on "true", error
-        // State 37
-        //     App = "empty?" Atom (*) ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        -6, // on "(", reduce `App = "empty?", Atom => ActionFn(21);`
-        -6, // on ")", reduce `App = "empty?", Atom => ActionFn(21);`
-        -6, // on "*", reduce `App = "empty?", Atom => ActionFn(21);`
-        -6, // on "+", reduce `App = "empty?", Atom => ActionFn(21);`
-        0, // on ",", error
-        -6, // on "-", reduce `App = "empty?", Atom => ActionFn(21);`
+        // State 42
+        //     App = "empty?" Atom (*) ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        -7, // on "(", reduce `App = "empty?", Atom => ActionFn(25);`
+        -7, // on ")", reduce `App = "empty?", Atom => ActionFn(25);`
+        -7, // on "*", reduce `App = "empty?", Atom => ActionFn(25);`
+        -7, // on "+", reduce `App = "empty?", Atom => ActionFn(25);`
+        -7, // on ",", reduce `App = "empty?", Atom => ActionFn(25);`
+        -7, // on "-", reduce `App = "empty?", Atom => ActionFn(25);`
         0, // on "->", error
-        -6, // on "::", reduce `App = "empty?", Atom => ActionFn(21);`
-        -6, // on "<", reduce `App = "empty?", Atom => ActionFn(21);`
-        -6, // on "=", reduce `App = "empty?", Atom => ActionFn(21);`
-        -6, // on ">", reduce `App = "empty?", Atom => ActionFn(21);`
-        -6, // on "Iden", reduce `App = "empty?", Atom => ActionFn(21);`
-        -6, // on "Num", reduce `App = "empty?", Atom => ActionFn(21);`
+        -7, // on "::", reduce `App = "empty?", Atom => ActionFn(25);`
+        -7, // on "<", reduce `App = "empty?", Atom => ActionFn(25);`
+        0, // on "<-", error
+        -7, // on "=", reduce `App = "empty?", Atom => ActionFn(25);`
+        -7, // on ">", reduce `App = "empty?", Atom => ActionFn(25);`
+        -7, // on "Iden", reduce `App = "empty?", Atom => ActionFn(25);`
+        -7, // on "Num", reduce `App = "empty?", Atom => ActionFn(25);`
+        0, // on "[", error
+        -7, // on "]", reduce `App = "empty?", Atom => ActionFn(25);`
+        0, // on "array", error
         0, // on "begin", error
-        -6, // on "else", reduce `App = "empty?", Atom => ActionFn(21);`
-        -6, // on "empty", reduce `App = "empty?", Atom => ActionFn(21);`
+        -7, // on "else", reduce `App = "empty?", Atom => ActionFn(25);`
+        -7, // on "empty", reduce `App = "empty?", Atom => ActionFn(25);`
         0, // on "empty?", error
-        -6, // on "end", reduce `App = "empty?", Atom => ActionFn(21);`
-        -6, // on "false", reduce `App = "empty?", Atom => ActionFn(21);`
+        -7, // on "end", reduce `App = "empty?", Atom => ActionFn(25);`
+        -7, // on "false", reduce `App = "empty?", Atom => ActionFn(25);`
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        -6, // on "in", reduce `App = "empty?", Atom => ActionFn(21);`
+        -7, // on "in", reduce `App = "empty?", Atom => ActionFn(25);`
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
-        -6, // on "then", reduce `App = "empty?", Atom => ActionFn(21);`
-        -6, // on "true", reduce `App = "empty?", Atom => ActionFn(21);`
-        // State 38
+        -7, // on "then", reduce `App = "empty?", Atom => ActionFn(25);`
+        -7, // on "true", reduce `App = "empty?", Atom => ActionFn(25);`
+        // State 43
         //     Expr = "fix" Ident (*) "->" Expr [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
         0, // on ")", error
@@ -1526,13 +1994,17 @@ mod __parse__Program {
         0, // on "+", error
         0, // on ",", error
         0, // on "-", error
-        54, // on "->", goto 53
+        61, // on "->", goto 60
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
         0, // on "Iden", error
         0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
         0, // on "begin", error
         0, // on "else", error
         0, // on "empty", error
@@ -1545,10 +2017,11 @@ mod __parse__Program {
         0, // on "if", error
         0, // on "in", error
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
         0, // on "then", error
         0, // on "true", error
-        // State 39
+        // State 44
         //     Expr = "fun" Ident (*) "->" Expr [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
         0, // on ")", error
@@ -1556,13 +2029,17 @@ mod __parse__Program {
         0, // on "+", error
         0, // on ",", error
         0, // on "-", error
-        55, // on "->", goto 54
+        62, // on "->", goto 61
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
         0, // on "Iden", error
         0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
         0, // on "begin", error
         0, // on "else", error
         0, // on "empty", error
@@ -1575,40 +2052,46 @@ mod __parse__Program {
         0, // on "if", error
         0, // on "in", error
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
         0, // on "then", error
         0, // on "true", error
-        // State 40
-        //     App = "head" Atom (*) ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        -4, // on "(", reduce `App = "head", Atom => ActionFn(19);`
-        -4, // on ")", reduce `App = "head", Atom => ActionFn(19);`
-        -4, // on "*", reduce `App = "head", Atom => ActionFn(19);`
-        -4, // on "+", reduce `App = "head", Atom => ActionFn(19);`
-        0, // on ",", error
-        -4, // on "-", reduce `App = "head", Atom => ActionFn(19);`
+        // State 45
+        //     App = "head" Atom (*) ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        -5, // on "(", reduce `App = "head", Atom => ActionFn(23);`
+        -5, // on ")", reduce `App = "head", Atom => ActionFn(23);`
+        -5, // on "*", reduce `App = "head", Atom => ActionFn(23);`
+        -5, // on "+", reduce `App = "head", Atom => ActionFn(23);`
+        -5, // on ",", reduce `App = "head", Atom => ActionFn(23);`
+        -5, // on "-", reduce `App = "head", Atom => ActionFn(23);`
         0, // on "->", error
-        -4, // on "::", reduce `App = "head", Atom => ActionFn(19);`
-        -4, // on "<", reduce `App = "head", Atom => ActionFn(19);`
-        -4, // on "=", reduce `App = "head", Atom => ActionFn(19);`
-        -4, // on ">", reduce `App = "head", Atom => ActionFn(19);`
-        -4, // on "Iden", reduce `App = "head", Atom => ActionFn(19);`
-        -4, // on "Num", reduce `App = "head", Atom => ActionFn(19);`
+        -5, // on "::", reduce `App = "head", Atom => ActionFn(23);`
+        -5, // on "<", reduce `App = "head", Atom => ActionFn(23);`
+        0, // on "<-", error
+        -5, // on "=", reduce `App = "head", Atom => ActionFn(23);`
+        -5, // on ">", reduce `App = "head", Atom => ActionFn(23);`
+        -5, // on "Iden", reduce `App = "head", Atom => ActionFn(23);`
+        -5, // on "Num", reduce `App = "head", Atom => ActionFn(23);`
+        0, // on "[", error
+        -5, // on "]", reduce `App = "head", Atom => ActionFn(23);`
+        0, // on "array", error
         0, // on "begin", error
-        -4, // on "else", reduce `App = "head", Atom => ActionFn(19);`
-        -4, // on "empty", reduce `App = "head", Atom => ActionFn(19);`
+        -5, // on "else", reduce `App = "head", Atom => ActionFn(23);`
+        -5, // on "empty", reduce `App = "head", Atom => ActionFn(23);`
         0, // on "empty?", error
-        -4, // on "end", reduce `App = "head", Atom => ActionFn(19);`
-        -4, // on "false", reduce `App = "head", Atom => ActionFn(19);`
+        -5, // on "end", reduce `App = "head", Atom => ActionFn(23);`
+        -5, // on "false", reduce `App = "head", Atom => ActionFn(23);`
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        -4, // on "in", reduce `App = "head", Atom => ActionFn(19);`
+        -5, // on "in", reduce `App = "head", Atom => ActionFn(23);`
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
-        -4, // on "then", reduce `App = "head", Atom => ActionFn(19);`
-        -4, // on "true", reduce `App = "head", Atom => ActionFn(19);`
-        // State 41
+        -5, // on "then", reduce `App = "head", Atom => ActionFn(23);`
+        -5, // on "true", reduce `App = "head", Atom => ActionFn(23);`
+        // State 46
         //     Expr = "if" Expr (*) "then" Expr "else" Expr [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
         0, // on ")", error
@@ -1619,10 +2102,14 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
         0, // on "Iden", error
         0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
         0, // on "begin", error
         0, // on "else", error
         0, // on "empty", error
@@ -1635,10 +2122,11 @@ mod __parse__Program {
         0, // on "if", error
         0, // on "in", error
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
-        56, // on "then", goto 55
+        63, // on "then", goto 62
         0, // on "true", error
-        // State 42
+        // State 47
         //     Expr = "let" Ident (*) "=" Expr "in" Expr [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
         0, // on ")", error
@@ -1649,10 +2137,14 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
-        57, // on "=", goto 56
+        0, // on "<-", error
+        64, // on "=", goto 63
         0, // on ">", error
         0, // on "Iden", error
         0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
         0, // on "begin", error
         0, // on "else", error
         0, // on "empty", error
@@ -1665,55 +2157,65 @@ mod __parse__Program {
         0, // on "if", error
         0, // on "in", error
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
         0, // on "then", error
         0, // on "true", error
-        // State 43
-        //     App = "tail" Atom (*) ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        -5, // on "(", reduce `App = "tail", Atom => ActionFn(20);`
-        -5, // on ")", reduce `App = "tail", Atom => ActionFn(20);`
-        -5, // on "*", reduce `App = "tail", Atom => ActionFn(20);`
-        -5, // on "+", reduce `App = "tail", Atom => ActionFn(20);`
-        0, // on ",", error
-        -5, // on "-", reduce `App = "tail", Atom => ActionFn(20);`
+        // State 48
+        //     App = "tail" Atom (*) ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        -6, // on "(", reduce `App = "tail", Atom => ActionFn(24);`
+        -6, // on ")", reduce `App = "tail", Atom => ActionFn(24);`
+        -6, // on "*", reduce `App = "tail", Atom => ActionFn(24);`
+        -6, // on "+", reduce `App = "tail", Atom => ActionFn(24);`
+        -6, // on ",", reduce `App = "tail", Atom => ActionFn(24);`
+        -6, // on "-", reduce `App = "tail", Atom => ActionFn(24);`
         0, // on "->", error
-        -5, // on "::", reduce `App = "tail", Atom => ActionFn(20);`
-        -5, // on "<", reduce `App = "tail", Atom => ActionFn(20);`
-        -5, // on "=", reduce `App = "tail", Atom => ActionFn(20);`
-        -5, // on ">", reduce `App = "tail", Atom => ActionFn(20);`
-        -5, // on "Iden", reduce `App = "tail", Atom => ActionFn(20);`
-        -5, // on "Num", reduce `App = "tail", Atom => ActionFn(20);`
+        -6, // on "::", reduce `App = "tail", Atom => ActionFn(24);`
+        -6, // on "<", reduce `App = "tail", Atom => ActionFn(24);`
+        0, // on "<-", error
+        -6, // on "=", reduce `App = "tail", Atom => ActionFn(24);`
+        -6, // on ">", reduce `App = "tail", Atom => ActionFn(24);`
+        -6, // on "Iden", reduce `App = "tail", Atom => ActionFn(24);`
+        -6, // on "Num", reduce `App = "tail", Atom => ActionFn(24);`
+        0, // on "[", error
+        -6, // on "]", reduce `App = "tail", Atom => ActionFn(24);`
+        0, // on "array", error
         0, // on "begin", error
-        -5, // on "else", reduce `App = "tail", Atom => ActionFn(20);`
-        -5, // on "empty", reduce `App = "tail", Atom => ActionFn(20);`
+        -6, // on "else", reduce `App = "tail", Atom => ActionFn(24);`
+        -6, // on "empty", reduce `App = "tail", Atom => ActionFn(24);`
         0, // on "empty?", error
-        -5, // on "end", reduce `App = "tail", Atom => ActionFn(20);`
-        -5, // on "false", reduce `App = "tail", Atom => ActionFn(20);`
+        -6, // on "end", reduce `App = "tail", Atom => ActionFn(24);`
+        -6, // on "false", reduce `App = "tail", Atom => ActionFn(24);`
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        -5, // on "in", reduce `App = "tail", Atom => ActionFn(20);`
+        -6, // on "in", reduce `App = "tail", Atom => ActionFn(24);`
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
-        -5, // on "then", reduce `App = "tail", Atom => ActionFn(20);`
-        -5, // on "true", reduce `App = "tail", Atom => ActionFn(20);`
-        // State 44
-        //     Add = Add "+" Mul (*) [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     Mul = Mul (*) "*" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
+        -6, // on "then", reduce `App = "tail", Atom => ActionFn(24);`
+        -6, // on "true", reduce `App = "tail", Atom => ActionFn(24);`
+        // State 49
+        //     Add = Add "+" Mul (*) [")", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Mul = Mul (*) "*" List [")", "*", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
         0, // on "(", error
         -2, // on ")", reduce `Add = Add, "+", Mul => ActionFn(13);`
-        34, // on "*", goto 33
+        38, // on "*", goto 37
         -2, // on "+", reduce `Add = Add, "+", Mul => ActionFn(13);`
-        0, // on ",", error
+        -2, // on ",", reduce `Add = Add, "+", Mul => ActionFn(13);`
         -2, // on "-", reduce `Add = Add, "+", Mul => ActionFn(13);`
         0, // on "->", error
         0, // on "::", error
         -2, // on "<", reduce `Add = Add, "+", Mul => ActionFn(13);`
+        0, // on "<-", error
         -2, // on "=", reduce `Add = Add, "+", Mul => ActionFn(13);`
         -2, // on ">", reduce `Add = Add, "+", Mul => ActionFn(13);`
         0, // on "Iden", error
         0, // on "Num", error
+        0, // on "[", error
+        -2, // on "]", reduce `Add = Add, "+", Mul => ActionFn(13);`
+        0, // on "array", error
         0, // on "begin", error
         -2, // on "else", reduce `Add = Add, "+", Mul => ActionFn(13);`
         0, // on "empty", error
@@ -1726,25 +2228,30 @@ mod __parse__Program {
         0, // on "if", error
         -2, // on "in", reduce `Add = Add, "+", Mul => ActionFn(13);`
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
         -2, // on "then", reduce `Add = Add, "+", Mul => ActionFn(13);`
         0, // on "true", error
-        // State 45
-        //     Add = Add "-" Mul (*) [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     Mul = Mul (*) "*" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
+        // State 50
+        //     Add = Add "-" Mul (*) [")", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Mul = Mul (*) "*" List [")", "*", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
         0, // on "(", error
         -1, // on ")", reduce `Add = Add, "-", Mul => ActionFn(12);`
-        34, // on "*", goto 33
+        38, // on "*", goto 37
         -1, // on "+", reduce `Add = Add, "-", Mul => ActionFn(12);`
-        0, // on ",", error
+        -1, // on ",", reduce `Add = Add, "-", Mul => ActionFn(12);`
         -1, // on "-", reduce `Add = Add, "-", Mul => ActionFn(12);`
         0, // on "->", error
         0, // on "::", error
         -1, // on "<", reduce `Add = Add, "-", Mul => ActionFn(12);`
+        0, // on "<-", error
         -1, // on "=", reduce `Add = Add, "-", Mul => ActionFn(12);`
         -1, // on ">", reduce `Add = Add, "-", Mul => ActionFn(12);`
         0, // on "Iden", error
         0, // on "Num", error
+        0, // on "[", error
+        -1, // on "]", reduce `Add = Add, "-", Mul => ActionFn(12);`
+        0, // on "array", error
         0, // on "begin", error
         -1, // on "else", reduce `Add = Add, "-", Mul => ActionFn(12);`
         0, // on "empty", error
@@ -1757,13 +2264,14 @@ mod __parse__Program {
         0, // on "if", error
         -1, // on "in", reduce `Add = Add, "-", Mul => ActionFn(12);`
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
         -1, // on "then", reduce `Add = Add, "-", Mul => ActionFn(12);`
         0, // on "true", error
-        // State 46
+        // State 51
         //     Cmp = Add "<" Cmp (*) [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
-        -16, // on ")", reduce `Cmp = Add, "<", Cmp => ActionFn(9);`
+        -17, // on ")", reduce `Cmp = Add, "<", Cmp => ActionFn(9);`
         0, // on "*", error
         0, // on "+", error
         0, // on ",", error
@@ -1771,29 +2279,34 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
         0, // on "Iden", error
         0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
         0, // on "begin", error
-        -16, // on "else", reduce `Cmp = Add, "<", Cmp => ActionFn(9);`
+        -17, // on "else", reduce `Cmp = Add, "<", Cmp => ActionFn(9);`
         0, // on "empty", error
         0, // on "empty?", error
-        -16, // on "end", reduce `Cmp = Add, "<", Cmp => ActionFn(9);`
+        -17, // on "end", reduce `Cmp = Add, "<", Cmp => ActionFn(9);`
         0, // on "false", error
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        -16, // on "in", reduce `Cmp = Add, "<", Cmp => ActionFn(9);`
+        -17, // on "in", reduce `Cmp = Add, "<", Cmp => ActionFn(9);`
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
-        -16, // on "then", reduce `Cmp = Add, "<", Cmp => ActionFn(9);`
+        -17, // on "then", reduce `Cmp = Add, "<", Cmp => ActionFn(9);`
         0, // on "true", error
-        // State 47
+        // State 52
         //     Cmp = Add "=" Cmp (*) [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
-        -15, // on ")", reduce `Cmp = Add, "=", Cmp => ActionFn(8);`
+        -16, // on ")", reduce `Cmp = Add, "=", Cmp => ActionFn(8);`
         0, // on "*", error
         0, // on "+", error
         0, // on ",", error
@@ -1801,181 +2314,287 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
         0, // on "Iden", error
         0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
         0, // on "begin", error
-        -15, // on "else", reduce `Cmp = Add, "=", Cmp => ActionFn(8);`
+        -16, // on "else", reduce `Cmp = Add, "=", Cmp => ActionFn(8);`
         0, // on "empty", error
         0, // on "empty?", error
-        -15, // on "end", reduce `Cmp = Add, "=", Cmp => ActionFn(8);`
+        -16, // on "end", reduce `Cmp = Add, "=", Cmp => ActionFn(8);`
         0, // on "false", error
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        -15, // on "in", reduce `Cmp = Add, "=", Cmp => ActionFn(8);`
+        -16, // on "in", reduce `Cmp = Add, "=", Cmp => ActionFn(8);`
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
-        -15, // on "then", reduce `Cmp = Add, "=", Cmp => ActionFn(8);`
-        0, // on "true", error
-        // State 48
-        //     Cmp = Add ">" Cmp (*) [")", "else", "end", "in", "then", EOF]
-        0, // on "(", error
-        -17, // on ")", reduce `Cmp = Add, ">", Cmp => ActionFn(10);`
-        0, // on "*", error
-        0, // on "+", error
-        0, // on ",", error
-        0, // on "-", error
-        0, // on "->", error
-        0, // on "::", error
-        0, // on "<", error
-        0, // on "=", error
-        0, // on ">", error
-        0, // on "Iden", error
-        0, // on "Num", error
-        0, // on "begin", error
-        -17, // on "else", reduce `Cmp = Add, ">", Cmp => ActionFn(10);`
-        0, // on "empty", error
-        0, // on "empty?", error
-        -17, // on "end", reduce `Cmp = Add, ">", Cmp => ActionFn(10);`
-        0, // on "false", error
-        0, // on "fix", error
-        0, // on "fun", error
-        0, // on "head", error
-        0, // on "if", error
-        -17, // on "in", reduce `Cmp = Add, ">", Cmp => ActionFn(10);`
-        0, // on "let", error
-        0, // on "tail", error
-        -17, // on "then", reduce `Cmp = Add, ">", Cmp => ActionFn(10);`
-        0, // on "true", error
-        // State 49
-        //     List = App "::" List (*) [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        0, // on "(", error
-        -28, // on ")", reduce `List = App, "::", List => ActionFn(17);`
-        -28, // on "*", reduce `List = App, "::", List => ActionFn(17);`
-        -28, // on "+", reduce `List = App, "::", List => ActionFn(17);`
-        0, // on ",", error
-        -28, // on "-", reduce `List = App, "::", List => ActionFn(17);`
-        0, // on "->", error
-        0, // on "::", error
-        -28, // on "<", reduce `List = App, "::", List => ActionFn(17);`
-        -28, // on "=", reduce `List = App, "::", List => ActionFn(17);`
-        -28, // on ">", reduce `List = App, "::", List => ActionFn(17);`
-        0, // on "Iden", error
-        0, // on "Num", error
-        0, // on "begin", error
-        -28, // on "else", reduce `List = App, "::", List => ActionFn(17);`
-        0, // on "empty", error
-        0, // on "empty?", error
-        -28, // on "end", reduce `List = App, "::", List => ActionFn(17);`
-        0, // on "false", error
-        0, // on "fix", error
-        0, // on "fun", error
-        0, // on "head", error
-        0, // on "if", error
-        -28, // on "in", reduce `List = App, "::", List => ActionFn(17);`
-        0, // on "let", error
-        0, // on "tail", error
-        -28, // on "then", reduce `List = App, "::", List => ActionFn(17);`
-        0, // on "true", error
-        // State 50
-        //     Mul = Mul "*" List (*) [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        0, // on "(", error
-        -30, // on ")", reduce `Mul = Mul, "*", List => ActionFn(15);`
-        -30, // on "*", reduce `Mul = Mul, "*", List => ActionFn(15);`
-        -30, // on "+", reduce `Mul = Mul, "*", List => ActionFn(15);`
-        0, // on ",", error
-        -30, // on "-", reduce `Mul = Mul, "*", List => ActionFn(15);`
-        0, // on "->", error
-        0, // on "::", error
-        -30, // on "<", reduce `Mul = Mul, "*", List => ActionFn(15);`
-        -30, // on "=", reduce `Mul = Mul, "*", List => ActionFn(15);`
-        -30, // on ">", reduce `Mul = Mul, "*", List => ActionFn(15);`
-        0, // on "Iden", error
-        0, // on "Num", error
-        0, // on "begin", error
-        -30, // on "else", reduce `Mul = Mul, "*", List => ActionFn(15);`
-        0, // on "empty", error
-        0, // on "empty?", error
-        -30, // on "end", reduce `Mul = Mul, "*", List => ActionFn(15);`
-        0, // on "false", error
-        0, // on "fix", error
-        0, // on "fun", error
-        0, // on "head", error
-        0, // on "if", error
-        -30, // on "in", reduce `Mul = Mul, "*", List => ActionFn(15);`
-        0, // on "let", error
-        0, // on "tail", error
-        -30, // on "then", reduce `Mul = Mul, "*", List => ActionFn(15);`
-        0, // on "true", error
-        // State 51
-        //     Atom = "(" Exprs ")" (*) ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        -13, // on "(", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
-        -13, // on ")", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
-        -13, // on "*", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
-        -13, // on "+", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
-        0, // on ",", error
-        -13, // on "-", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
-        0, // on "->", error
-        -13, // on "::", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
-        -13, // on "<", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
-        -13, // on "=", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
-        -13, // on ">", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
-        -13, // on "Iden", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
-        -13, // on "Num", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
-        0, // on "begin", error
-        -13, // on "else", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
-        -13, // on "empty", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
-        0, // on "empty?", error
-        -13, // on "end", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
-        -13, // on "false", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
-        0, // on "fix", error
-        0, // on "fun", error
-        0, // on "head", error
-        0, // on "if", error
-        -13, // on "in", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
-        0, // on "let", error
-        0, // on "tail", error
-        -13, // on "then", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
-        -13, // on "true", reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
-        // State 52
-        //     Expr = "begin" Expr "end" (*) [")", "else", "end", "in", "then", EOF]
-        0, // on "(", error
-        -23, // on ")", reduce `Expr = "begin", Expr, "end" => ActionFn(6);`
-        0, // on "*", error
-        0, // on "+", error
-        0, // on ",", error
-        0, // on "-", error
-        0, // on "->", error
-        0, // on "::", error
-        0, // on "<", error
-        0, // on "=", error
-        0, // on ">", error
-        0, // on "Iden", error
-        0, // on "Num", error
-        0, // on "begin", error
-        -23, // on "else", reduce `Expr = "begin", Expr, "end" => ActionFn(6);`
-        0, // on "empty", error
-        0, // on "empty?", error
-        -23, // on "end", reduce `Expr = "begin", Expr, "end" => ActionFn(6);`
-        0, // on "false", error
-        0, // on "fix", error
-        0, // on "fun", error
-        0, // on "head", error
-        0, // on "if", error
-        -23, // on "in", reduce `Expr = "begin", Expr, "end" => ActionFn(6);`
-        0, // on "let", error
-        0, // on "tail", error
-        -23, // on "then", reduce `Expr = "begin", Expr, "end" => ActionFn(6);`
+        -16, // on "then", reduce `Cmp = Add, "=", Cmp => ActionFn(8);`
         0, // on "true", error
         // State 53
+        //     Cmp = Add ">" Cmp (*) [")", "else", "end", "in", "then", EOF]
+        0, // on "(", error
+        -18, // on ")", reduce `Cmp = Add, ">", Cmp => ActionFn(10);`
+        0, // on "*", error
+        0, // on "+", error
+        0, // on ",", error
+        0, // on "-", error
+        0, // on "->", error
+        0, // on "::", error
+        0, // on "<", error
+        0, // on "<-", error
+        0, // on "=", error
+        0, // on ">", error
+        0, // on "Iden", error
+        0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
+        0, // on "begin", error
+        -18, // on "else", reduce `Cmp = Add, ">", Cmp => ActionFn(10);`
+        0, // on "empty", error
+        0, // on "empty?", error
+        -18, // on "end", reduce `Cmp = Add, ">", Cmp => ActionFn(10);`
+        0, // on "false", error
+        0, // on "fix", error
+        0, // on "fun", error
+        0, // on "head", error
+        0, // on "if", error
+        -18, // on "in", reduce `Cmp = Add, ">", Cmp => ActionFn(10);`
+        0, // on "let", error
+        0, // on "set", error
+        0, // on "tail", error
+        -18, // on "then", reduce `Cmp = Add, ">", Cmp => ActionFn(10);`
+        0, // on "true", error
+        // State 54
+        //     List = Get "::" List (*) [")", "*", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        0, // on "(", error
+        -32, // on ")", reduce `List = Get, "::", List => ActionFn(17);`
+        -32, // on "*", reduce `List = Get, "::", List => ActionFn(17);`
+        -32, // on "+", reduce `List = Get, "::", List => ActionFn(17);`
+        -32, // on ",", reduce `List = Get, "::", List => ActionFn(17);`
+        -32, // on "-", reduce `List = Get, "::", List => ActionFn(17);`
+        0, // on "->", error
+        0, // on "::", error
+        -32, // on "<", reduce `List = Get, "::", List => ActionFn(17);`
+        0, // on "<-", error
+        -32, // on "=", reduce `List = Get, "::", List => ActionFn(17);`
+        -32, // on ">", reduce `List = Get, "::", List => ActionFn(17);`
+        0, // on "Iden", error
+        0, // on "Num", error
+        0, // on "[", error
+        -32, // on "]", reduce `List = Get, "::", List => ActionFn(17);`
+        0, // on "array", error
+        0, // on "begin", error
+        -32, // on "else", reduce `List = Get, "::", List => ActionFn(17);`
+        0, // on "empty", error
+        0, // on "empty?", error
+        -32, // on "end", reduce `List = Get, "::", List => ActionFn(17);`
+        0, // on "false", error
+        0, // on "fix", error
+        0, // on "fun", error
+        0, // on "head", error
+        0, // on "if", error
+        -32, // on "in", reduce `List = Get, "::", List => ActionFn(17);`
+        0, // on "let", error
+        0, // on "set", error
+        0, // on "tail", error
+        -32, // on "then", reduce `List = Get, "::", List => ActionFn(17);`
+        0, // on "true", error
+        // State 55
+        //     Add = Add (*) "+" Mul ["+", "-", "]"]
+        //     Add = Add (*) "-" Mul ["+", "-", "]"]
+        //     Get = Ident "[" Add (*) "]" [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Get = Ident "[" Add (*) "]" "<-" Atom [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        0, // on "(", error
+        0, // on ")", error
+        0, // on "*", error
+        29, // on "+", goto 28
+        0, // on ",", error
+        30, // on "-", goto 29
+        0, // on "->", error
+        0, // on "::", error
+        0, // on "<", error
+        0, // on "<-", error
+        0, // on "=", error
+        0, // on ">", error
+        0, // on "Iden", error
+        0, // on "Num", error
+        0, // on "[", error
+        65, // on "]", goto 64
+        0, // on "array", error
+        0, // on "begin", error
+        0, // on "else", error
+        0, // on "empty", error
+        0, // on "empty?", error
+        0, // on "end", error
+        0, // on "false", error
+        0, // on "fix", error
+        0, // on "fun", error
+        0, // on "head", error
+        0, // on "if", error
+        0, // on "in", error
+        0, // on "let", error
+        0, // on "set", error
+        0, // on "tail", error
+        0, // on "then", error
+        0, // on "true", error
+        // State 56
+        //     Mul = Mul "*" List (*) [")", "*", "+", ",", "-", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        0, // on "(", error
+        -34, // on ")", reduce `Mul = Mul, "*", List => ActionFn(15);`
+        -34, // on "*", reduce `Mul = Mul, "*", List => ActionFn(15);`
+        -34, // on "+", reduce `Mul = Mul, "*", List => ActionFn(15);`
+        -34, // on ",", reduce `Mul = Mul, "*", List => ActionFn(15);`
+        -34, // on "-", reduce `Mul = Mul, "*", List => ActionFn(15);`
+        0, // on "->", error
+        0, // on "::", error
+        -34, // on "<", reduce `Mul = Mul, "*", List => ActionFn(15);`
+        0, // on "<-", error
+        -34, // on "=", reduce `Mul = Mul, "*", List => ActionFn(15);`
+        -34, // on ">", reduce `Mul = Mul, "*", List => ActionFn(15);`
+        0, // on "Iden", error
+        0, // on "Num", error
+        0, // on "[", error
+        -34, // on "]", reduce `Mul = Mul, "*", List => ActionFn(15);`
+        0, // on "array", error
+        0, // on "begin", error
+        -34, // on "else", reduce `Mul = Mul, "*", List => ActionFn(15);`
+        0, // on "empty", error
+        0, // on "empty?", error
+        -34, // on "end", reduce `Mul = Mul, "*", List => ActionFn(15);`
+        0, // on "false", error
+        0, // on "fix", error
+        0, // on "fun", error
+        0, // on "head", error
+        0, // on "if", error
+        -34, // on "in", reduce `Mul = Mul, "*", List => ActionFn(15);`
+        0, // on "let", error
+        0, // on "set", error
+        0, // on "tail", error
+        -34, // on "then", reduce `Mul = Mul, "*", List => ActionFn(15);`
+        0, // on "true", error
+        // State 57
+        //     Atom = "(" Exprs ")" (*) ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        -14, // on "(", reduce `Atom = "(", Exprs, ")" => ActionFn(32);`
+        -14, // on ")", reduce `Atom = "(", Exprs, ")" => ActionFn(32);`
+        -14, // on "*", reduce `Atom = "(", Exprs, ")" => ActionFn(32);`
+        -14, // on "+", reduce `Atom = "(", Exprs, ")" => ActionFn(32);`
+        -14, // on ",", reduce `Atom = "(", Exprs, ")" => ActionFn(32);`
+        -14, // on "-", reduce `Atom = "(", Exprs, ")" => ActionFn(32);`
+        0, // on "->", error
+        -14, // on "::", reduce `Atom = "(", Exprs, ")" => ActionFn(32);`
+        -14, // on "<", reduce `Atom = "(", Exprs, ")" => ActionFn(32);`
+        0, // on "<-", error
+        -14, // on "=", reduce `Atom = "(", Exprs, ")" => ActionFn(32);`
+        -14, // on ">", reduce `Atom = "(", Exprs, ")" => ActionFn(32);`
+        -14, // on "Iden", reduce `Atom = "(", Exprs, ")" => ActionFn(32);`
+        -14, // on "Num", reduce `Atom = "(", Exprs, ")" => ActionFn(32);`
+        0, // on "[", error
+        -14, // on "]", reduce `Atom = "(", Exprs, ")" => ActionFn(32);`
+        0, // on "array", error
+        0, // on "begin", error
+        -14, // on "else", reduce `Atom = "(", Exprs, ")" => ActionFn(32);`
+        -14, // on "empty", reduce `Atom = "(", Exprs, ")" => ActionFn(32);`
+        0, // on "empty?", error
+        -14, // on "end", reduce `Atom = "(", Exprs, ")" => ActionFn(32);`
+        -14, // on "false", reduce `Atom = "(", Exprs, ")" => ActionFn(32);`
+        0, // on "fix", error
+        0, // on "fun", error
+        0, // on "head", error
+        0, // on "if", error
+        -14, // on "in", reduce `Atom = "(", Exprs, ")" => ActionFn(32);`
+        0, // on "let", error
+        0, // on "set", error
+        0, // on "tail", error
+        -14, // on "then", reduce `Atom = "(", Exprs, ")" => ActionFn(32);`
+        -14, // on "true", reduce `Atom = "(", Exprs, ")" => ActionFn(32);`
+        // State 58
+        //     Add = Add (*) "+" Mul ["+", ",", "-"]
+        //     Add = Add (*) "-" Mul ["+", ",", "-"]
+        //     App = "array" "(" Add (*) "," Add ")" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        0, // on "(", error
+        0, // on ")", error
+        0, // on "*", error
+        29, // on "+", goto 28
+        66, // on ",", goto 65
+        30, // on "-", goto 29
+        0, // on "->", error
+        0, // on "::", error
+        0, // on "<", error
+        0, // on "<-", error
+        0, // on "=", error
+        0, // on ">", error
+        0, // on "Iden", error
+        0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
+        0, // on "begin", error
+        0, // on "else", error
+        0, // on "empty", error
+        0, // on "empty?", error
+        0, // on "end", error
+        0, // on "false", error
+        0, // on "fix", error
+        0, // on "fun", error
+        0, // on "head", error
+        0, // on "if", error
+        0, // on "in", error
+        0, // on "let", error
+        0, // on "set", error
+        0, // on "tail", error
+        0, // on "then", error
+        0, // on "true", error
+        // State 59
+        //     Expr = "begin" Expr "end" (*) [")", "else", "end", "in", "then", EOF]
+        0, // on "(", error
+        -24, // on ")", reduce `Expr = "begin", Expr, "end" => ActionFn(6);`
+        0, // on "*", error
+        0, // on "+", error
+        0, // on ",", error
+        0, // on "-", error
+        0, // on "->", error
+        0, // on "::", error
+        0, // on "<", error
+        0, // on "<-", error
+        0, // on "=", error
+        0, // on ">", error
+        0, // on "Iden", error
+        0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
+        0, // on "begin", error
+        -24, // on "else", reduce `Expr = "begin", Expr, "end" => ActionFn(6);`
+        0, // on "empty", error
+        0, // on "empty?", error
+        -24, // on "end", reduce `Expr = "begin", Expr, "end" => ActionFn(6);`
+        0, // on "false", error
+        0, // on "fix", error
+        0, // on "fun", error
+        0, // on "head", error
+        0, // on "if", error
+        -24, // on "in", reduce `Expr = "begin", Expr, "end" => ActionFn(6);`
+        0, // on "let", error
+        0, // on "set", error
+        0, // on "tail", error
+        -24, // on "then", reduce `Expr = "begin", Expr, "end" => ActionFn(6);`
+        0, // on "true", error
+        // State 60
         //     Add = (*) Add "+" Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Add = (*) Add "-" Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Add = (*) Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     App = (*) App Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) "array" "(" Add "," Add ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) "empty?" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) "head" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) "tail" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
@@ -1996,14 +2615,17 @@ mod __parse__Program {
         //     Expr = (*) "fun" Ident "->" Expr [")", "else", "end", "in", "then", EOF]
         //     Expr = (*) "if" Expr "then" Expr "else" Expr [")", "else", "end", "in", "then", EOF]
         //     Expr = (*) "let" Ident "=" Expr "in" Expr [")", "else", "end", "in", "then", EOF]
-        //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Get = (*) App [")", "*", "+", "-", "::", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     Get = (*) Ident "[" Add "]" [")", "*", "+", "-", "::", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     Get = (*) Ident "[" Add "]" "<-" Atom [")", "*", "+", "-", "::", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "[", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Int = (*) Num ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     List = (*) App [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     List = (*) App "::" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     List = (*) Get [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     List = (*) Get "::" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Mul = (*) List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Mul = (*) Mul "*" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Num = (*) "Num" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        13, // on "(", goto 12
+        14, // on "(", goto 13
         0, // on ")", error
         0, // on "*", error
         0, // on "+", error
@@ -2012,31 +2634,37 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
-        14, // on "Iden", goto 13
-        15, // on "Num", goto 14
-        16, // on "begin", goto 15
+        15, // on "Iden", goto 14
+        16, // on "Num", goto 15
+        0, // on "[", error
+        0, // on "]", error
+        17, // on "array", goto 16
+        18, // on "begin", goto 17
         0, // on "else", error
-        17, // on "empty", goto 16
-        18, // on "empty?", goto 17
+        19, // on "empty", goto 18
+        20, // on "empty?", goto 19
         0, // on "end", error
-        19, // on "false", goto 18
-        20, // on "fix", goto 19
-        21, // on "fun", goto 20
-        22, // on "head", goto 21
-        23, // on "if", goto 22
+        21, // on "false", goto 20
+        22, // on "fix", goto 21
+        23, // on "fun", goto 22
+        24, // on "head", goto 23
+        25, // on "if", goto 24
         0, // on "in", error
-        24, // on "let", goto 23
-        25, // on "tail", goto 24
+        26, // on "let", goto 25
+        0, // on "set", error
+        27, // on "tail", goto 26
         0, // on "then", error
-        26, // on "true", goto 25
-        // State 54
+        28, // on "true", goto 27
+        // State 61
         //     Add = (*) Add "+" Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Add = (*) Add "-" Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Add = (*) Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     App = (*) App Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) "array" "(" Add "," Add ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) "empty?" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) "head" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) "tail" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
@@ -2057,14 +2685,17 @@ mod __parse__Program {
         //     Expr = "fun" Ident "->" (*) Expr [")", "else", "end", "in", "then", EOF]
         //     Expr = (*) "if" Expr "then" Expr "else" Expr [")", "else", "end", "in", "then", EOF]
         //     Expr = (*) "let" Ident "=" Expr "in" Expr [")", "else", "end", "in", "then", EOF]
-        //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Get = (*) App [")", "*", "+", "-", "::", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     Get = (*) Ident "[" Add "]" [")", "*", "+", "-", "::", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     Get = (*) Ident "[" Add "]" "<-" Atom [")", "*", "+", "-", "::", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "[", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Int = (*) Num ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     List = (*) App [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     List = (*) App "::" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     List = (*) Get [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     List = (*) Get "::" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Mul = (*) List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Mul = (*) Mul "*" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Num = (*) "Num" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        13, // on "(", goto 12
+        14, // on "(", goto 13
         0, // on ")", error
         0, // on "*", error
         0, // on "+", error
@@ -2073,31 +2704,37 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
-        14, // on "Iden", goto 13
-        15, // on "Num", goto 14
-        16, // on "begin", goto 15
+        15, // on "Iden", goto 14
+        16, // on "Num", goto 15
+        0, // on "[", error
+        0, // on "]", error
+        17, // on "array", goto 16
+        18, // on "begin", goto 17
         0, // on "else", error
-        17, // on "empty", goto 16
-        18, // on "empty?", goto 17
+        19, // on "empty", goto 18
+        20, // on "empty?", goto 19
         0, // on "end", error
-        19, // on "false", goto 18
-        20, // on "fix", goto 19
-        21, // on "fun", goto 20
-        22, // on "head", goto 21
-        23, // on "if", goto 22
+        21, // on "false", goto 20
+        22, // on "fix", goto 21
+        23, // on "fun", goto 22
+        24, // on "head", goto 23
+        25, // on "if", goto 24
         0, // on "in", error
-        24, // on "let", goto 23
-        25, // on "tail", goto 24
+        26, // on "let", goto 25
+        0, // on "set", error
+        27, // on "tail", goto 26
         0, // on "then", error
-        26, // on "true", goto 25
-        // State 55
+        28, // on "true", goto 27
+        // State 62
         //     Add = (*) Add "+" Mul ["+", "-", "<", "=", ">", "else"]
         //     Add = (*) Add "-" Mul ["+", "-", "<", "=", ">", "else"]
         //     Add = (*) Mul ["+", "-", "<", "=", ">", "else"]
         //     App = (*) App Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "false", "true"]
         //     App = (*) Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "false", "true"]
+        //     App = (*) "array" "(" Add "," Add ")" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "false", "true"]
         //     App = (*) "empty?" Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "false", "true"]
         //     App = (*) "head" Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "false", "true"]
         //     App = (*) "tail" Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "false", "true"]
@@ -2118,14 +2755,17 @@ mod __parse__Program {
         //     Expr = (*) "if" Expr "then" Expr "else" Expr ["else"]
         //     Expr = "if" Expr "then" (*) Expr "else" Expr [")", "else", "end", "in", "then", EOF]
         //     Expr = (*) "let" Ident "=" Expr "in" Expr ["else"]
-        //     Ident = (*) "Iden" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "false", "true"]
+        //     Get = (*) App ["*", "+", "-", "::", "<", "=", ">", "else"]
+        //     Get = (*) Ident "[" Add "]" ["*", "+", "-", "::", "<", "=", ">", "else"]
+        //     Get = (*) Ident "[" Add "]" "<-" Atom ["*", "+", "-", "::", "<", "=", ">", "else"]
+        //     Ident = (*) "Iden" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "[", "else", "empty", "false", "true"]
         //     Int = (*) Num ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "false", "true"]
-        //     List = (*) App ["*", "+", "-", "<", "=", ">", "else"]
-        //     List = (*) App "::" List ["*", "+", "-", "<", "=", ">", "else"]
+        //     List = (*) Get ["*", "+", "-", "<", "=", ">", "else"]
+        //     List = (*) Get "::" List ["*", "+", "-", "<", "=", ">", "else"]
         //     Mul = (*) List ["*", "+", "-", "<", "=", ">", "else"]
         //     Mul = (*) Mul "*" List ["*", "+", "-", "<", "=", ">", "else"]
         //     Num = (*) "Num" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "false", "true"]
-        13, // on "(", goto 12
+        14, // on "(", goto 13
         0, // on ")", error
         0, // on "*", error
         0, // on "+", error
@@ -2134,31 +2774,37 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
-        14, // on "Iden", goto 13
-        15, // on "Num", goto 14
-        16, // on "begin", goto 15
+        15, // on "Iden", goto 14
+        16, // on "Num", goto 15
+        0, // on "[", error
+        0, // on "]", error
+        17, // on "array", goto 16
+        18, // on "begin", goto 17
         0, // on "else", error
-        17, // on "empty", goto 16
-        18, // on "empty?", goto 17
+        19, // on "empty", goto 18
+        20, // on "empty?", goto 19
         0, // on "end", error
-        19, // on "false", goto 18
-        20, // on "fix", goto 19
-        21, // on "fun", goto 20
-        22, // on "head", goto 21
-        23, // on "if", goto 22
+        21, // on "false", goto 20
+        22, // on "fix", goto 21
+        23, // on "fun", goto 22
+        24, // on "head", goto 23
+        25, // on "if", goto 24
         0, // on "in", error
-        24, // on "let", goto 23
-        25, // on "tail", goto 24
+        26, // on "let", goto 25
+        0, // on "set", error
+        27, // on "tail", goto 26
         0, // on "then", error
-        26, // on "true", goto 25
-        // State 56
+        28, // on "true", goto 27
+        // State 63
         //     Add = (*) Add "+" Mul ["+", "-", "<", "=", ">", "in"]
         //     Add = (*) Add "-" Mul ["+", "-", "<", "=", ">", "in"]
         //     Add = (*) Mul ["+", "-", "<", "=", ">", "in"]
         //     App = (*) App Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "in", "true"]
         //     App = (*) Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "in", "true"]
+        //     App = (*) "array" "(" Add "," Add ")" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "in", "true"]
         //     App = (*) "empty?" Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "in", "true"]
         //     App = (*) "head" Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "in", "true"]
         //     App = (*) "tail" Atom ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "in", "true"]
@@ -2179,14 +2825,17 @@ mod __parse__Program {
         //     Expr = (*) "if" Expr "then" Expr "else" Expr ["in"]
         //     Expr = (*) "let" Ident "=" Expr "in" Expr ["in"]
         //     Expr = "let" Ident "=" (*) Expr "in" Expr [")", "else", "end", "in", "then", EOF]
-        //     Ident = (*) "Iden" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "in", "true"]
+        //     Get = (*) App ["*", "+", "-", "::", "<", "=", ">", "in"]
+        //     Get = (*) Ident "[" Add "]" ["*", "+", "-", "::", "<", "=", ">", "in"]
+        //     Get = (*) Ident "[" Add "]" "<-" Atom ["*", "+", "-", "::", "<", "=", ">", "in"]
+        //     Ident = (*) "Iden" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "[", "empty", "false", "in", "true"]
         //     Int = (*) Num ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "in", "true"]
-        //     List = (*) App ["*", "+", "-", "<", "=", ">", "in"]
-        //     List = (*) App "::" List ["*", "+", "-", "<", "=", ">", "in"]
+        //     List = (*) Get ["*", "+", "-", "<", "=", ">", "in"]
+        //     List = (*) Get "::" List ["*", "+", "-", "<", "=", ">", "in"]
         //     Mul = (*) List ["*", "+", "-", "<", "=", ">", "in"]
         //     Mul = (*) Mul "*" List ["*", "+", "-", "<", "=", ">", "in"]
         //     Num = (*) "Num" ["(", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "empty", "false", "in", "true"]
-        13, // on "(", goto 12
+        14, // on "(", goto 13
         0, // on ")", error
         0, // on "*", error
         0, // on "+", error
@@ -2195,29 +2844,130 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
-        14, // on "Iden", goto 13
-        15, // on "Num", goto 14
-        16, // on "begin", goto 15
+        15, // on "Iden", goto 14
+        16, // on "Num", goto 15
+        0, // on "[", error
+        0, // on "]", error
+        17, // on "array", goto 16
+        18, // on "begin", goto 17
         0, // on "else", error
-        17, // on "empty", goto 16
-        18, // on "empty?", goto 17
+        19, // on "empty", goto 18
+        20, // on "empty?", goto 19
         0, // on "end", error
-        19, // on "false", goto 18
-        20, // on "fix", goto 19
-        21, // on "fun", goto 20
-        22, // on "head", goto 21
-        23, // on "if", goto 22
+        21, // on "false", goto 20
+        22, // on "fix", goto 21
+        23, // on "fun", goto 22
+        24, // on "head", goto 23
+        25, // on "if", goto 24
         0, // on "in", error
-        24, // on "let", goto 23
-        25, // on "tail", goto 24
+        26, // on "let", goto 25
+        0, // on "set", error
+        27, // on "tail", goto 26
         0, // on "then", error
-        26, // on "true", goto 25
-        // State 57
+        28, // on "true", goto 27
+        // State 64
+        //     Get = Ident "[" Add "]" (*) [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Get = Ident "[" Add "]" (*) "<-" Atom [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        0, // on "(", error
+        -28, // on ")", reduce `Get = Ident, "[", Add, "]" => ActionFn(20);`
+        -28, // on "*", reduce `Get = Ident, "[", Add, "]" => ActionFn(20);`
+        -28, // on "+", reduce `Get = Ident, "[", Add, "]" => ActionFn(20);`
+        -28, // on ",", reduce `Get = Ident, "[", Add, "]" => ActionFn(20);`
+        -28, // on "-", reduce `Get = Ident, "[", Add, "]" => ActionFn(20);`
+        0, // on "->", error
+        -28, // on "::", reduce `Get = Ident, "[", Add, "]" => ActionFn(20);`
+        -28, // on "<", reduce `Get = Ident, "[", Add, "]" => ActionFn(20);`
+        71, // on "<-", goto 70
+        -28, // on "=", reduce `Get = Ident, "[", Add, "]" => ActionFn(20);`
+        -28, // on ">", reduce `Get = Ident, "[", Add, "]" => ActionFn(20);`
+        0, // on "Iden", error
+        0, // on "Num", error
+        0, // on "[", error
+        -28, // on "]", reduce `Get = Ident, "[", Add, "]" => ActionFn(20);`
+        0, // on "array", error
+        0, // on "begin", error
+        -28, // on "else", reduce `Get = Ident, "[", Add, "]" => ActionFn(20);`
+        0, // on "empty", error
+        0, // on "empty?", error
+        -28, // on "end", reduce `Get = Ident, "[", Add, "]" => ActionFn(20);`
+        0, // on "false", error
+        0, // on "fix", error
+        0, // on "fun", error
+        0, // on "head", error
+        0, // on "if", error
+        -28, // on "in", reduce `Get = Ident, "[", Add, "]" => ActionFn(20);`
+        0, // on "let", error
+        0, // on "set", error
+        0, // on "tail", error
+        -28, // on "then", reduce `Get = Ident, "[", Add, "]" => ActionFn(20);`
+        0, // on "true", error
+        // State 65
+        //     Add = (*) Add "+" Mul [")", "+", "-"]
+        //     Add = (*) Add "-" Mul [")", "+", "-"]
+        //     Add = (*) Mul [")", "+", "-"]
+        //     App = (*) App Atom ["(", ")", "*", "+", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     App = (*) Atom ["(", ")", "*", "+", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     App = (*) "array" "(" Add "," Add ")" ["(", ")", "*", "+", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     App = "array" "(" Add "," (*) Add ")" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) "empty?" Atom ["(", ")", "*", "+", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     App = (*) "head" Atom ["(", ")", "*", "+", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     App = (*) "tail" Atom ["(", ")", "*", "+", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     Atom = (*) Ident ["(", ")", "*", "+", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     Atom = (*) Int ["(", ")", "*", "+", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     Atom = (*) "(" Exprs ")" ["(", ")", "*", "+", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     Atom = (*) "empty" ["(", ")", "*", "+", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     Atom = (*) "false" ["(", ")", "*", "+", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     Atom = (*) "true" ["(", ")", "*", "+", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     Get = (*) App [")", "*", "+", "-", "::"]
+        //     Get = (*) Ident "[" Add "]" [")", "*", "+", "-", "::"]
+        //     Get = (*) Ident "[" Add "]" "<-" Atom [")", "*", "+", "-", "::"]
+        //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "Iden", "Num", "[", "empty", "false", "true"]
+        //     Int = (*) Num ["(", ")", "*", "+", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        //     List = (*) Get [")", "*", "+", "-"]
+        //     List = (*) Get "::" List [")", "*", "+", "-"]
+        //     Mul = (*) List [")", "*", "+", "-"]
+        //     Mul = (*) Mul "*" List [")", "*", "+", "-"]
+        //     Num = (*) "Num" ["(", ")", "*", "+", "-", "::", "Iden", "Num", "empty", "false", "true"]
+        14, // on "(", goto 13
+        0, // on ")", error
+        0, // on "*", error
+        0, // on "+", error
+        0, // on ",", error
+        0, // on "-", error
+        0, // on "->", error
+        0, // on "::", error
+        0, // on "<", error
+        0, // on "<-", error
+        0, // on "=", error
+        0, // on ">", error
+        15, // on "Iden", goto 14
+        16, // on "Num", goto 15
+        0, // on "[", error
+        0, // on "]", error
+        17, // on "array", goto 16
+        0, // on "begin", error
+        0, // on "else", error
+        19, // on "empty", goto 18
+        20, // on "empty?", goto 19
+        0, // on "end", error
+        21, // on "false", goto 20
+        0, // on "fix", error
+        0, // on "fun", error
+        24, // on "head", goto 23
+        0, // on "if", error
+        0, // on "in", error
+        0, // on "let", error
+        0, // on "set", error
+        27, // on "tail", goto 26
+        0, // on "then", error
+        28, // on "true", goto 27
+        // State 66
         //     Expr = "fix" Ident "->" Expr (*) [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
-        -22, // on ")", reduce `Expr = "fix", Ident, "->", Expr => ActionFn(5);`
+        -23, // on ")", reduce `Expr = "fix", Ident, "->", Expr => ActionFn(5);`
         0, // on "*", error
         0, // on "+", error
         0, // on ",", error
@@ -2225,29 +2975,34 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
         0, // on "Iden", error
         0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
         0, // on "begin", error
-        -22, // on "else", reduce `Expr = "fix", Ident, "->", Expr => ActionFn(5);`
+        -23, // on "else", reduce `Expr = "fix", Ident, "->", Expr => ActionFn(5);`
         0, // on "empty", error
         0, // on "empty?", error
-        -22, // on "end", reduce `Expr = "fix", Ident, "->", Expr => ActionFn(5);`
+        -23, // on "end", reduce `Expr = "fix", Ident, "->", Expr => ActionFn(5);`
         0, // on "false", error
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        -22, // on "in", reduce `Expr = "fix", Ident, "->", Expr => ActionFn(5);`
+        -23, // on "in", reduce `Expr = "fix", Ident, "->", Expr => ActionFn(5);`
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
-        -22, // on "then", reduce `Expr = "fix", Ident, "->", Expr => ActionFn(5);`
+        -23, // on "then", reduce `Expr = "fix", Ident, "->", Expr => ActionFn(5);`
         0, // on "true", error
-        // State 58
+        // State 67
         //     Expr = "fun" Ident "->" Expr (*) [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
-        -21, // on ")", reduce `Expr = "fun", Ident, "->", Expr => ActionFn(4);`
+        -22, // on ")", reduce `Expr = "fun", Ident, "->", Expr => ActionFn(4);`
         0, // on "*", error
         0, // on "+", error
         0, // on ",", error
@@ -2255,26 +3010,31 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
         0, // on "Iden", error
         0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
         0, // on "begin", error
-        -21, // on "else", reduce `Expr = "fun", Ident, "->", Expr => ActionFn(4);`
+        -22, // on "else", reduce `Expr = "fun", Ident, "->", Expr => ActionFn(4);`
         0, // on "empty", error
         0, // on "empty?", error
-        -21, // on "end", reduce `Expr = "fun", Ident, "->", Expr => ActionFn(4);`
+        -22, // on "end", reduce `Expr = "fun", Ident, "->", Expr => ActionFn(4);`
         0, // on "false", error
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        -21, // on "in", reduce `Expr = "fun", Ident, "->", Expr => ActionFn(4);`
+        -22, // on "in", reduce `Expr = "fun", Ident, "->", Expr => ActionFn(4);`
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
-        -21, // on "then", reduce `Expr = "fun", Ident, "->", Expr => ActionFn(4);`
+        -22, // on "then", reduce `Expr = "fun", Ident, "->", Expr => ActionFn(4);`
         0, // on "true", error
-        // State 59
+        // State 68
         //     Expr = "if" Expr "then" Expr (*) "else" Expr [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
         0, // on ")", error
@@ -2285,12 +3045,16 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
         0, // on "Iden", error
         0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
         0, // on "begin", error
-        62, // on "else", goto 61
+        73, // on "else", goto 72
         0, // on "empty", error
         0, // on "empty?", error
         0, // on "end", error
@@ -2301,10 +3065,11 @@ mod __parse__Program {
         0, // on "if", error
         0, // on "in", error
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
         0, // on "then", error
         0, // on "true", error
-        // State 60
+        // State 69
         //     Expr = "let" Ident "=" Expr (*) "in" Expr [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
         0, // on ")", error
@@ -2315,10 +3080,14 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
         0, // on "Iden", error
         0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
         0, // on "begin", error
         0, // on "else", error
         0, // on "empty", error
@@ -2329,17 +3098,100 @@ mod __parse__Program {
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        63, // on "in", goto 62
+        74, // on "in", goto 73
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
         0, // on "then", error
         0, // on "true", error
-        // State 61
+        // State 70
+        //     Atom = (*) Ident [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Atom = (*) Int [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Atom = (*) "(" Exprs ")" [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Atom = (*) "empty" [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Atom = (*) "false" [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Atom = (*) "true" [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Get = Ident "[" Add "]" "<-" (*) Atom [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Ident = (*) "Iden" [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Int = (*) Num [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        //     Num = (*) "Num" [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        14, // on "(", goto 13
+        0, // on ")", error
+        0, // on "*", error
+        0, // on "+", error
+        0, // on ",", error
+        0, // on "-", error
+        0, // on "->", error
+        0, // on "::", error
+        0, // on "<", error
+        0, // on "<-", error
+        0, // on "=", error
+        0, // on ">", error
+        15, // on "Iden", goto 14
+        16, // on "Num", goto 15
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
+        0, // on "begin", error
+        0, // on "else", error
+        19, // on "empty", goto 18
+        0, // on "empty?", error
+        0, // on "end", error
+        21, // on "false", goto 20
+        0, // on "fix", error
+        0, // on "fun", error
+        0, // on "head", error
+        0, // on "if", error
+        0, // on "in", error
+        0, // on "let", error
+        0, // on "set", error
+        0, // on "tail", error
+        0, // on "then", error
+        28, // on "true", goto 27
+        // State 71
+        //     Add = Add (*) "+" Mul [")", "+", "-"]
+        //     Add = Add (*) "-" Mul [")", "+", "-"]
+        //     App = "array" "(" Add "," Add (*) ")" ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        0, // on "(", error
+        76, // on ")", goto 75
+        0, // on "*", error
+        29, // on "+", goto 28
+        0, // on ",", error
+        30, // on "-", goto 29
+        0, // on "->", error
+        0, // on "::", error
+        0, // on "<", error
+        0, // on "<-", error
+        0, // on "=", error
+        0, // on ">", error
+        0, // on "Iden", error
+        0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
+        0, // on "begin", error
+        0, // on "else", error
+        0, // on "empty", error
+        0, // on "empty?", error
+        0, // on "end", error
+        0, // on "false", error
+        0, // on "fix", error
+        0, // on "fun", error
+        0, // on "head", error
+        0, // on "if", error
+        0, // on "in", error
+        0, // on "let", error
+        0, // on "set", error
+        0, // on "tail", error
+        0, // on "then", error
+        0, // on "true", error
+        // State 72
         //     Add = (*) Add "+" Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Add = (*) Add "-" Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Add = (*) Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     App = (*) App Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) "array" "(" Add "," Add ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) "empty?" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) "head" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) "tail" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
@@ -2360,14 +3212,17 @@ mod __parse__Program {
         //     Expr = (*) "if" Expr "then" Expr "else" Expr [")", "else", "end", "in", "then", EOF]
         //     Expr = "if" Expr "then" Expr "else" (*) Expr [")", "else", "end", "in", "then", EOF]
         //     Expr = (*) "let" Ident "=" Expr "in" Expr [")", "else", "end", "in", "then", EOF]
-        //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Get = (*) App [")", "*", "+", "-", "::", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     Get = (*) Ident "[" Add "]" [")", "*", "+", "-", "::", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     Get = (*) Ident "[" Add "]" "<-" Atom [")", "*", "+", "-", "::", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "[", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Int = (*) Num ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     List = (*) App [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     List = (*) App "::" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     List = (*) Get [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     List = (*) Get "::" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Mul = (*) List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Mul = (*) Mul "*" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Num = (*) "Num" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        13, // on "(", goto 12
+        14, // on "(", goto 13
         0, // on ")", error
         0, // on "*", error
         0, // on "+", error
@@ -2376,31 +3231,37 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
-        14, // on "Iden", goto 13
-        15, // on "Num", goto 14
-        16, // on "begin", goto 15
+        15, // on "Iden", goto 14
+        16, // on "Num", goto 15
+        0, // on "[", error
+        0, // on "]", error
+        17, // on "array", goto 16
+        18, // on "begin", goto 17
         0, // on "else", error
-        17, // on "empty", goto 16
-        18, // on "empty?", goto 17
+        19, // on "empty", goto 18
+        20, // on "empty?", goto 19
         0, // on "end", error
-        19, // on "false", goto 18
-        20, // on "fix", goto 19
-        21, // on "fun", goto 20
-        22, // on "head", goto 21
-        23, // on "if", goto 22
+        21, // on "false", goto 20
+        22, // on "fix", goto 21
+        23, // on "fun", goto 22
+        24, // on "head", goto 23
+        25, // on "if", goto 24
         0, // on "in", error
-        24, // on "let", goto 23
-        25, // on "tail", goto 24
+        26, // on "let", goto 25
+        0, // on "set", error
+        27, // on "tail", goto 26
         0, // on "then", error
-        26, // on "true", goto 25
-        // State 62
+        28, // on "true", goto 27
+        // State 73
         //     Add = (*) Add "+" Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Add = (*) Add "-" Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Add = (*) Mul [")", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     App = (*) App Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     App = (*) "array" "(" Add "," Add ")" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) "empty?" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) "head" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     App = (*) "tail" Atom ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
@@ -2421,14 +3282,17 @@ mod __parse__Program {
         //     Expr = (*) "if" Expr "then" Expr "else" Expr [")", "else", "end", "in", "then", EOF]
         //     Expr = (*) "let" Ident "=" Expr "in" Expr [")", "else", "end", "in", "then", EOF]
         //     Expr = "let" Ident "=" Expr "in" (*) Expr [")", "else", "end", "in", "then", EOF]
-        //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        //     Get = (*) App [")", "*", "+", "-", "::", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     Get = (*) Ident "[" Add "]" [")", "*", "+", "-", "::", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     Get = (*) Ident "[" Add "]" "<-" Atom [")", "*", "+", "-", "::", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     Ident = (*) "Iden" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "[", "else", "empty", "end", "false", "in", "then", "true", EOF]
         //     Int = (*) Num ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        //     List = (*) App [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
-        //     List = (*) App "::" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     List = (*) Get [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
+        //     List = (*) Get "::" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Mul = (*) List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Mul = (*) Mul "*" List [")", "*", "+", "-", "<", "=", ">", "else", "end", "in", "then", EOF]
         //     Num = (*) "Num" ["(", ")", "*", "+", "-", "::", "<", "=", ">", "Iden", "Num", "else", "empty", "end", "false", "in", "then", "true", EOF]
-        13, // on "(", goto 12
+        14, // on "(", goto 13
         0, // on ")", error
         0, // on "*", error
         0, // on "+", error
@@ -2437,29 +3301,104 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
-        14, // on "Iden", goto 13
-        15, // on "Num", goto 14
-        16, // on "begin", goto 15
+        15, // on "Iden", goto 14
+        16, // on "Num", goto 15
+        0, // on "[", error
+        0, // on "]", error
+        17, // on "array", goto 16
+        18, // on "begin", goto 17
         0, // on "else", error
-        17, // on "empty", goto 16
-        18, // on "empty?", goto 17
+        19, // on "empty", goto 18
+        20, // on "empty?", goto 19
         0, // on "end", error
-        19, // on "false", goto 18
-        20, // on "fix", goto 19
-        21, // on "fun", goto 20
-        22, // on "head", goto 21
-        23, // on "if", goto 22
+        21, // on "false", goto 20
+        22, // on "fix", goto 21
+        23, // on "fun", goto 22
+        24, // on "head", goto 23
+        25, // on "if", goto 24
         0, // on "in", error
-        24, // on "let", goto 23
-        25, // on "tail", goto 24
+        26, // on "let", goto 25
+        0, // on "set", error
+        27, // on "tail", goto 26
         0, // on "then", error
-        26, // on "true", goto 25
-        // State 63
+        28, // on "true", goto 27
+        // State 74
+        //     Get = Ident "[" Add "]" "<-" Atom (*) [")", "*", "+", ",", "-", "::", "<", "=", ">", "]", "else", "end", "in", "then", EOF]
+        0, // on "(", error
+        -27, // on ")", reduce `Get = Ident, "[", Add, "]", "<-", Atom => ActionFn(19);`
+        -27, // on "*", reduce `Get = Ident, "[", Add, "]", "<-", Atom => ActionFn(19);`
+        -27, // on "+", reduce `Get = Ident, "[", Add, "]", "<-", Atom => ActionFn(19);`
+        -27, // on ",", reduce `Get = Ident, "[", Add, "]", "<-", Atom => ActionFn(19);`
+        -27, // on "-", reduce `Get = Ident, "[", Add, "]", "<-", Atom => ActionFn(19);`
+        0, // on "->", error
+        -27, // on "::", reduce `Get = Ident, "[", Add, "]", "<-", Atom => ActionFn(19);`
+        -27, // on "<", reduce `Get = Ident, "[", Add, "]", "<-", Atom => ActionFn(19);`
+        0, // on "<-", error
+        -27, // on "=", reduce `Get = Ident, "[", Add, "]", "<-", Atom => ActionFn(19);`
+        -27, // on ">", reduce `Get = Ident, "[", Add, "]", "<-", Atom => ActionFn(19);`
+        0, // on "Iden", error
+        0, // on "Num", error
+        0, // on "[", error
+        -27, // on "]", reduce `Get = Ident, "[", Add, "]", "<-", Atom => ActionFn(19);`
+        0, // on "array", error
+        0, // on "begin", error
+        -27, // on "else", reduce `Get = Ident, "[", Add, "]", "<-", Atom => ActionFn(19);`
+        0, // on "empty", error
+        0, // on "empty?", error
+        -27, // on "end", reduce `Get = Ident, "[", Add, "]", "<-", Atom => ActionFn(19);`
+        0, // on "false", error
+        0, // on "fix", error
+        0, // on "fun", error
+        0, // on "head", error
+        0, // on "if", error
+        -27, // on "in", reduce `Get = Ident, "[", Add, "]", "<-", Atom => ActionFn(19);`
+        0, // on "let", error
+        0, // on "set", error
+        0, // on "tail", error
+        -27, // on "then", reduce `Get = Ident, "[", Add, "]", "<-", Atom => ActionFn(19);`
+        0, // on "true", error
+        // State 75
+        //     App = "array" "(" Add "," Add ")" (*) ["(", ")", "*", "+", ",", "-", "::", "<", "=", ">", "Iden", "Num", "]", "else", "empty", "end", "false", "in", "then", "true", EOF]
+        -4, // on "(", reduce `App = "array", "(", Add, ",", Add, ")" => ActionFn(22);`
+        -4, // on ")", reduce `App = "array", "(", Add, ",", Add, ")" => ActionFn(22);`
+        -4, // on "*", reduce `App = "array", "(", Add, ",", Add, ")" => ActionFn(22);`
+        -4, // on "+", reduce `App = "array", "(", Add, ",", Add, ")" => ActionFn(22);`
+        -4, // on ",", reduce `App = "array", "(", Add, ",", Add, ")" => ActionFn(22);`
+        -4, // on "-", reduce `App = "array", "(", Add, ",", Add, ")" => ActionFn(22);`
+        0, // on "->", error
+        -4, // on "::", reduce `App = "array", "(", Add, ",", Add, ")" => ActionFn(22);`
+        -4, // on "<", reduce `App = "array", "(", Add, ",", Add, ")" => ActionFn(22);`
+        0, // on "<-", error
+        -4, // on "=", reduce `App = "array", "(", Add, ",", Add, ")" => ActionFn(22);`
+        -4, // on ">", reduce `App = "array", "(", Add, ",", Add, ")" => ActionFn(22);`
+        -4, // on "Iden", reduce `App = "array", "(", Add, ",", Add, ")" => ActionFn(22);`
+        -4, // on "Num", reduce `App = "array", "(", Add, ",", Add, ")" => ActionFn(22);`
+        0, // on "[", error
+        -4, // on "]", reduce `App = "array", "(", Add, ",", Add, ")" => ActionFn(22);`
+        0, // on "array", error
+        0, // on "begin", error
+        -4, // on "else", reduce `App = "array", "(", Add, ",", Add, ")" => ActionFn(22);`
+        -4, // on "empty", reduce `App = "array", "(", Add, ",", Add, ")" => ActionFn(22);`
+        0, // on "empty?", error
+        -4, // on "end", reduce `App = "array", "(", Add, ",", Add, ")" => ActionFn(22);`
+        -4, // on "false", reduce `App = "array", "(", Add, ",", Add, ")" => ActionFn(22);`
+        0, // on "fix", error
+        0, // on "fun", error
+        0, // on "head", error
+        0, // on "if", error
+        -4, // on "in", reduce `App = "array", "(", Add, ",", Add, ")" => ActionFn(22);`
+        0, // on "let", error
+        0, // on "set", error
+        0, // on "tail", error
+        -4, // on "then", reduce `App = "array", "(", Add, ",", Add, ")" => ActionFn(22);`
+        -4, // on "true", reduce `App = "array", "(", Add, ",", Add, ")" => ActionFn(22);`
+        // State 76
         //     Expr = "if" Expr "then" Expr "else" Expr (*) [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
-        -19, // on ")", reduce `Expr = "if", Expr, "then", Expr, "else", Expr => ActionFn(2);`
+        -20, // on ")", reduce `Expr = "if", Expr, "then", Expr, "else", Expr => ActionFn(2);`
         0, // on "*", error
         0, // on "+", error
         0, // on ",", error
@@ -2467,29 +3406,34 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
         0, // on "Iden", error
         0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
         0, // on "begin", error
-        -19, // on "else", reduce `Expr = "if", Expr, "then", Expr, "else", Expr => ActionFn(2);`
+        -20, // on "else", reduce `Expr = "if", Expr, "then", Expr, "else", Expr => ActionFn(2);`
         0, // on "empty", error
         0, // on "empty?", error
-        -19, // on "end", reduce `Expr = "if", Expr, "then", Expr, "else", Expr => ActionFn(2);`
+        -20, // on "end", reduce `Expr = "if", Expr, "then", Expr, "else", Expr => ActionFn(2);`
         0, // on "false", error
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        -19, // on "in", reduce `Expr = "if", Expr, "then", Expr, "else", Expr => ActionFn(2);`
+        -20, // on "in", reduce `Expr = "if", Expr, "then", Expr, "else", Expr => ActionFn(2);`
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
-        -19, // on "then", reduce `Expr = "if", Expr, "then", Expr, "else", Expr => ActionFn(2);`
+        -20, // on "then", reduce `Expr = "if", Expr, "then", Expr, "else", Expr => ActionFn(2);`
         0, // on "true", error
-        // State 64
+        // State 77
         //     Expr = "let" Ident "=" Expr "in" Expr (*) [")", "else", "end", "in", "then", EOF]
         0, // on "(", error
-        -20, // on ")", reduce `Expr = "let", Ident, "=", Expr, "in", Expr => ActionFn(3);`
+        -21, // on ")", reduce `Expr = "let", Ident, "=", Expr, "in", Expr => ActionFn(3);`
         0, // on "*", error
         0, // on "+", error
         0, // on ",", error
@@ -2497,92 +3441,110 @@ mod __parse__Program {
         0, // on "->", error
         0, // on "::", error
         0, // on "<", error
+        0, // on "<-", error
         0, // on "=", error
         0, // on ">", error
         0, // on "Iden", error
         0, // on "Num", error
+        0, // on "[", error
+        0, // on "]", error
+        0, // on "array", error
         0, // on "begin", error
-        -20, // on "else", reduce `Expr = "let", Ident, "=", Expr, "in", Expr => ActionFn(3);`
+        -21, // on "else", reduce `Expr = "let", Ident, "=", Expr, "in", Expr => ActionFn(3);`
         0, // on "empty", error
         0, // on "empty?", error
-        -20, // on "end", reduce `Expr = "let", Ident, "=", Expr, "in", Expr => ActionFn(3);`
+        -21, // on "end", reduce `Expr = "let", Ident, "=", Expr, "in", Expr => ActionFn(3);`
         0, // on "false", error
         0, // on "fix", error
         0, // on "fun", error
         0, // on "head", error
         0, // on "if", error
-        -20, // on "in", reduce `Expr = "let", Ident, "=", Expr, "in", Expr => ActionFn(3);`
+        -21, // on "in", reduce `Expr = "let", Ident, "=", Expr, "in", Expr => ActionFn(3);`
         0, // on "let", error
+        0, // on "set", error
         0, // on "tail", error
-        -20, // on "then", reduce `Expr = "let", Ident, "=", Expr, "in", Expr => ActionFn(3);`
+        -21, // on "then", reduce `Expr = "let", Ident, "=", Expr, "in", Expr => ActionFn(3);`
         0, // on "true", error
     ];
     const __EOF_ACTION: &'static [i32] = &[
         0, // on EOF, error
-        -18, // on EOF, reduce `Cmp = Add => ActionFn(11);`
-        -29, // on EOF, reduce `List = App => ActionFn(18);`
-        -8, // on EOF, reduce `App = Atom => ActionFn(23);`
-        -24, // on EOF, reduce `Expr = Cmp => ActionFn(7);`
-        -33, // on EOF, reduce `Program = Expr => ActionFn(1);`
-        -9, // on EOF, reduce `Atom = Ident => ActionFn(24);`
-        -14, // on EOF, reduce `Atom = Int => ActionFn(29);`
-        -31, // on EOF, reduce `Mul = List => ActionFn(16);`
+        -19, // on EOF, reduce `Cmp = Add => ActionFn(11);`
+        -29, // on EOF, reduce `Get = App => ActionFn(21);`
+        -9, // on EOF, reduce `App = Atom => ActionFn(27);`
+        -25, // on EOF, reduce `Expr = Cmp => ActionFn(7);`
+        -37, // on EOF, reduce `Program = Expr => ActionFn(1);`
+        -33, // on EOF, reduce `List = Get => ActionFn(18);`
+        -10, // on EOF, reduce `Atom = Ident => ActionFn(28);`
+        -15, // on EOF, reduce `Atom = Int => ActionFn(33);`
+        -35, // on EOF, reduce `Mul = List => ActionFn(16);`
         -3, // on EOF, reduce `Add = Mul => ActionFn(14);`
-        -27, // on EOF, reduce `Int = Num => ActionFn(31);`
-        -34, // on EOF, reduce `__Program = Program => ActionFn(0);`
+        -31, // on EOF, reduce `Int = Num => ActionFn(35);`
+        -38, // on EOF, reduce `__Program = Program => ActionFn(0);`
         0, // on EOF, error
-        -26, // on EOF, reduce `Ident = "Iden" => ActionFn(32);`
-        -32, // on EOF, reduce `Num = "Num" => ActionFn(33);`
-        0, // on EOF, error
-        -12, // on EOF, reduce `Atom = "empty" => ActionFn(27);`
-        0, // on EOF, error
-        -11, // on EOF, reduce `Atom = "false" => ActionFn(26);`
+        -30, // on EOF, reduce `Ident = "Iden" => ActionFn(36);`
+        -36, // on EOF, reduce `Num = "Num" => ActionFn(37);`
         0, // on EOF, error
         0, // on EOF, error
+        -13, // on EOF, reduce `Atom = "empty" => ActionFn(31);`
         0, // on EOF, error
-        0, // on EOF, error
-        0, // on EOF, error
-        0, // on EOF, error
-        -10, // on EOF, reduce `Atom = "true" => ActionFn(25);`
+        -12, // on EOF, reduce `Atom = "false" => ActionFn(30);`
         0, // on EOF, error
         0, // on EOF, error
         0, // on EOF, error
         0, // on EOF, error
         0, // on EOF, error
-        -7, // on EOF, reduce `App = App, Atom => ActionFn(22);`
+        0, // on EOF, error
+        -11, // on EOF, reduce `Atom = "true" => ActionFn(29);`
         0, // on EOF, error
         0, // on EOF, error
         0, // on EOF, error
         0, // on EOF, error
         0, // on EOF, error
-        -6, // on EOF, reduce `App = "empty?", Atom => ActionFn(21);`
+        -8, // on EOF, reduce `App = App, Atom => ActionFn(26);`
+        -10, // on EOF, reduce `Atom = Ident => ActionFn(28);`
         0, // on EOF, error
         0, // on EOF, error
-        -4, // on EOF, reduce `App = "head", Atom => ActionFn(19);`
         0, // on EOF, error
         0, // on EOF, error
-        -5, // on EOF, reduce `App = "tail", Atom => ActionFn(20);`
+        0, // on EOF, error
+        0, // on EOF, error
+        0, // on EOF, error
+        -7, // on EOF, reduce `App = "empty?", Atom => ActionFn(25);`
+        0, // on EOF, error
+        0, // on EOF, error
+        -5, // on EOF, reduce `App = "head", Atom => ActionFn(23);`
+        0, // on EOF, error
+        0, // on EOF, error
+        -6, // on EOF, reduce `App = "tail", Atom => ActionFn(24);`
         -2, // on EOF, reduce `Add = Add, "+", Mul => ActionFn(13);`
         -1, // on EOF, reduce `Add = Add, "-", Mul => ActionFn(12);`
-        -16, // on EOF, reduce `Cmp = Add, "<", Cmp => ActionFn(9);`
-        -15, // on EOF, reduce `Cmp = Add, "=", Cmp => ActionFn(8);`
-        -17, // on EOF, reduce `Cmp = Add, ">", Cmp => ActionFn(10);`
-        -28, // on EOF, reduce `List = App, "::", List => ActionFn(17);`
-        -30, // on EOF, reduce `Mul = Mul, "*", List => ActionFn(15);`
-        -13, // on EOF, reduce `Atom = "(", Exprs, ")" => ActionFn(28);`
-        -23, // on EOF, reduce `Expr = "begin", Expr, "end" => ActionFn(6);`
+        -17, // on EOF, reduce `Cmp = Add, "<", Cmp => ActionFn(9);`
+        -16, // on EOF, reduce `Cmp = Add, "=", Cmp => ActionFn(8);`
+        -18, // on EOF, reduce `Cmp = Add, ">", Cmp => ActionFn(10);`
+        -32, // on EOF, reduce `List = Get, "::", List => ActionFn(17);`
+        0, // on EOF, error
+        -34, // on EOF, reduce `Mul = Mul, "*", List => ActionFn(15);`
+        -14, // on EOF, reduce `Atom = "(", Exprs, ")" => ActionFn(32);`
+        0, // on EOF, error
+        -24, // on EOF, reduce `Expr = "begin", Expr, "end" => ActionFn(6);`
         0, // on EOF, error
         0, // on EOF, error
         0, // on EOF, error
         0, // on EOF, error
-        -22, // on EOF, reduce `Expr = "fix", Ident, "->", Expr => ActionFn(5);`
-        -21, // on EOF, reduce `Expr = "fun", Ident, "->", Expr => ActionFn(4);`
+        -28, // on EOF, reduce `Get = Ident, "[", Add, "]" => ActionFn(20);`
+        0, // on EOF, error
+        -23, // on EOF, reduce `Expr = "fix", Ident, "->", Expr => ActionFn(5);`
+        -22, // on EOF, reduce `Expr = "fun", Ident, "->", Expr => ActionFn(4);`
         0, // on EOF, error
         0, // on EOF, error
         0, // on EOF, error
         0, // on EOF, error
-        -19, // on EOF, reduce `Expr = "if", Expr, "then", Expr, "else", Expr => ActionFn(2);`
-        -20, // on EOF, reduce `Expr = "let", Ident, "=", Expr, "in", Expr => ActionFn(3);`
+        0, // on EOF, error
+        0, // on EOF, error
+        -27, // on EOF, reduce `Get = Ident, "[", Add, "]", "<-", Atom => ActionFn(19);`
+        -4, // on EOF, reduce `App = "array", "(", Add, ",", Add, ")" => ActionFn(22);`
+        -20, // on EOF, reduce `Expr = "if", Expr, "then", Expr, "else", Expr => ActionFn(2);`
+        -21, // on EOF, reduce `Expr = "let", Ident, "=", Expr, "in", Expr => ActionFn(3);`
     ];
     const __GOTO: &'static [i32] = &[
         // State 0
@@ -2592,12 +3554,13 @@ mod __parse__Program {
         5, // on Cmp, goto 4
         6, // on Expr, goto 5
         0, // on Exprs, error
-        7, // on Ident, goto 6
-        8, // on Int, goto 7
-        9, // on List, goto 8
-        10, // on Mul, goto 9
-        11, // on Num, goto 10
-        12, // on Program, goto 11
+        7, // on Get, goto 6
+        8, // on Ident, goto 7
+        9, // on Int, goto 8
+        10, // on List, goto 9
+        11, // on Mul, goto 10
+        12, // on Num, goto 11
+        13, // on Program, goto 12
         0, // on __Program, error
         // State 1
         0, // on Add, error
@@ -2606,6 +3569,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2616,15 +3580,16 @@ mod __parse__Program {
         // State 2
         0, // on Add, error
         0, // on App, error
-        32, // on Atom, goto 31
+        34, // on Atom, goto 33
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
-        7, // on Ident, goto 6
-        8, // on Int, goto 7
+        0, // on Get, error
+        35, // on Ident, goto 34
+        9, // on Int, goto 8
         0, // on List, error
         0, // on Mul, error
-        11, // on Num, goto 10
+        12, // on Num, goto 11
         0, // on Program, error
         0, // on __Program, error
         // State 3
@@ -2634,6 +3599,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2648,6 +3614,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2662,6 +3629,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2676,6 +3644,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2690,6 +3659,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2704,6 +3674,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2718,6 +3689,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2732,6 +3704,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2746,6 +3719,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2754,31 +3728,33 @@ mod __parse__Program {
         0, // on Program, error
         0, // on __Program, error
         // State 12
-        2, // on Add, goto 1
-        3, // on App, goto 2
-        4, // on Atom, goto 3
-        5, // on Cmp, goto 4
-        35, // on Expr, goto 34
-        36, // on Exprs, goto 35
-        7, // on Ident, goto 6
-        8, // on Int, goto 7
-        9, // on List, goto 8
-        10, // on Mul, goto 9
-        11, // on Num, goto 10
-        0, // on Program, error
-        0, // on __Program, error
-        // State 13
         0, // on Add, error
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
         0, // on Mul, error
         0, // on Num, error
+        0, // on Program, error
+        0, // on __Program, error
+        // State 13
+        2, // on Add, goto 1
+        3, // on App, goto 2
+        4, // on Atom, goto 3
+        5, // on Cmp, goto 4
+        39, // on Expr, goto 38
+        40, // on Exprs, goto 39
+        7, // on Get, goto 6
+        8, // on Ident, goto 7
+        9, // on Int, goto 8
+        10, // on List, goto 9
+        11, // on Mul, goto 10
+        12, // on Num, goto 11
         0, // on Program, error
         0, // on __Program, error
         // State 14
@@ -2788,6 +3764,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2796,17 +3773,18 @@ mod __parse__Program {
         0, // on Program, error
         0, // on __Program, error
         // State 15
-        2, // on Add, goto 1
-        3, // on App, goto 2
-        4, // on Atom, goto 3
-        5, // on Cmp, goto 4
-        37, // on Expr, goto 36
+        0, // on Add, error
+        0, // on App, error
+        0, // on Atom, error
+        0, // on Cmp, error
+        0, // on Expr, error
         0, // on Exprs, error
-        7, // on Ident, goto 6
-        8, // on Int, goto 7
-        9, // on List, goto 8
-        10, // on Mul, goto 9
-        11, // on Num, goto 10
+        0, // on Get, error
+        0, // on Ident, error
+        0, // on Int, error
+        0, // on List, error
+        0, // on Mul, error
+        0, // on Num, error
         0, // on Program, error
         0, // on __Program, error
         // State 16
@@ -2816,6 +3794,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2824,17 +3803,18 @@ mod __parse__Program {
         0, // on Program, error
         0, // on __Program, error
         // State 17
-        0, // on Add, error
-        0, // on App, error
-        38, // on Atom, goto 37
-        0, // on Cmp, error
-        0, // on Expr, error
+        2, // on Add, goto 1
+        3, // on App, goto 2
+        4, // on Atom, goto 3
+        5, // on Cmp, goto 4
+        42, // on Expr, goto 41
         0, // on Exprs, error
-        7, // on Ident, goto 6
-        8, // on Int, goto 7
-        0, // on List, error
-        0, // on Mul, error
-        11, // on Num, goto 10
+        7, // on Get, goto 6
+        8, // on Ident, goto 7
+        9, // on Int, goto 8
+        10, // on List, goto 9
+        11, // on Mul, goto 10
+        12, // on Num, goto 11
         0, // on Program, error
         0, // on __Program, error
         // State 18
@@ -2844,6 +3824,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -2854,15 +3835,16 @@ mod __parse__Program {
         // State 19
         0, // on Add, error
         0, // on App, error
-        0, // on Atom, error
+        43, // on Atom, goto 42
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
-        39, // on Ident, goto 38
-        0, // on Int, error
+        0, // on Get, error
+        35, // on Ident, goto 34
+        9, // on Int, goto 8
         0, // on List, error
         0, // on Mul, error
-        0, // on Num, error
+        12, // on Num, goto 11
         0, // on Program, error
         0, // on __Program, error
         // State 20
@@ -2872,7 +3854,8 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
-        40, // on Ident, goto 39
+        0, // on Get, error
+        0, // on Ident, error
         0, // on Int, error
         0, // on List, error
         0, // on Mul, error
@@ -2882,57 +3865,61 @@ mod __parse__Program {
         // State 21
         0, // on Add, error
         0, // on App, error
-        41, // on Atom, goto 40
-        0, // on Cmp, error
-        0, // on Expr, error
-        0, // on Exprs, error
-        7, // on Ident, goto 6
-        8, // on Int, goto 7
-        0, // on List, error
-        0, // on Mul, error
-        11, // on Num, goto 10
-        0, // on Program, error
-        0, // on __Program, error
-        // State 22
-        2, // on Add, goto 1
-        3, // on App, goto 2
-        4, // on Atom, goto 3
-        5, // on Cmp, goto 4
-        42, // on Expr, goto 41
-        0, // on Exprs, error
-        7, // on Ident, goto 6
-        8, // on Int, goto 7
-        9, // on List, goto 8
-        10, // on Mul, goto 9
-        11, // on Num, goto 10
-        0, // on Program, error
-        0, // on __Program, error
-        // State 23
-        0, // on Add, error
-        0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
-        43, // on Ident, goto 42
+        0, // on Get, error
+        44, // on Ident, goto 43
         0, // on Int, error
         0, // on List, error
         0, // on Mul, error
         0, // on Num, error
         0, // on Program, error
         0, // on __Program, error
-        // State 24
+        // State 22
         0, // on Add, error
         0, // on App, error
-        44, // on Atom, goto 43
+        0, // on Atom, error
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
-        7, // on Ident, goto 6
-        8, // on Int, goto 7
+        0, // on Get, error
+        45, // on Ident, goto 44
+        0, // on Int, error
         0, // on List, error
         0, // on Mul, error
-        11, // on Num, goto 10
+        0, // on Num, error
+        0, // on Program, error
+        0, // on __Program, error
+        // State 23
+        0, // on Add, error
+        0, // on App, error
+        46, // on Atom, goto 45
+        0, // on Cmp, error
+        0, // on Expr, error
+        0, // on Exprs, error
+        0, // on Get, error
+        35, // on Ident, goto 34
+        9, // on Int, goto 8
+        0, // on List, error
+        0, // on Mul, error
+        12, // on Num, goto 11
+        0, // on Program, error
+        0, // on __Program, error
+        // State 24
+        2, // on Add, goto 1
+        3, // on App, goto 2
+        4, // on Atom, goto 3
+        5, // on Cmp, goto 4
+        47, // on Expr, goto 46
+        0, // on Exprs, error
+        7, // on Get, goto 6
+        8, // on Ident, goto 7
+        9, // on Int, goto 8
+        10, // on List, goto 9
+        11, // on Mul, goto 10
+        12, // on Num, goto 11
         0, // on Program, error
         0, // on __Program, error
         // State 25
@@ -2942,7 +3929,8 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
-        0, // on Ident, error
+        0, // on Get, error
+        48, // on Ident, goto 47
         0, // on Int, error
         0, // on List, error
         0, // on Mul, error
@@ -2951,81 +3939,27 @@ mod __parse__Program {
         0, // on __Program, error
         // State 26
         0, // on Add, error
-        3, // on App, goto 2
-        4, // on Atom, goto 3
+        0, // on App, error
+        49, // on Atom, goto 48
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
-        7, // on Ident, goto 6
-        8, // on Int, goto 7
-        9, // on List, goto 8
-        45, // on Mul, goto 44
-        11, // on Num, goto 10
+        0, // on Get, error
+        35, // on Ident, goto 34
+        9, // on Int, goto 8
+        0, // on List, error
+        0, // on Mul, error
+        12, // on Num, goto 11
         0, // on Program, error
         0, // on __Program, error
         // State 27
-        0, // on Add, error
-        3, // on App, goto 2
-        4, // on Atom, goto 3
-        0, // on Cmp, error
-        0, // on Expr, error
-        0, // on Exprs, error
-        7, // on Ident, goto 6
-        8, // on Int, goto 7
-        9, // on List, goto 8
-        46, // on Mul, goto 45
-        11, // on Num, goto 10
-        0, // on Program, error
-        0, // on __Program, error
-        // State 28
-        2, // on Add, goto 1
-        3, // on App, goto 2
-        4, // on Atom, goto 3
-        47, // on Cmp, goto 46
-        0, // on Expr, error
-        0, // on Exprs, error
-        7, // on Ident, goto 6
-        8, // on Int, goto 7
-        9, // on List, goto 8
-        10, // on Mul, goto 9
-        11, // on Num, goto 10
-        0, // on Program, error
-        0, // on __Program, error
-        // State 29
-        2, // on Add, goto 1
-        3, // on App, goto 2
-        4, // on Atom, goto 3
-        48, // on Cmp, goto 47
-        0, // on Expr, error
-        0, // on Exprs, error
-        7, // on Ident, goto 6
-        8, // on Int, goto 7
-        9, // on List, goto 8
-        10, // on Mul, goto 9
-        11, // on Num, goto 10
-        0, // on Program, error
-        0, // on __Program, error
-        // State 30
-        2, // on Add, goto 1
-        3, // on App, goto 2
-        4, // on Atom, goto 3
-        49, // on Cmp, goto 48
-        0, // on Expr, error
-        0, // on Exprs, error
-        7, // on Ident, goto 6
-        8, // on Int, goto 7
-        9, // on List, goto 8
-        10, // on Mul, goto 9
-        11, // on Num, goto 10
-        0, // on Program, error
-        0, // on __Program, error
-        // State 31
         0, // on Add, error
         0, // on App, error
         0, // on Atom, error
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3033,32 +3967,94 @@ mod __parse__Program {
         0, // on Num, error
         0, // on Program, error
         0, // on __Program, error
-        // State 32
+        // State 28
         0, // on Add, error
         3, // on App, goto 2
         4, // on Atom, goto 3
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
-        7, // on Ident, goto 6
-        8, // on Int, goto 7
-        50, // on List, goto 49
-        0, // on Mul, error
-        11, // on Num, goto 10
+        7, // on Get, goto 6
+        8, // on Ident, goto 7
+        9, // on Int, goto 8
+        10, // on List, goto 9
+        50, // on Mul, goto 49
+        12, // on Num, goto 11
+        0, // on Program, error
+        0, // on __Program, error
+        // State 29
+        0, // on Add, error
+        3, // on App, goto 2
+        4, // on Atom, goto 3
+        0, // on Cmp, error
+        0, // on Expr, error
+        0, // on Exprs, error
+        7, // on Get, goto 6
+        8, // on Ident, goto 7
+        9, // on Int, goto 8
+        10, // on List, goto 9
+        51, // on Mul, goto 50
+        12, // on Num, goto 11
+        0, // on Program, error
+        0, // on __Program, error
+        // State 30
+        2, // on Add, goto 1
+        3, // on App, goto 2
+        4, // on Atom, goto 3
+        52, // on Cmp, goto 51
+        0, // on Expr, error
+        0, // on Exprs, error
+        7, // on Get, goto 6
+        8, // on Ident, goto 7
+        9, // on Int, goto 8
+        10, // on List, goto 9
+        11, // on Mul, goto 10
+        12, // on Num, goto 11
+        0, // on Program, error
+        0, // on __Program, error
+        // State 31
+        2, // on Add, goto 1
+        3, // on App, goto 2
+        4, // on Atom, goto 3
+        53, // on Cmp, goto 52
+        0, // on Expr, error
+        0, // on Exprs, error
+        7, // on Get, goto 6
+        8, // on Ident, goto 7
+        9, // on Int, goto 8
+        10, // on List, goto 9
+        11, // on Mul, goto 10
+        12, // on Num, goto 11
+        0, // on Program, error
+        0, // on __Program, error
+        // State 32
+        2, // on Add, goto 1
+        3, // on App, goto 2
+        4, // on Atom, goto 3
+        54, // on Cmp, goto 53
+        0, // on Expr, error
+        0, // on Exprs, error
+        7, // on Get, goto 6
+        8, // on Ident, goto 7
+        9, // on Int, goto 8
+        10, // on List, goto 9
+        11, // on Mul, goto 10
+        12, // on Num, goto 11
         0, // on Program, error
         0, // on __Program, error
         // State 33
         0, // on Add, error
-        3, // on App, goto 2
-        4, // on Atom, goto 3
+        0, // on App, error
+        0, // on Atom, error
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
-        7, // on Ident, goto 6
-        8, // on Int, goto 7
-        51, // on List, goto 50
+        0, // on Get, error
+        0, // on Ident, error
+        0, // on Int, error
+        0, // on List, error
         0, // on Mul, error
-        11, // on Num, goto 10
+        0, // on Num, error
         0, // on Program, error
         0, // on __Program, error
         // State 34
@@ -3068,6 +4064,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3077,44 +4074,47 @@ mod __parse__Program {
         0, // on __Program, error
         // State 35
         0, // on Add, error
-        0, // on App, error
-        0, // on Atom, error
+        3, // on App, goto 2
+        4, // on Atom, goto 3
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
-        0, // on Ident, error
-        0, // on Int, error
-        0, // on List, error
+        7, // on Get, goto 6
+        8, // on Ident, goto 7
+        9, // on Int, goto 8
+        55, // on List, goto 54
         0, // on Mul, error
-        0, // on Num, error
+        12, // on Num, goto 11
         0, // on Program, error
         0, // on __Program, error
         // State 36
-        0, // on Add, error
-        0, // on App, error
-        0, // on Atom, error
+        56, // on Add, goto 55
+        3, // on App, goto 2
+        4, // on Atom, goto 3
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
-        0, // on Ident, error
-        0, // on Int, error
-        0, // on List, error
-        0, // on Mul, error
-        0, // on Num, error
+        7, // on Get, goto 6
+        8, // on Ident, goto 7
+        9, // on Int, goto 8
+        10, // on List, goto 9
+        11, // on Mul, goto 10
+        12, // on Num, goto 11
         0, // on Program, error
         0, // on __Program, error
         // State 37
         0, // on Add, error
-        0, // on App, error
-        0, // on Atom, error
+        3, // on App, goto 2
+        4, // on Atom, goto 3
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
-        0, // on Ident, error
-        0, // on Int, error
-        0, // on List, error
+        7, // on Get, goto 6
+        8, // on Ident, goto 7
+        9, // on Int, goto 8
+        57, // on List, goto 56
         0, // on Mul, error
-        0, // on Num, error
+        12, // on Num, goto 11
         0, // on Program, error
         0, // on __Program, error
         // State 38
@@ -3124,6 +4124,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3138,6 +4139,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3146,17 +4148,18 @@ mod __parse__Program {
         0, // on Program, error
         0, // on __Program, error
         // State 40
-        0, // on Add, error
-        0, // on App, error
-        0, // on Atom, error
+        59, // on Add, goto 58
+        3, // on App, goto 2
+        4, // on Atom, goto 3
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
-        0, // on Ident, error
-        0, // on Int, error
-        0, // on List, error
-        0, // on Mul, error
-        0, // on Num, error
+        7, // on Get, goto 6
+        8, // on Ident, goto 7
+        9, // on Int, goto 8
+        10, // on List, goto 9
+        11, // on Mul, goto 10
+        12, // on Num, goto 11
         0, // on Program, error
         0, // on __Program, error
         // State 41
@@ -3166,6 +4169,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3180,6 +4184,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3194,6 +4199,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3208,6 +4214,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3222,6 +4229,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3236,6 +4244,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3250,6 +4259,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3264,6 +4274,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3278,6 +4289,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3292,6 +4304,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3306,6 +4319,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3320,6 +4334,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3328,59 +4343,63 @@ mod __parse__Program {
         0, // on Program, error
         0, // on __Program, error
         // State 53
-        2, // on Add, goto 1
-        3, // on App, goto 2
-        4, // on Atom, goto 3
-        5, // on Cmp, goto 4
-        58, // on Expr, goto 57
+        0, // on Add, error
+        0, // on App, error
+        0, // on Atom, error
+        0, // on Cmp, error
+        0, // on Expr, error
         0, // on Exprs, error
-        7, // on Ident, goto 6
-        8, // on Int, goto 7
-        9, // on List, goto 8
-        10, // on Mul, goto 9
-        11, // on Num, goto 10
+        0, // on Get, error
+        0, // on Ident, error
+        0, // on Int, error
+        0, // on List, error
+        0, // on Mul, error
+        0, // on Num, error
         0, // on Program, error
         0, // on __Program, error
         // State 54
-        2, // on Add, goto 1
-        3, // on App, goto 2
-        4, // on Atom, goto 3
-        5, // on Cmp, goto 4
-        59, // on Expr, goto 58
+        0, // on Add, error
+        0, // on App, error
+        0, // on Atom, error
+        0, // on Cmp, error
+        0, // on Expr, error
         0, // on Exprs, error
-        7, // on Ident, goto 6
-        8, // on Int, goto 7
-        9, // on List, goto 8
-        10, // on Mul, goto 9
-        11, // on Num, goto 10
+        0, // on Get, error
+        0, // on Ident, error
+        0, // on Int, error
+        0, // on List, error
+        0, // on Mul, error
+        0, // on Num, error
         0, // on Program, error
         0, // on __Program, error
         // State 55
-        2, // on Add, goto 1
-        3, // on App, goto 2
-        4, // on Atom, goto 3
-        5, // on Cmp, goto 4
-        60, // on Expr, goto 59
+        0, // on Add, error
+        0, // on App, error
+        0, // on Atom, error
+        0, // on Cmp, error
+        0, // on Expr, error
         0, // on Exprs, error
-        7, // on Ident, goto 6
-        8, // on Int, goto 7
-        9, // on List, goto 8
-        10, // on Mul, goto 9
-        11, // on Num, goto 10
+        0, // on Get, error
+        0, // on Ident, error
+        0, // on Int, error
+        0, // on List, error
+        0, // on Mul, error
+        0, // on Num, error
         0, // on Program, error
         0, // on __Program, error
         // State 56
-        2, // on Add, goto 1
-        3, // on App, goto 2
-        4, // on Atom, goto 3
-        5, // on Cmp, goto 4
-        61, // on Expr, goto 60
+        0, // on Add, error
+        0, // on App, error
+        0, // on Atom, error
+        0, // on Cmp, error
+        0, // on Expr, error
         0, // on Exprs, error
-        7, // on Ident, goto 6
-        8, // on Int, goto 7
-        9, // on List, goto 8
-        10, // on Mul, goto 9
-        11, // on Num, goto 10
+        0, // on Get, error
+        0, // on Ident, error
+        0, // on Int, error
+        0, // on List, error
+        0, // on Mul, error
+        0, // on Num, error
         0, // on Program, error
         0, // on __Program, error
         // State 57
@@ -3390,6 +4409,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3404,6 +4424,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3418,6 +4439,7 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3426,17 +4448,18 @@ mod __parse__Program {
         0, // on Program, error
         0, // on __Program, error
         // State 60
-        0, // on Add, error
-        0, // on App, error
-        0, // on Atom, error
-        0, // on Cmp, error
-        0, // on Expr, error
+        2, // on Add, goto 1
+        3, // on App, goto 2
+        4, // on Atom, goto 3
+        5, // on Cmp, goto 4
+        67, // on Expr, goto 66
         0, // on Exprs, error
-        0, // on Ident, error
-        0, // on Int, error
-        0, // on List, error
-        0, // on Mul, error
-        0, // on Num, error
+        7, // on Get, goto 6
+        8, // on Ident, goto 7
+        9, // on Int, goto 8
+        10, // on List, goto 9
+        11, // on Mul, goto 10
+        12, // on Num, goto 11
         0, // on Program, error
         0, // on __Program, error
         // State 61
@@ -3444,13 +4467,14 @@ mod __parse__Program {
         3, // on App, goto 2
         4, // on Atom, goto 3
         5, // on Cmp, goto 4
-        64, // on Expr, goto 63
+        68, // on Expr, goto 67
         0, // on Exprs, error
-        7, // on Ident, goto 6
-        8, // on Int, goto 7
-        9, // on List, goto 8
-        10, // on Mul, goto 9
-        11, // on Num, goto 10
+        7, // on Get, goto 6
+        8, // on Ident, goto 7
+        9, // on Int, goto 8
+        10, // on List, goto 9
+        11, // on Mul, goto 10
+        12, // on Num, goto 11
         0, // on Program, error
         0, // on __Program, error
         // State 62
@@ -3458,27 +4482,29 @@ mod __parse__Program {
         3, // on App, goto 2
         4, // on Atom, goto 3
         5, // on Cmp, goto 4
-        65, // on Expr, goto 64
+        69, // on Expr, goto 68
         0, // on Exprs, error
-        7, // on Ident, goto 6
-        8, // on Int, goto 7
-        9, // on List, goto 8
-        10, // on Mul, goto 9
-        11, // on Num, goto 10
+        7, // on Get, goto 6
+        8, // on Ident, goto 7
+        9, // on Int, goto 8
+        10, // on List, goto 9
+        11, // on Mul, goto 10
+        12, // on Num, goto 11
         0, // on Program, error
         0, // on __Program, error
         // State 63
-        0, // on Add, error
-        0, // on App, error
-        0, // on Atom, error
-        0, // on Cmp, error
-        0, // on Expr, error
+        2, // on Add, goto 1
+        3, // on App, goto 2
+        4, // on Atom, goto 3
+        5, // on Cmp, goto 4
+        70, // on Expr, goto 69
         0, // on Exprs, error
-        0, // on Ident, error
-        0, // on Int, error
-        0, // on List, error
-        0, // on Mul, error
-        0, // on Num, error
+        7, // on Get, goto 6
+        8, // on Ident, goto 7
+        9, // on Int, goto 8
+        10, // on List, goto 9
+        11, // on Mul, goto 10
+        12, // on Num, goto 11
         0, // on Program, error
         0, // on __Program, error
         // State 64
@@ -3488,6 +4514,202 @@ mod __parse__Program {
         0, // on Cmp, error
         0, // on Expr, error
         0, // on Exprs, error
+        0, // on Get, error
+        0, // on Ident, error
+        0, // on Int, error
+        0, // on List, error
+        0, // on Mul, error
+        0, // on Num, error
+        0, // on Program, error
+        0, // on __Program, error
+        // State 65
+        72, // on Add, goto 71
+        3, // on App, goto 2
+        4, // on Atom, goto 3
+        0, // on Cmp, error
+        0, // on Expr, error
+        0, // on Exprs, error
+        7, // on Get, goto 6
+        8, // on Ident, goto 7
+        9, // on Int, goto 8
+        10, // on List, goto 9
+        11, // on Mul, goto 10
+        12, // on Num, goto 11
+        0, // on Program, error
+        0, // on __Program, error
+        // State 66
+        0, // on Add, error
+        0, // on App, error
+        0, // on Atom, error
+        0, // on Cmp, error
+        0, // on Expr, error
+        0, // on Exprs, error
+        0, // on Get, error
+        0, // on Ident, error
+        0, // on Int, error
+        0, // on List, error
+        0, // on Mul, error
+        0, // on Num, error
+        0, // on Program, error
+        0, // on __Program, error
+        // State 67
+        0, // on Add, error
+        0, // on App, error
+        0, // on Atom, error
+        0, // on Cmp, error
+        0, // on Expr, error
+        0, // on Exprs, error
+        0, // on Get, error
+        0, // on Ident, error
+        0, // on Int, error
+        0, // on List, error
+        0, // on Mul, error
+        0, // on Num, error
+        0, // on Program, error
+        0, // on __Program, error
+        // State 68
+        0, // on Add, error
+        0, // on App, error
+        0, // on Atom, error
+        0, // on Cmp, error
+        0, // on Expr, error
+        0, // on Exprs, error
+        0, // on Get, error
+        0, // on Ident, error
+        0, // on Int, error
+        0, // on List, error
+        0, // on Mul, error
+        0, // on Num, error
+        0, // on Program, error
+        0, // on __Program, error
+        // State 69
+        0, // on Add, error
+        0, // on App, error
+        0, // on Atom, error
+        0, // on Cmp, error
+        0, // on Expr, error
+        0, // on Exprs, error
+        0, // on Get, error
+        0, // on Ident, error
+        0, // on Int, error
+        0, // on List, error
+        0, // on Mul, error
+        0, // on Num, error
+        0, // on Program, error
+        0, // on __Program, error
+        // State 70
+        0, // on Add, error
+        0, // on App, error
+        75, // on Atom, goto 74
+        0, // on Cmp, error
+        0, // on Expr, error
+        0, // on Exprs, error
+        0, // on Get, error
+        35, // on Ident, goto 34
+        9, // on Int, goto 8
+        0, // on List, error
+        0, // on Mul, error
+        12, // on Num, goto 11
+        0, // on Program, error
+        0, // on __Program, error
+        // State 71
+        0, // on Add, error
+        0, // on App, error
+        0, // on Atom, error
+        0, // on Cmp, error
+        0, // on Expr, error
+        0, // on Exprs, error
+        0, // on Get, error
+        0, // on Ident, error
+        0, // on Int, error
+        0, // on List, error
+        0, // on Mul, error
+        0, // on Num, error
+        0, // on Program, error
+        0, // on __Program, error
+        // State 72
+        2, // on Add, goto 1
+        3, // on App, goto 2
+        4, // on Atom, goto 3
+        5, // on Cmp, goto 4
+        77, // on Expr, goto 76
+        0, // on Exprs, error
+        7, // on Get, goto 6
+        8, // on Ident, goto 7
+        9, // on Int, goto 8
+        10, // on List, goto 9
+        11, // on Mul, goto 10
+        12, // on Num, goto 11
+        0, // on Program, error
+        0, // on __Program, error
+        // State 73
+        2, // on Add, goto 1
+        3, // on App, goto 2
+        4, // on Atom, goto 3
+        5, // on Cmp, goto 4
+        78, // on Expr, goto 77
+        0, // on Exprs, error
+        7, // on Get, goto 6
+        8, // on Ident, goto 7
+        9, // on Int, goto 8
+        10, // on List, goto 9
+        11, // on Mul, goto 10
+        12, // on Num, goto 11
+        0, // on Program, error
+        0, // on __Program, error
+        // State 74
+        0, // on Add, error
+        0, // on App, error
+        0, // on Atom, error
+        0, // on Cmp, error
+        0, // on Expr, error
+        0, // on Exprs, error
+        0, // on Get, error
+        0, // on Ident, error
+        0, // on Int, error
+        0, // on List, error
+        0, // on Mul, error
+        0, // on Num, error
+        0, // on Program, error
+        0, // on __Program, error
+        // State 75
+        0, // on Add, error
+        0, // on App, error
+        0, // on Atom, error
+        0, // on Cmp, error
+        0, // on Expr, error
+        0, // on Exprs, error
+        0, // on Get, error
+        0, // on Ident, error
+        0, // on Int, error
+        0, // on List, error
+        0, // on Mul, error
+        0, // on Num, error
+        0, // on Program, error
+        0, // on __Program, error
+        // State 76
+        0, // on Add, error
+        0, // on App, error
+        0, // on Atom, error
+        0, // on Cmp, error
+        0, // on Expr, error
+        0, // on Exprs, error
+        0, // on Get, error
+        0, // on Ident, error
+        0, // on Int, error
+        0, // on List, error
+        0, // on Mul, error
+        0, // on Num, error
+        0, // on Program, error
+        0, // on __Program, error
+        // State 77
+        0, // on Add, error
+        0, // on App, error
+        0, // on Atom, error
+        0, // on Cmp, error
+        0, // on Expr, error
+        0, // on Exprs, error
+        0, // on Get, error
         0, // on Ident, error
         0, // on Int, error
         0, // on List, error
@@ -3525,25 +4747,30 @@ mod __parse__Program {
                 (_, Tok::RArrow, _) if true => 6,
                 (_, Tok::Cons, _) if true => 7,
                 (_, Tok::Lt, _) if true => 8,
-                (_, Tok::Eq, _) if true => 9,
-                (_, Tok::Gt, _) if true => 10,
-                (_, Tok::Ident(_), _) if true => 11,
-                (_, Tok::Num(_), _) if true => 12,
-                (_, Tok::Begin, _) if true => 13,
-                (_, Tok::Else, _) if true => 14,
-                (_, Tok::Empty, _) if true => 15,
-                (_, Tok::Emptyq, _) if true => 16,
-                (_, Tok::End, _) if true => 17,
-                (_, Tok::False, _) if true => 18,
-                (_, Tok::Fix, _) if true => 19,
-                (_, Tok::Fun, _) if true => 20,
-                (_, Tok::Head, _) if true => 21,
-                (_, Tok::If, _) if true => 22,
-                (_, Tok::In, _) if true => 23,
-                (_, Tok::Let, _) if true => 24,
-                (_, Tok::Tail, _) if true => 25,
-                (_, Tok::Then, _) if true => 26,
-                (_, Tok::True, _) if true => 27,
+                (_, Tok::LArrow, _) if true => 9,
+                (_, Tok::Eq, _) if true => 10,
+                (_, Tok::Gt, _) if true => 11,
+                (_, Tok::Ident(_), _) if true => 12,
+                (_, Tok::Num(_), _) if true => 13,
+                (_, Tok::LBracket, _) if true => 14,
+                (_, Tok::RBracket, _) if true => 15,
+                (_, Tok::Array, _) if true => 16,
+                (_, Tok::Begin, _) if true => 17,
+                (_, Tok::Else, _) if true => 18,
+                (_, Tok::Empty, _) if true => 19,
+                (_, Tok::Emptyq, _) if true => 20,
+                (_, Tok::End, _) if true => 21,
+                (_, Tok::False, _) if true => 22,
+                (_, Tok::Fix, _) if true => 23,
+                (_, Tok::Fun, _) if true => 24,
+                (_, Tok::Head, _) if true => 25,
+                (_, Tok::If, _) if true => 26,
+                (_, Tok::In, _) if true => 27,
+                (_, Tok::Let, _) if true => 28,
+                (_, Tok::Set, _) if true => 29,
+                (_, Tok::Tail, _) if true => 30,
+                (_, Tok::Then, _) if true => 31,
+                (_, Tok::True, _) if true => 32,
                 _ => {
                     return Err(__lalrpop_util::ParseError::UnrecognizedToken {
                         token: Some(__lookahead),
@@ -3553,7 +4780,7 @@ mod __parse__Program {
             };
             loop {
                 let __state = *__states.last().unwrap() as usize;
-                let __action = __ACTION[__state * 28 + __integer];
+                let __action = __ACTION[__state * 33 + __integer];
                 if __action > 0 {
                     let __symbol = match __integer {
                         0 => match __lookahead.1 {
@@ -3593,78 +4820,98 @@ mod __parse__Program {
                             _ => unreachable!(),
                         },
                         9 => match __lookahead.1 {
-                            __tok @ Tok::Eq => __Symbol::Term_22_3d_22(__tok),
+                            __tok @ Tok::LArrow => __Symbol::Term_22_3c_2d_22(__tok),
                             _ => unreachable!(),
                         },
                         10 => match __lookahead.1 {
-                            __tok @ Tok::Gt => __Symbol::Term_22_3e_22(__tok),
+                            __tok @ Tok::Eq => __Symbol::Term_22_3d_22(__tok),
                             _ => unreachable!(),
                         },
                         11 => match __lookahead.1 {
-                            Tok::Ident(__tok0) => __Symbol::Term_22Iden_22(__tok0),
+                            __tok @ Tok::Gt => __Symbol::Term_22_3e_22(__tok),
                             _ => unreachable!(),
                         },
                         12 => match __lookahead.1 {
-                            Tok::Num(__tok0) => __Symbol::Term_22Num_22(__tok0),
+                            Tok::Ident(__tok0) => __Symbol::Term_22Iden_22(__tok0),
                             _ => unreachable!(),
                         },
                         13 => match __lookahead.1 {
-                            __tok @ Tok::Begin => __Symbol::Term_22begin_22(__tok),
+                            Tok::Num(__tok0) => __Symbol::Term_22Num_22(__tok0),
                             _ => unreachable!(),
                         },
                         14 => match __lookahead.1 {
-                            __tok @ Tok::Else => __Symbol::Term_22else_22(__tok),
+                            __tok @ Tok::LBracket => __Symbol::Term_22_5b_22(__tok),
                             _ => unreachable!(),
                         },
                         15 => match __lookahead.1 {
-                            __tok @ Tok::Empty => __Symbol::Term_22empty_22(__tok),
+                            __tok @ Tok::RBracket => __Symbol::Term_22_5d_22(__tok),
                             _ => unreachable!(),
                         },
                         16 => match __lookahead.1 {
-                            __tok @ Tok::Emptyq => __Symbol::Term_22empty_3f_22(__tok),
+                            __tok @ Tok::Array => __Symbol::Term_22array_22(__tok),
                             _ => unreachable!(),
                         },
                         17 => match __lookahead.1 {
-                            __tok @ Tok::End => __Symbol::Term_22end_22(__tok),
+                            __tok @ Tok::Begin => __Symbol::Term_22begin_22(__tok),
                             _ => unreachable!(),
                         },
                         18 => match __lookahead.1 {
-                            __tok @ Tok::False => __Symbol::Term_22false_22(__tok),
+                            __tok @ Tok::Else => __Symbol::Term_22else_22(__tok),
                             _ => unreachable!(),
                         },
                         19 => match __lookahead.1 {
-                            __tok @ Tok::Fix => __Symbol::Term_22fix_22(__tok),
+                            __tok @ Tok::Empty => __Symbol::Term_22empty_22(__tok),
                             _ => unreachable!(),
                         },
                         20 => match __lookahead.1 {
-                            __tok @ Tok::Fun => __Symbol::Term_22fun_22(__tok),
+                            __tok @ Tok::Emptyq => __Symbol::Term_22empty_3f_22(__tok),
                             _ => unreachable!(),
                         },
                         21 => match __lookahead.1 {
-                            __tok @ Tok::Head => __Symbol::Term_22head_22(__tok),
+                            __tok @ Tok::End => __Symbol::Term_22end_22(__tok),
                             _ => unreachable!(),
                         },
                         22 => match __lookahead.1 {
-                            __tok @ Tok::If => __Symbol::Term_22if_22(__tok),
+                            __tok @ Tok::False => __Symbol::Term_22false_22(__tok),
                             _ => unreachable!(),
                         },
                         23 => match __lookahead.1 {
-                            __tok @ Tok::In => __Symbol::Term_22in_22(__tok),
+                            __tok @ Tok::Fix => __Symbol::Term_22fix_22(__tok),
                             _ => unreachable!(),
                         },
                         24 => match __lookahead.1 {
-                            __tok @ Tok::Let => __Symbol::Term_22let_22(__tok),
+                            __tok @ Tok::Fun => __Symbol::Term_22fun_22(__tok),
                             _ => unreachable!(),
                         },
                         25 => match __lookahead.1 {
-                            __tok @ Tok::Tail => __Symbol::Term_22tail_22(__tok),
+                            __tok @ Tok::Head => __Symbol::Term_22head_22(__tok),
                             _ => unreachable!(),
                         },
                         26 => match __lookahead.1 {
-                            __tok @ Tok::Then => __Symbol::Term_22then_22(__tok),
+                            __tok @ Tok::If => __Symbol::Term_22if_22(__tok),
                             _ => unreachable!(),
                         },
                         27 => match __lookahead.1 {
+                            __tok @ Tok::In => __Symbol::Term_22in_22(__tok),
+                            _ => unreachable!(),
+                        },
+                        28 => match __lookahead.1 {
+                            __tok @ Tok::Let => __Symbol::Term_22let_22(__tok),
+                            _ => unreachable!(),
+                        },
+                        29 => match __lookahead.1 {
+                            __tok @ Tok::Set => __Symbol::Term_22set_22(__tok),
+                            _ => unreachable!(),
+                        },
+                        30 => match __lookahead.1 {
+                            __tok @ Tok::Tail => __Symbol::Term_22tail_22(__tok),
+                            _ => unreachable!(),
+                        },
+                        31 => match __lookahead.1 {
+                            __tok @ Tok::Then => __Symbol::Term_22then_22(__tok),
+                            _ => unreachable!(),
+                        },
+                        32 => match __lookahead.1 {
                             __tok @ Tok::True => __Symbol::Term_22true_22(__tok),
                             _ => unreachable!(),
                         },
@@ -3750,124 +4997,94 @@ mod __parse__Program {
                 0
             }
             4 => {
-                // App = "head", Atom => ActionFn(19);
-                let __sym1 = __pop_NtAtom(__symbols);
-                let __sym0 = __pop_Term_22head_22(__symbols);
+                // App = "array", "(", Add, ",", Add, ")" => ActionFn(22);
+                let __sym5 = __pop_Term_22_29_22(__symbols);
+                let __sym4 = __pop_NtAdd(__symbols);
+                let __sym3 = __pop_Term_22_2c_22(__symbols);
+                let __sym2 = __pop_NtAdd(__symbols);
+                let __sym1 = __pop_Term_22_28_22(__symbols);
+                let __sym0 = __pop_Term_22array_22(__symbols);
                 let __start = __sym0.0.clone();
-                let __end = __sym1.2.clone();
-                let __nt = super::__action19::<>(text, __sym0, __sym1);
+                let __end = __sym5.2.clone();
+                let __nt = super::__action22::<>(text, __sym0, __sym1, __sym2, __sym3, __sym4, __sym5);
                 let __states_len = __states.len();
-                __states.truncate(__states_len - 2);
+                __states.truncate(__states_len - 6);
                 __symbols.push((__start, __Symbol::NtApp(__nt), __end));
                 1
             }
             5 => {
-                // App = "tail", Atom => ActionFn(20);
+                // App = "head", Atom => ActionFn(23);
                 let __sym1 = __pop_NtAtom(__symbols);
-                let __sym0 = __pop_Term_22tail_22(__symbols);
+                let __sym0 = __pop_Term_22head_22(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym1.2.clone();
-                let __nt = super::__action20::<>(text, __sym0, __sym1);
+                let __nt = super::__action23::<>(text, __sym0, __sym1);
                 let __states_len = __states.len();
                 __states.truncate(__states_len - 2);
                 __symbols.push((__start, __Symbol::NtApp(__nt), __end));
                 1
             }
             6 => {
-                // App = "empty?", Atom => ActionFn(21);
+                // App = "tail", Atom => ActionFn(24);
                 let __sym1 = __pop_NtAtom(__symbols);
-                let __sym0 = __pop_Term_22empty_3f_22(__symbols);
+                let __sym0 = __pop_Term_22tail_22(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym1.2.clone();
-                let __nt = super::__action21::<>(text, __sym0, __sym1);
+                let __nt = super::__action24::<>(text, __sym0, __sym1);
                 let __states_len = __states.len();
                 __states.truncate(__states_len - 2);
                 __symbols.push((__start, __Symbol::NtApp(__nt), __end));
                 1
             }
             7 => {
-                // App = App, Atom => ActionFn(22);
+                // App = "empty?", Atom => ActionFn(25);
                 let __sym1 = __pop_NtAtom(__symbols);
-                let __sym0 = __pop_NtApp(__symbols);
+                let __sym0 = __pop_Term_22empty_3f_22(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym1.2.clone();
-                let __nt = super::__action22::<>(text, __sym0, __sym1);
+                let __nt = super::__action25::<>(text, __sym0, __sym1);
                 let __states_len = __states.len();
                 __states.truncate(__states_len - 2);
                 __symbols.push((__start, __Symbol::NtApp(__nt), __end));
                 1
             }
             8 => {
-                // App = Atom => ActionFn(23);
+                // App = App, Atom => ActionFn(26);
+                let __sym1 = __pop_NtAtom(__symbols);
+                let __sym0 = __pop_NtApp(__symbols);
+                let __start = __sym0.0.clone();
+                let __end = __sym1.2.clone();
+                let __nt = super::__action26::<>(text, __sym0, __sym1);
+                let __states_len = __states.len();
+                __states.truncate(__states_len - 2);
+                __symbols.push((__start, __Symbol::NtApp(__nt), __end));
+                1
+            }
+            9 => {
+                // App = Atom => ActionFn(27);
                 let __sym0 = __pop_NtAtom(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym0.2.clone();
-                let __nt = super::__action23::<>(text, __sym0);
+                let __nt = super::__action27::<>(text, __sym0);
                 let __states_len = __states.len();
                 __states.truncate(__states_len - 1);
                 __symbols.push((__start, __Symbol::NtApp(__nt), __end));
                 1
             }
-            9 => {
-                // Atom = Ident => ActionFn(24);
+            10 => {
+                // Atom = Ident => ActionFn(28);
                 let __sym0 = __pop_NtIdent(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym0.2.clone();
-                let __nt = super::__action24::<>(text, __sym0);
-                let __states_len = __states.len();
-                __states.truncate(__states_len - 1);
-                __symbols.push((__start, __Symbol::NtAtom(__nt), __end));
-                2
-            }
-            10 => {
-                // Atom = "true" => ActionFn(25);
-                let __sym0 = __pop_Term_22true_22(__symbols);
-                let __start = __sym0.0.clone();
-                let __end = __sym0.2.clone();
-                let __nt = super::__action25::<>(text, __sym0);
+                let __nt = super::__action28::<>(text, __sym0);
                 let __states_len = __states.len();
                 __states.truncate(__states_len - 1);
                 __symbols.push((__start, __Symbol::NtAtom(__nt), __end));
                 2
             }
             11 => {
-                // Atom = "false" => ActionFn(26);
-                let __sym0 = __pop_Term_22false_22(__symbols);
-                let __start = __sym0.0.clone();
-                let __end = __sym0.2.clone();
-                let __nt = super::__action26::<>(text, __sym0);
-                let __states_len = __states.len();
-                __states.truncate(__states_len - 1);
-                __symbols.push((__start, __Symbol::NtAtom(__nt), __end));
-                2
-            }
-            12 => {
-                // Atom = "empty" => ActionFn(27);
-                let __sym0 = __pop_Term_22empty_22(__symbols);
-                let __start = __sym0.0.clone();
-                let __end = __sym0.2.clone();
-                let __nt = super::__action27::<>(text, __sym0);
-                let __states_len = __states.len();
-                __states.truncate(__states_len - 1);
-                __symbols.push((__start, __Symbol::NtAtom(__nt), __end));
-                2
-            }
-            13 => {
-                // Atom = "(", Exprs, ")" => ActionFn(28);
-                let __sym2 = __pop_Term_22_29_22(__symbols);
-                let __sym1 = __pop_NtExprs(__symbols);
-                let __sym0 = __pop_Term_22_28_22(__symbols);
-                let __start = __sym0.0.clone();
-                let __end = __sym2.2.clone();
-                let __nt = super::__action28::<>(text, __sym0, __sym1, __sym2);
-                let __states_len = __states.len();
-                __states.truncate(__states_len - 3);
-                __symbols.push((__start, __Symbol::NtAtom(__nt), __end));
-                2
-            }
-            14 => {
-                // Atom = Int => ActionFn(29);
-                let __sym0 = __pop_NtInt(__symbols);
+                // Atom = "true" => ActionFn(29);
+                let __sym0 = __pop_Term_22true_22(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym0.2.clone();
                 let __nt = super::__action29::<>(text, __sym0);
@@ -3876,7 +5093,53 @@ mod __parse__Program {
                 __symbols.push((__start, __Symbol::NtAtom(__nt), __end));
                 2
             }
+            12 => {
+                // Atom = "false" => ActionFn(30);
+                let __sym0 = __pop_Term_22false_22(__symbols);
+                let __start = __sym0.0.clone();
+                let __end = __sym0.2.clone();
+                let __nt = super::__action30::<>(text, __sym0);
+                let __states_len = __states.len();
+                __states.truncate(__states_len - 1);
+                __symbols.push((__start, __Symbol::NtAtom(__nt), __end));
+                2
+            }
+            13 => {
+                // Atom = "empty" => ActionFn(31);
+                let __sym0 = __pop_Term_22empty_22(__symbols);
+                let __start = __sym0.0.clone();
+                let __end = __sym0.2.clone();
+                let __nt = super::__action31::<>(text, __sym0);
+                let __states_len = __states.len();
+                __states.truncate(__states_len - 1);
+                __symbols.push((__start, __Symbol::NtAtom(__nt), __end));
+                2
+            }
+            14 => {
+                // Atom = "(", Exprs, ")" => ActionFn(32);
+                let __sym2 = __pop_Term_22_29_22(__symbols);
+                let __sym1 = __pop_NtExprs(__symbols);
+                let __sym0 = __pop_Term_22_28_22(__symbols);
+                let __start = __sym0.0.clone();
+                let __end = __sym2.2.clone();
+                let __nt = super::__action32::<>(text, __sym0, __sym1, __sym2);
+                let __states_len = __states.len();
+                __states.truncate(__states_len - 3);
+                __symbols.push((__start, __Symbol::NtAtom(__nt), __end));
+                2
+            }
             15 => {
+                // Atom = Int => ActionFn(33);
+                let __sym0 = __pop_NtInt(__symbols);
+                let __start = __sym0.0.clone();
+                let __end = __sym0.2.clone();
+                let __nt = super::__action33::<>(text, __sym0);
+                let __states_len = __states.len();
+                __states.truncate(__states_len - 1);
+                __symbols.push((__start, __Symbol::NtAtom(__nt), __end));
+                2
+            }
+            16 => {
                 // Cmp = Add, "=", Cmp => ActionFn(8);
                 let __sym2 = __pop_NtCmp(__symbols);
                 let __sym1 = __pop_Term_22_3d_22(__symbols);
@@ -3889,7 +5152,7 @@ mod __parse__Program {
                 __symbols.push((__start, __Symbol::NtCmp(__nt), __end));
                 3
             }
-            16 => {
+            17 => {
                 // Cmp = Add, "<", Cmp => ActionFn(9);
                 let __sym2 = __pop_NtCmp(__symbols);
                 let __sym1 = __pop_Term_22_3c_22(__symbols);
@@ -3902,7 +5165,7 @@ mod __parse__Program {
                 __symbols.push((__start, __Symbol::NtCmp(__nt), __end));
                 3
             }
-            17 => {
+            18 => {
                 // Cmp = Add, ">", Cmp => ActionFn(10);
                 let __sym2 = __pop_NtCmp(__symbols);
                 let __sym1 = __pop_Term_22_3e_22(__symbols);
@@ -3915,7 +5178,7 @@ mod __parse__Program {
                 __symbols.push((__start, __Symbol::NtCmp(__nt), __end));
                 3
             }
-            18 => {
+            19 => {
                 // Cmp = Add => ActionFn(11);
                 let __sym0 = __pop_NtAdd(__symbols);
                 let __start = __sym0.0.clone();
@@ -3926,7 +5189,7 @@ mod __parse__Program {
                 __symbols.push((__start, __Symbol::NtCmp(__nt), __end));
                 3
             }
-            19 => {
+            20 => {
                 // Expr = "if", Expr, "then", Expr, "else", Expr => ActionFn(2);
                 let __sym5 = __pop_NtExpr(__symbols);
                 let __sym4 = __pop_Term_22else_22(__symbols);
@@ -3942,7 +5205,7 @@ mod __parse__Program {
                 __symbols.push((__start, __Symbol::NtExpr(__nt), __end));
                 4
             }
-            20 => {
+            21 => {
                 // Expr = "let", Ident, "=", Expr, "in", Expr => ActionFn(3);
                 let __sym5 = __pop_NtExpr(__symbols);
                 let __sym4 = __pop_Term_22in_22(__symbols);
@@ -3958,7 +5221,7 @@ mod __parse__Program {
                 __symbols.push((__start, __Symbol::NtExpr(__nt), __end));
                 4
             }
-            21 => {
+            22 => {
                 // Expr = "fun", Ident, "->", Expr => ActionFn(4);
                 let __sym3 = __pop_NtExpr(__symbols);
                 let __sym2 = __pop_Term_22_2d_3e_22(__symbols);
@@ -3972,7 +5235,7 @@ mod __parse__Program {
                 __symbols.push((__start, __Symbol::NtExpr(__nt), __end));
                 4
             }
-            22 => {
+            23 => {
                 // Expr = "fix", Ident, "->", Expr => ActionFn(5);
                 let __sym3 = __pop_NtExpr(__symbols);
                 let __sym2 = __pop_Term_22_2d_3e_22(__symbols);
@@ -3986,7 +5249,7 @@ mod __parse__Program {
                 __symbols.push((__start, __Symbol::NtExpr(__nt), __end));
                 4
             }
-            23 => {
+            24 => {
                 // Expr = "begin", Expr, "end" => ActionFn(6);
                 let __sym2 = __pop_Term_22end_22(__symbols);
                 let __sym1 = __pop_NtExpr(__symbols);
@@ -3999,7 +5262,7 @@ mod __parse__Program {
                 __symbols.push((__start, __Symbol::NtExpr(__nt), __end));
                 4
             }
-            24 => {
+            25 => {
                 // Expr = Cmp => ActionFn(7);
                 let __sym0 = __pop_NtCmp(__symbols);
                 let __start = __sym0.0.clone();
@@ -4010,64 +5273,105 @@ mod __parse__Program {
                 __symbols.push((__start, __Symbol::NtExpr(__nt), __end));
                 4
             }
-            25 => {
-                // Exprs = Expr => ActionFn(30);
+            26 => {
+                // Exprs = Expr => ActionFn(34);
                 let __sym0 = __pop_NtExpr(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym0.2.clone();
-                let __nt = super::__action30::<>(text, __sym0);
+                let __nt = super::__action34::<>(text, __sym0);
                 let __states_len = __states.len();
                 __states.truncate(__states_len - 1);
                 __symbols.push((__start, __Symbol::NtExprs(__nt), __end));
                 5
             }
-            26 => {
-                // Ident = "Iden" => ActionFn(32);
+            27 => {
+                // Get = Ident, "[", Add, "]", "<-", Atom => ActionFn(19);
+                let __sym5 = __pop_NtAtom(__symbols);
+                let __sym4 = __pop_Term_22_3c_2d_22(__symbols);
+                let __sym3 = __pop_Term_22_5d_22(__symbols);
+                let __sym2 = __pop_NtAdd(__symbols);
+                let __sym1 = __pop_Term_22_5b_22(__symbols);
+                let __sym0 = __pop_NtIdent(__symbols);
+                let __start = __sym0.0.clone();
+                let __end = __sym5.2.clone();
+                let __nt = super::__action19::<>(text, __sym0, __sym1, __sym2, __sym3, __sym4, __sym5);
+                let __states_len = __states.len();
+                __states.truncate(__states_len - 6);
+                __symbols.push((__start, __Symbol::NtGet(__nt), __end));
+                6
+            }
+            28 => {
+                // Get = Ident, "[", Add, "]" => ActionFn(20);
+                let __sym3 = __pop_Term_22_5d_22(__symbols);
+                let __sym2 = __pop_NtAdd(__symbols);
+                let __sym1 = __pop_Term_22_5b_22(__symbols);
+                let __sym0 = __pop_NtIdent(__symbols);
+                let __start = __sym0.0.clone();
+                let __end = __sym3.2.clone();
+                let __nt = super::__action20::<>(text, __sym0, __sym1, __sym2, __sym3);
+                let __states_len = __states.len();
+                __states.truncate(__states_len - 4);
+                __symbols.push((__start, __Symbol::NtGet(__nt), __end));
+                6
+            }
+            29 => {
+                // Get = App => ActionFn(21);
+                let __sym0 = __pop_NtApp(__symbols);
+                let __start = __sym0.0.clone();
+                let __end = __sym0.2.clone();
+                let __nt = super::__action21::<>(text, __sym0);
+                let __states_len = __states.len();
+                __states.truncate(__states_len - 1);
+                __symbols.push((__start, __Symbol::NtGet(__nt), __end));
+                6
+            }
+            30 => {
+                // Ident = "Iden" => ActionFn(36);
                 let __sym0 = __pop_Term_22Iden_22(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym0.2.clone();
-                let __nt = super::__action32::<>(text, __sym0);
+                let __nt = super::__action36::<>(text, __sym0);
                 let __states_len = __states.len();
                 __states.truncate(__states_len - 1);
                 __symbols.push((__start, __Symbol::NtIdent(__nt), __end));
-                6
+                7
             }
-            27 => {
-                // Int = Num => ActionFn(31);
+            31 => {
+                // Int = Num => ActionFn(35);
                 let __sym0 = __pop_NtNum(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym0.2.clone();
-                let __nt = super::__action31::<>(text, __sym0);
+                let __nt = super::__action35::<>(text, __sym0);
                 let __states_len = __states.len();
                 __states.truncate(__states_len - 1);
                 __symbols.push((__start, __Symbol::NtInt(__nt), __end));
-                7
+                8
             }
-            28 => {
-                // List = App, "::", List => ActionFn(17);
+            32 => {
+                // List = Get, "::", List => ActionFn(17);
                 let __sym2 = __pop_NtList(__symbols);
                 let __sym1 = __pop_Term_22_3a_3a_22(__symbols);
-                let __sym0 = __pop_NtApp(__symbols);
+                let __sym0 = __pop_NtGet(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym2.2.clone();
                 let __nt = super::__action17::<>(text, __sym0, __sym1, __sym2);
                 let __states_len = __states.len();
                 __states.truncate(__states_len - 3);
                 __symbols.push((__start, __Symbol::NtList(__nt), __end));
-                8
+                9
             }
-            29 => {
-                // List = App => ActionFn(18);
-                let __sym0 = __pop_NtApp(__symbols);
+            33 => {
+                // List = Get => ActionFn(18);
+                let __sym0 = __pop_NtGet(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym0.2.clone();
                 let __nt = super::__action18::<>(text, __sym0);
                 let __states_len = __states.len();
                 __states.truncate(__states_len - 1);
                 __symbols.push((__start, __Symbol::NtList(__nt), __end));
-                8
+                9
             }
-            30 => {
+            34 => {
                 // Mul = Mul, "*", List => ActionFn(15);
                 let __sym2 = __pop_NtList(__symbols);
                 let __sym1 = __pop_Term_22_2a_22(__symbols);
@@ -4078,9 +5382,9 @@ mod __parse__Program {
                 let __states_len = __states.len();
                 __states.truncate(__states_len - 3);
                 __symbols.push((__start, __Symbol::NtMul(__nt), __end));
-                9
+                10
             }
-            31 => {
+            35 => {
                 // Mul = List => ActionFn(16);
                 let __sym0 = __pop_NtList(__symbols);
                 let __start = __sym0.0.clone();
@@ -4089,20 +5393,20 @@ mod __parse__Program {
                 let __states_len = __states.len();
                 __states.truncate(__states_len - 1);
                 __symbols.push((__start, __Symbol::NtMul(__nt), __end));
-                9
+                10
             }
-            32 => {
-                // Num = "Num" => ActionFn(33);
+            36 => {
+                // Num = "Num" => ActionFn(37);
                 let __sym0 = __pop_Term_22Num_22(__symbols);
                 let __start = __sym0.0.clone();
                 let __end = __sym0.2.clone();
-                let __nt = super::__action33::<>(text, __sym0);
+                let __nt = super::__action37::<>(text, __sym0);
                 let __states_len = __states.len();
                 __states.truncate(__states_len - 1);
                 __symbols.push((__start, __Symbol::NtNum(__nt), __end));
-                10
+                11
             }
-            33 => {
+            37 => {
                 // Program = Expr => ActionFn(1);
                 let __sym0 = __pop_NtExpr(__symbols);
                 let __start = __sym0.0.clone();
@@ -4111,9 +5415,9 @@ mod __parse__Program {
                 let __states_len = __states.len();
                 __states.truncate(__states_len - 1);
                 __symbols.push((__start, __Symbol::NtProgram(__nt), __end));
-                11
+                12
             }
-            34 => {
+            38 => {
                 // __Program = Program => ActionFn(0);
                 let __sym0 = __pop_NtProgram(__symbols);
                 let __start = __sym0.0.clone();
@@ -4124,7 +5428,7 @@ mod __parse__Program {
             _ => panic!("invalid action code {}", __action)
         };
         let __state = *__states.last().unwrap() as usize;
-        let __next_state = __GOTO[__state * 13 + __nonterminal] - 1;
+        let __next_state = __GOTO[__state * 14 + __nonterminal] - 1;
         __states.push(__next_state);
         None
     }
@@ -4218,6 +5522,16 @@ mod __parse__Program {
             _ => panic!("symbol type mismatch")
         }
     }
+    fn __pop_Term_22_3c_2d_22<
+      'input,
+    >(
+        __symbols: &mut ::std::vec::Vec<(usize,__Symbol<'input>,usize)>
+    ) -> (usize, Tok<'input>, usize) {
+        match __symbols.pop().unwrap() {
+            (__l, __Symbol::Term_22_3c_2d_22(__v), __r) => (__l, __v, __r),
+            _ => panic!("symbol type mismatch")
+        }
+    }
     fn __pop_Term_22_3d_22<
       'input,
     >(
@@ -4255,6 +5569,36 @@ mod __parse__Program {
     ) -> (usize, i64, usize) {
         match __symbols.pop().unwrap() {
             (__l, __Symbol::Term_22Num_22(__v), __r) => (__l, __v, __r),
+            _ => panic!("symbol type mismatch")
+        }
+    }
+    fn __pop_Term_22_5b_22<
+      'input,
+    >(
+        __symbols: &mut ::std::vec::Vec<(usize,__Symbol<'input>,usize)>
+    ) -> (usize, Tok<'input>, usize) {
+        match __symbols.pop().unwrap() {
+            (__l, __Symbol::Term_22_5b_22(__v), __r) => (__l, __v, __r),
+            _ => panic!("symbol type mismatch")
+        }
+    }
+    fn __pop_Term_22_5d_22<
+      'input,
+    >(
+        __symbols: &mut ::std::vec::Vec<(usize,__Symbol<'input>,usize)>
+    ) -> (usize, Tok<'input>, usize) {
+        match __symbols.pop().unwrap() {
+            (__l, __Symbol::Term_22_5d_22(__v), __r) => (__l, __v, __r),
+            _ => panic!("symbol type mismatch")
+        }
+    }
+    fn __pop_Term_22array_22<
+      'input,
+    >(
+        __symbols: &mut ::std::vec::Vec<(usize,__Symbol<'input>,usize)>
+    ) -> (usize, Tok<'input>, usize) {
+        match __symbols.pop().unwrap() {
+            (__l, __Symbol::Term_22array_22(__v), __r) => (__l, __v, __r),
             _ => panic!("symbol type mismatch")
         }
     }
@@ -4378,6 +5722,16 @@ mod __parse__Program {
             _ => panic!("symbol type mismatch")
         }
     }
+    fn __pop_Term_22set_22<
+      'input,
+    >(
+        __symbols: &mut ::std::vec::Vec<(usize,__Symbol<'input>,usize)>
+    ) -> (usize, Tok<'input>, usize) {
+        match __symbols.pop().unwrap() {
+            (__l, __Symbol::Term_22set_22(__v), __r) => (__l, __v, __r),
+            _ => panic!("symbol type mismatch")
+        }
+    }
     fn __pop_Term_22tail_22<
       'input,
     >(
@@ -4465,6 +5819,16 @@ mod __parse__Program {
     ) -> (usize, Box<Expr>, usize) {
         match __symbols.pop().unwrap() {
             (__l, __Symbol::NtExprs(__v), __r) => (__l, __v, __r),
+            _ => panic!("symbol type mismatch")
+        }
+    }
+    fn __pop_NtGet<
+      'input,
+    >(
+        __symbols: &mut ::std::vec::Vec<(usize,__Symbol<'input>,usize)>
+    ) -> (usize, Box<Expr>, usize) {
+        match __symbols.pop().unwrap() {
+            (__l, __Symbol::NtGet(__v), __r) => (__l, __v, __r),
             _ => panic!("symbol type mismatch")
         }
     }
@@ -4787,6 +6151,63 @@ pub fn __action19<
     'input,
 >(
     text: &'input str,
+    (_, id, _): (usize, Id, usize),
+    (_, _, _): (usize, Tok<'input>, usize),
+    (_, idx, _): (usize, Box<Expr>, usize),
+    (_, _, _): (usize, Tok<'input>, usize),
+    (_, _, _): (usize, Tok<'input>, usize),
+    (_, e, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
+{
+    Box::new(SetArray(Box::new(Var(id)), idx, e))
+}
+
+#[allow(unused_variables)]
+pub fn __action20<
+    'input,
+>(
+    text: &'input str,
+    (_, id, _): (usize, Id, usize),
+    (_, _, _): (usize, Tok<'input>, usize),
+    (_, idx, _): (usize, Box<Expr>, usize),
+    (_, _, _): (usize, Tok<'input>, usize),
+) -> Box<Expr>
+{
+    Box::new(GetArray(Box::new(Var(id)), idx))
+}
+
+#[allow(unused_variables)]
+pub fn __action21<
+    'input,
+>(
+    text: &'input str,
+    (_, __0, _): (usize, Box<Expr>, usize),
+) -> Box<Expr>
+{
+    (__0)
+}
+
+#[allow(unused_variables)]
+pub fn __action22<
+    'input,
+>(
+    text: &'input str,
+    (_, _, _): (usize, Tok<'input>, usize),
+    (_, _, _): (usize, Tok<'input>, usize),
+    (_, sz, _): (usize, Box<Expr>, usize),
+    (_, _, _): (usize, Tok<'input>, usize),
+    (_, n, _): (usize, Box<Expr>, usize),
+    (_, _, _): (usize, Tok<'input>, usize),
+) -> Box<Expr>
+{
+    Box::new(MkArray(sz, n))
+}
+
+#[allow(unused_variables)]
+pub fn __action23<
+    'input,
+>(
+    text: &'input str,
     (_, _, _): (usize, Tok<'input>, usize),
     (_, l, _): (usize, Box<Expr>, usize),
 ) -> Box<Expr>
@@ -4795,7 +6216,7 @@ pub fn __action19<
 }
 
 #[allow(unused_variables)]
-pub fn __action20<
+pub fn __action24<
     'input,
 >(
     text: &'input str,
@@ -4807,7 +6228,7 @@ pub fn __action20<
 }
 
 #[allow(unused_variables)]
-pub fn __action21<
+pub fn __action25<
     'input,
 >(
     text: &'input str,
@@ -4819,7 +6240,7 @@ pub fn __action21<
 }
 
 #[allow(unused_variables)]
-pub fn __action22<
+pub fn __action26<
     'input,
 >(
     text: &'input str,
@@ -4831,7 +6252,7 @@ pub fn __action22<
 }
 
 #[allow(unused_variables)]
-pub fn __action23<
+pub fn __action27<
     'input,
 >(
     text: &'input str,
@@ -4842,7 +6263,7 @@ pub fn __action23<
 }
 
 #[allow(unused_variables)]
-pub fn __action24<
+pub fn __action28<
     'input,
 >(
     text: &'input str,
@@ -4853,7 +6274,7 @@ pub fn __action24<
 }
 
 #[allow(unused_variables)]
-pub fn __action25<
+pub fn __action29<
     'input,
 >(
     text: &'input str,
@@ -4864,7 +6285,7 @@ pub fn __action25<
 }
 
 #[allow(unused_variables)]
-pub fn __action26<
+pub fn __action30<
     'input,
 >(
     text: &'input str,
@@ -4875,7 +6296,7 @@ pub fn __action26<
 }
 
 #[allow(unused_variables)]
-pub fn __action27<
+pub fn __action31<
     'input,
 >(
     text: &'input str,
@@ -4886,7 +6307,7 @@ pub fn __action27<
 }
 
 #[allow(unused_variables)]
-pub fn __action28<
+pub fn __action32<
     'input,
 >(
     text: &'input str,
@@ -4899,7 +6320,7 @@ pub fn __action28<
 }
 
 #[allow(unused_variables)]
-pub fn __action29<
+pub fn __action33<
     'input,
 >(
     text: &'input str,
@@ -4910,7 +6331,7 @@ pub fn __action29<
 }
 
 #[allow(unused_variables)]
-pub fn __action30<
+pub fn __action34<
     'input,
 >(
     text: &'input str,
@@ -4921,7 +6342,7 @@ pub fn __action30<
 }
 
 #[allow(unused_variables)]
-pub fn __action31<
+pub fn __action35<
     'input,
 >(
     text: &'input str,
@@ -4932,7 +6353,7 @@ pub fn __action31<
 }
 
 #[allow(unused_variables)]
-pub fn __action32<
+pub fn __action36<
     'input,
 >(
     text: &'input str,
@@ -4943,7 +6364,7 @@ pub fn __action32<
 }
 
 #[allow(unused_variables)]
-pub fn __action33<
+pub fn __action37<
     'input,
 >(
     text: &'input str,

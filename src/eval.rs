@@ -10,6 +10,7 @@ pub enum Value {
     VBool(bool),
     VClosure(Box<Closure>, String, Box<Expr>),
     VCons(Box<Value>, Box<Value>),
+    VIntArray(Box<Vec<i64>>),
     VEmpty,
 }
 
@@ -30,10 +31,16 @@ fn vbool(v: Value) -> bool {
 fn vclosure(v: Value) -> (Box<Closure>, String, Box<Expr>) {
     match v {
         Value::VClosure(ctx, id, e) => (ctx, id, e),
-        _ => panic!("unreachable -- expected bool not {:?}", v)
+        _ => panic!("unreachable -- expected closure not {:?}", v)
     }
 }
 
+fn vintarray(v: Value) -> Box<Vec<i64>> {
+    match v {
+        Value::VIntArray(a) => a,
+        _ => panic!("unreachable -- expected intarray not {:?}", v)
+    }
+}
 
 fn op2_eval(ctx: &Closure, op: Op2, l: &Expr, r: &Expr) -> Value {
     use common::Op2::*;
@@ -113,6 +120,22 @@ fn subst(ctx: &Closure, id: &String, fix: &Expr, e: &Expr) -> Expr {
             let e = box subst(ctx, id, fix, e);
             IsEmpty(e)
         }
+        MkArray(ref sz, ref n) => {
+            let sz = box subst(ctx, id, fix, sz);
+            let n = box subst(ctx, id, fix, n);
+            MkArray(sz, n)
+        }
+        GetArray(ref iid, ref idx) => {
+            let iid = box subst(ctx, id, fix, iid);
+            let idx = box subst(ctx, id, fix, idx);
+            GetArray(iid, idx)
+        }
+        SetArray(ref iid, ref idx, ref v) => {
+            let iid = box subst(ctx, id, fix, iid);
+            let idx = box subst(ctx, id, fix, idx);
+            let v = box subst(ctx, id, fix, v);
+            SetArray(iid, idx, v)
+        }
     }
 }
 
@@ -124,32 +147,6 @@ fn is_empty(v: &Value) -> Value {
         _ => panic!("is_empty unreachable"),
     }
 }
-
-// let rec eval' (ctx : env) (e : exp) : value =
-//   match e with
-//   | Id      (id)           -> lookup ctx id
-//   | Const   (Int v)        -> VInt (v)
-//   | Const   (Bool v)       -> VBool (v)
-//   | Op2     (op2, e1, e2)  -> op2_eval op2 e1 e2
-//   | If      (e1, e2, e3)   -> if vbool (eval' ctx e1) then eval' ctx e2
-//                                                       else eval' ctx e3
-//   | Let     (id, e1, e2)   -> eval' ((id, eval' ctx e1) :: ctx) e2
-//   | Fun     (id, _, e2)    -> VClosure (ctx, id, e2)
-//   | Fix     (id, _, e2)    -> let inner = eval' ctx e2 in
-//                               let (_, iid, ie) = vclosure inner in
-//                               let substituted_exp = subst id e ie in
-//                               VClosure (ctx, iid, substituted_exp)
-//   | App     (e1, e2)       -> let v = (eval' ctx e2) in
-//                               let (ctx, id, e) = vclosure (eval' ctx e1) in
-//                               eval' ((id, v) :: ctx) e
-//   | Empty   (ty)           -> VEmpty ty
-//   | Cons    (e1, e2)       -> VCons ((eval' ctx e1), (eval' ctx e2))
-//   | Head    (Cons (hd, _)) -> eval' ctx hd
-//   | Head    (_)            -> failwith "head on empty list"
-//   | Tail    (Cons (_, tl)) -> eval' ctx tl
-//   | Tail    (_)            -> failwith "tail on empty list"
-//                     | IsEmpty (e)            -> is_empty (eval' ctx e)
-
 
 fn eval(ctx: &Closure, expr: &Expr) -> Value {
     use self::Value::*;
@@ -206,6 +203,25 @@ fn eval(ctx: &Closure, expr: &Expr) -> Value {
         }
         IsEmpty(ref e) => {
             is_empty(&eval(ctx, e))
+        }
+        MkArray(ref sz, ref n) => {
+            let sz = vint(eval(ctx, sz));
+            let n = vint(eval(ctx, n));
+            let mut vec = Vec::with_capacity(sz as usize);
+            vec.resize(sz as usize, n);
+            VIntArray(box vec)
+        }
+        GetArray(ref iid, ref idx) => {
+            let arr = vintarray(eval(ctx, iid));
+            let idx = vint(eval(ctx, idx));
+            VInt(arr[idx as usize])
+        }
+        SetArray(ref iid, ref idx, ref v) => {
+            let mut arr = vintarray(eval(ctx, iid)).clone();
+            let idx = vint(eval(ctx, idx));
+            let v = vint(eval(ctx, v));
+            arr[idx as usize] = v;
+            VIntArray(arr)
         }
     }
 }

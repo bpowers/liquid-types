@@ -28,6 +28,7 @@ pub enum Tok<'input> {
     In,
     Eq,
     RArrow,
+    LArrow,
     Lt,
     Gt,
     Plus,
@@ -36,15 +37,19 @@ pub enum Tok<'input> {
     Cons,
     LParen,
     RParen,
+    LBracket,
+    RBracket,
     Fun,
     Fix,
     Head,
     Tail,
     Emptyq,
+    Array,
     True,
     False,
     Empty,
     Comma,
+    Set,
     Ident(&'input str),
     Num(i64),
 }
@@ -84,6 +89,8 @@ const KEYWORDS: &'static [(&'static str, Tok<'static>)] = &[
     ("tail", Tail),
     ("true", True),
     ("false", False),
+    ("array", Array),
+    ("set", Set),
     ];
 
 impl<'input> Tokenizer<'input> {
@@ -182,7 +189,15 @@ impl<'input> Iterator for Tokenizer<'input> {
         loop {
             return match self.lookahead {
                 Some((i, '=')) => consume!(self, i, Eq, 1),
-                Some((i, '<')) => consume!(self, i, Lt, 1),
+                Some((i, '<')) => {
+                    match self.bump() {
+                        Some((_, '-')) => consume!(self, i, LArrow, 2),
+                        _ => {
+                            // we've already bumped, don't consume
+                            Some(Ok((i, Lt, 1)))
+                        }
+                    }
+                }
                 Some((i, '>')) => consume!(self, i, Gt, 1),
                 Some((i, '-')) => {
                     match self.bump() {
@@ -210,6 +225,8 @@ impl<'input> Iterator for Tokenizer<'input> {
                 }
                 Some((i, '(')) => consume!(self, i, LParen, 1),
                 Some((i, ')')) => consume!(self, i, RParen, 1),
+                Some((i, '[')) => consume!(self, i, LBracket, 1),
+                Some((i, ']')) => consume!(self, i, RBracket, 1),
                 Some((i, ',')) => consume!(self, i, Comma, 1),
                 Some((i, c)) if is_digit(c) => Some(self.number(i)),
                 Some((i, c)) if is_identifier_start(c) => Some(self.identifierish(i)),

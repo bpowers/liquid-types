@@ -14,10 +14,10 @@ pub Program: Box<Expr> = {
 
 Expr: Box<Expr> = {
     "if" <c:Expr> "then" <t:Expr> "else" <f:Expr> => Box::new(If(c, t, f)),
-    "let" <id:Ident> "=" <v:Expr> "in" <e:Expr>  => Box::new(Let(id, v, e)),
-    "fun" <id:Ident> "->" <e:Expr>              => Box::new(Fun(id, e)),
-    "fix" <id:Ident> "->" <e:Expr>              => Box::new(Fix(id, e)),
-    "begin" <e:Expr> "end"                      => e,
+    "let" <id:Ident> "=" <v:Expr> "in" <e:Expr>   => Box::new(Let(id, v, e)),
+    "fun" <id:Ident> "->" <e:Expr>                => Box::new(Fun(id, e)),
+    "fix" <id:Ident> "->" <e:Expr>                => Box::new(Fix(id, e)),
+    "begin" <e:Expr> "end"                        => e,
     Cmp,
 };
 
@@ -40,15 +40,22 @@ Mul: Box<Expr> = {
 };
 
 List: Box<Expr> = {
-    <hd:App> "::" <tl:List> => Box::new(Cons(hd, tl)),
+    <hd:Get> "::" <tl:List> => Box::new(Cons(hd, tl)),
+    Get,
+};
+
+Get: Box<Expr> = {
+    <id:Ident> "[" <idx:Add> "]" "<-" <e:Atom> => Box::new(SetArray(Box::new(Var(id)), idx, e)),
+    <id:Ident> "[" <idx:Add> "]"               => Box::new(GetArray(Box::new(Var(id)), idx)),
     App,
 };
 
 App: Box<Expr> = {
-    "head" <l:Atom>   => Box::new(Head(l)),
-    "tail" <l:Atom>   => Box::new(Tail(l)),
-    "empty?" <l:Atom> => Box::new(IsEmpty(l)),
-    <a:App> <b:Atom>  => Box::new(App(a, b)),
+    "array" "(" <sz:Add> "," <n:Add> ")" => Box::new(MkArray(sz, n)),
+    "head" <l:Atom>                      => Box::new(Head(l)),
+    "tail" <l:Atom>                      => Box::new(Tail(l)),
+    "empty?" <l:Atom>                    => Box::new(IsEmpty(l)),
+    <a:App> <b:Atom>                     => Box::new(App(a, b)),
     Atom,
 };
 
@@ -91,6 +98,7 @@ extern {
         "," => Tok::Comma,
         "=" => Tok::Eq,
         "->" => Tok::RArrow,
+        "<-" => Tok::LArrow,
         "<" => Tok::Lt,
         ">" => Tok::Gt,
         "+" => Tok::Plus,
@@ -99,6 +107,8 @@ extern {
         "::" => Tok::Cons,
         "(" => Tok::LParen,
         ")" => Tok::RParen,
+        "[" => Tok::LBracket,
+        "]" => Tok::RBracket,
         "fun" => Tok::Fun,
         "fix" => Tok::Fix,
         "head" => Tok::Head,
@@ -107,6 +117,8 @@ extern {
         "true" => Tok::True,
         "false" => Tok::False,
         "empty" => Tok::Empty,
+        "array" => Tok::Array,
+        "set" => Tok::Set,
 
         "Iden" => Tok::Ident(<&'input str>),
         "Num" => Tok::Num(<i64>),
