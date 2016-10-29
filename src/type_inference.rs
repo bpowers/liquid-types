@@ -114,7 +114,7 @@ fn add_metavars(exp: &implicit::Expr) -> Box<explicit::Expr> {
 }
 
 fn gen_constraints<'a>(m: &mut MVEnv,
-                       env: &mut HashMap<&'a str, Type>,
+                       env: &HashMap<&'a str, Type>,
                        exp: &'a explicit::Expr)
                        -> Result<(Vec<(Type, Type)>, Type)> {
     use common::{Const, Op2};
@@ -149,28 +149,28 @@ fn gen_constraints<'a>(m: &mut MVEnv,
             match env.get::<str>(&x) {
                 Some(ty) => (Vec::new(), ty.clone()),
                 None => {
-                    return err!("unbound identifier: {}", x);
+                    return err!("unbound identifier: {} in {:?}", x, env);
                 }
             }
         }
         E::Let(ref id, ref e1, ref e2) => {
             let (mut c1, t1) = gen_constraints(m, env, e1)?;
-            env.insert(&id, t1.clone());
-            let (mut c2, t2) = gen_constraints(m, env, e2)?;
-            env.remove::<str>(&id);
+            let mut new_env = env.clone();
+            new_env.insert(&id, t1.clone());
+            let (mut c2, t2) = gen_constraints(m, &new_env, e2)?;
             c1.append(&mut c2);
             (c1, t2)
         }
         E::Fun(ref id, ref t1, ref e) => {
-            env.insert(&id, t1.clone());
-            let (c, t2) = gen_constraints(m, env, e)?;
-            env.remove::<str>(&id);
+            let mut new_env = env.clone();
+            new_env.insert(&id, t1.clone());
+            let (c, t2) = gen_constraints(m, &new_env, e)?;
             (c, Type::TFun(box t1.clone(), box t2))
         }
         E::Fix(ref id, ref t1, ref e) => {
-            env.insert(&id, t1.clone());
-            let (mut c, t2) = gen_constraints(m, env, e)?;
-            env.remove::<str>(&id);
+            let mut new_env = env.clone();
+            new_env.insert(&id, t1.clone());
+            let (mut c, t2) = gen_constraints(m, &new_env, e)?;
             c.push((t1.clone(), t2));
             (c, t1.clone())
         }
@@ -426,8 +426,8 @@ fn remove_metavars(env: &HashMap<Metavar, Type>, exp: &explicit::Expr) -> Result
 pub fn infer_types(exp: &implicit::Expr) -> Result<explicit::Expr> {
     let typed_w_metavars = add_metavars(&exp);
     let mut cg_env = MVEnv::new("β");
-    let mut id_env = HashMap::new();
-    let constraints = match gen_constraints(&mut cg_env, &mut id_env, &typed_w_metavars) {
+    let id_env = HashMap::new();
+    let constraints = match gen_constraints(&mut cg_env, &id_env, &typed_w_metavars) {
         Ok((c, _)) => c,
         Err(e) => die!("gen_constraints: {}", error::Error::description(&e)),
     };

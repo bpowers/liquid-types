@@ -6,8 +6,9 @@ pub type Metavar = (i32, String);
 
 #[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
 pub enum Base {
-    Int,
     Bool,
+    Int,
+    IntArray,
 }
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
