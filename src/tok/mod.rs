@@ -27,6 +27,7 @@ pub enum Tok<'input> {
     Let,
     In,
     Eq,
+    Exclaim,
     RArrow,
     LArrow,
     Lt,
@@ -190,6 +191,7 @@ impl<'input> Iterator for Tokenizer<'input> {
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             return match self.lookahead {
+                Some((i, '!')) => consume!(self, i, Exclaim, 1),
                 Some((i, '=')) => consume!(self, i, Eq, 1),
                 Some((i, '<')) => {
                     match self.bump() {

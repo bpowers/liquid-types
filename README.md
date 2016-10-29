@@ -9,6 +9,8 @@ polymorphism extended with liquid types.
 TODO
 ----
 
+- [ ] Cons does type inference -- can't just convert HM(e) -> Liquid(e), need to generate constraints as well.
+
 Q = {0 ≤ ν; ν < len a} // from pg. 21
 
 - [ ] Uninterpreted function terms in Z3

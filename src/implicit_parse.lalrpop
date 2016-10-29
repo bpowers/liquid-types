@@ -56,6 +56,7 @@ App: Box<Expr> = {
     "head" <l:Atom>                      => Box::new(Head(l)),
     "tail" <l:Atom>                      => Box::new(Tail(l)),
     "empty?" <l:Atom>                    => Box::new(IsEmpty(l)),
+    "!" <a:Atom>                         => Box::new(App(Box::new(Var(String::from("not"))), a)),
     <a:App> <b:Atom>                     => Box::new(App(a, b)),
     Atom,
 };
@@ -105,6 +106,7 @@ extern {
         "+" => Tok::Plus,
         "-" => Tok::Minus,
         "*" => Tok::Mul,
+        "!" => Tok::Exclaim,
         "::" => Tok::Cons,
         "(" => Tok::LParen,
         ")" => Tok::RParen,

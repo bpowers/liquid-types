@@ -105,6 +105,13 @@ fn main() {
 
     println!("typed:\n\n{:?}\n", expr);
 
+    let refined = match liquid::infer(&expr) {
+        Ok(expr) => expr,
+        Err(e) => die!("infer: {}", error::Error::description(&e)),
+    };
+
+    println!("refined:\n\n{:?}\n", refined);
+
     let val = eval::interpret(&expr);
 
     println!("result:\n\n{:?}\n", val);
