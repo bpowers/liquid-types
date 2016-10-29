@@ -48,16 +48,32 @@ fn op2_eval(ctx: &Closure, op: Op2, l: &Expr, r: &Expr) -> Value {
 
     // all binary ops operate on ints, and at this point have passed
     // typechecking
-    let vl = vint(eval(ctx, l));
-    let vr = vint(eval(ctx, r));
-
     match op {
-        LT => VBool(vl < vr),
-        GT => VBool(vl > vr),
-        Eq => VBool(vl == vr),
-        Add => VInt(vl + vr),
-        Sub => VInt(vl - vr),
-        Mul => VInt(vl * vr),
+        LT | GT | Eq | Add | Sub | Mul => {
+            let vl = vint(eval(ctx, l));
+            let vr = vint(eval(ctx, r));
+
+            match op {
+                LT => VBool(vl < vr),
+                GT => VBool(vl > vr),
+                Eq => VBool(vl == vr),
+                Add => VInt(vl + vr),
+                Sub => VInt(vl - vr),
+                Mul => VInt(vl * vr),
+                _ => panic!("unreachable numerical op {:?}", op),
+            }
+        }
+        And | Or | Impl | Iff => {
+            let vl = vbool(eval(ctx, l));
+            let vr = vbool(eval(ctx, r));
+
+            match op {
+                And => VBool(vl < vr),
+                Or => VBool(vl > vr),
+                _ => panic!("unreachable logic op {:?}", op),
+            }
+
+        }
     }
 }
 

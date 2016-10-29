@@ -10,6 +10,10 @@ pub enum Op2 {
     Add,
     Sub,
     Mul,
+    And,
+    Or,
+    Impl,
+    Iff,
 }
 
 #[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]

@@ -18,6 +18,7 @@ mod tok;
 mod implicit;
 mod explicit;
 mod refined;
+mod liquid;
 mod type_inference;
 mod eval;
 

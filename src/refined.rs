@@ -12,13 +12,6 @@ pub enum Base {
 }
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
-pub enum Q {
-    True,
-    // logical quantifiers in Q
-    And(Box<Q>, Box<Q>)
-}
-
-#[derive(PartialEq, Eq, Hash, Debug, Clone)]
 pub enum T<B> {
     Ref(Id, Base, Box<B>), /*closure,?*/
     Fun(Id, Box<T<B>>, Box<T<B>>),
@@ -28,8 +21,5 @@ pub enum T<B> {
 
 
 
-pub type DepType = T<implicit::Expr>;
-pub type LiquidType = T<Q>;
-
-pub type DepExpr = typed::Expr<DepType>;
-pub type LiquidExpr = typed::Expr<LiquidType>;
+pub type Type = T<implicit::Expr>;
+pub type Expr = typed::Expr<Type>;
