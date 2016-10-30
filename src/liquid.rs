@@ -1,10 +1,7 @@
-use std;
 use std::collections::HashMap;
 use std::collections::LinkedList;
-use std::error;
 
 use common;
-use refined;
 use explicit;
 use typed;
 
@@ -24,13 +21,13 @@ pub use explicit::Metavar;
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum Liquid {
     E(typed::Expr<explicit::Type>),
-    K(Metavar, Box<LinkedList<typed::Expr<explicit::Type>>>), // list of pending substitutions
+    K(Metavar, Box<LinkedList<explicit::Expr>>), // list of pending substitutions
 }
 
 pub type Type = T<Env, Liquid>;
 pub type Expr = typed::Expr<Type>;
 
-pub type Constraint = Expr; // Boolean valued expressions
+pub type Constraint = (Env, Expr); // Boolean valued expressions & their environments
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Env {
@@ -136,14 +133,17 @@ pub fn cons<'a>(k_env: &mut KEnv, env: &Env, expr: &explicit::Expr) -> (Type, Li
             let (_, mut c1) = cons(k_env, &env, e1);
             // add e1 to path constraints in env_t
             // add not e1 to path constraints in env_f
-            let (t2, mut c2) = cons(k_env, &env_t, e2);
-            let (t3, mut c3) = cons(k_env, &env_f, e3);
+            let (f2, mut c2) = cons(k_env, &env_t, e2);
+            let (f3, mut c3) = cons(k_env, &env_f, e3);
             c1.append(&mut c2);
             c1.append(&mut c3);
-            // TODO: add constraints:
             // Γ ⊢ (f)
+            c1.push_back((env.clone(), WellFormed(box f.clone())));
+
+            // TODO: add constraints:
             // Γ,e1 ⊢ (f2 <: f)
             // Γ,¬e1 ⊢ (f3 <: f)
+
             (f, c1)
         }
         &Fun(ref x, ref ty, ref e) => {
@@ -152,10 +152,13 @@ pub fn cons<'a>(k_env: &mut KEnv, env: &Env, expr: &explicit::Expr) -> (Type, Li
             env.insert(x, &fx);
             let f = k_env.fresh(&env, ty);
             let ffn = T::Fun(x.clone(), box fx.clone(), box f.clone());
-            let (fe, c) = cons(k_env, &env, e);
-            // TODO: add constraints:
+            let (fe, mut c) = cons(k_env, &env, e);
             // Γ ⊢ (x:fx → f)
+            c.push_back((env.clone(), WellFormed(box ffn.clone())));
+
+            // TODO: add constraints:
             // Γ,x:fx ⊢ (fe <: f)
+
             (ffn, c)
         }
         _ => {

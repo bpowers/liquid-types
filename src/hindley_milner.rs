@@ -245,6 +245,7 @@ fn gen_constraints<'a>(m: &mut MVEnv,
         }
         E::Star => panic!("star found when it shouldn't be"),
         E::V => panic!("v found when it shouldn't be"),
+        E::WellFormed(_) => panic!("wellformed found when it shouldn't be"),
     };
 
     Ok(result)
@@ -428,6 +429,7 @@ fn remove_metavars(env: &HashMap<Metavar, Type>, exp: &explicit::Expr) -> Result
         }
         E::Star => panic!("star found when it shouldn't be"),
         E::V => panic!("v found when it shouldn't be"),
+        E::WellFormed(_) => panic!("wellformed found when it shouldn't be"),
     };
 
     Ok(box result)

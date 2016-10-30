@@ -1,6 +1,4 @@
 pub use common::{Id};
-use implicit;
-use typed;
 
 pub type Metavar = (i32, String);
 

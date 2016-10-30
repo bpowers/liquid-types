@@ -154,6 +154,7 @@ fn subst(ctx: &Closure, id: &String, fix: &Expr, e: &Expr) -> Expr {
         }
         Star => panic!("star found when it shouldn't be"),
         V => panic!("v found when it shouldn't be"),
+        WellFormed(_) => panic!("wellformed found when it shouldn't be"),
     }
 }
 
@@ -250,6 +251,7 @@ fn eval(ctx: &Closure, expr: &Expr) -> Value {
         }
         Star => panic!("star found when it shouldn't be"),
         V => panic!("v found when it shouldn't be"),
+        WellFormed(_) => panic!("wellformed found when it shouldn't be"),
     }
 }
 

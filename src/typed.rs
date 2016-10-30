@@ -22,4 +22,5 @@ pub enum Expr<Ty> {
     // what is needed to represent liquid templates?
     Star,
     V,
+    WellFormed(Box<Ty>),
 }
