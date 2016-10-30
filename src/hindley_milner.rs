@@ -433,7 +433,7 @@ fn remove_metavars(env: &HashMap<Metavar, Type>, exp: &explicit::Expr) -> Result
     Ok(box result)
 }
 
-pub fn infer_types(exp: &implicit::Expr) -> Result<explicit::Expr> {
+pub fn infer(exp: &implicit::Expr) -> Result<explicit::Expr> {
     let typed_w_metavars = add_metavars(&exp);
     let mut cg_env = MVEnv::new("β");
     let id_env = HashMap::new();

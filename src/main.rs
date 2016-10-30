@@ -19,11 +19,10 @@ mod implicit;
 mod explicit;
 mod refined;
 mod liquid;
-mod type_inference;
+mod hindley_milner;
 mod eval;
 
 use common::{LiquidError, Result};
-use type_inference::infer_types;
 
 fn usage() -> ! {
     let argv0 = env::args().nth(0).unwrap_or("<mdl>".to_string());
@@ -98,7 +97,7 @@ fn main() {
         Err(e) => die!("implicit_open: {}", error::Error::description(&e)),
     };
 
-    let expr = match infer_types(&i_expr) {
+    let expr = match hindley_milner::infer(&i_expr) {
         Ok(expr) => expr,
         Err(e) => die!("infer_types: {}", error::Error::description(&e)),
     };
