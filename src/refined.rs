@@ -12,14 +12,11 @@ pub enum Base {
 }
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
-pub enum T<B> {
-    Ref(Id, Base, Box<B>), /*closure,?*/
-    Fun(Id, Box<T<B>>, Box<T<B>>),
+pub enum T<Env, B> {
+    Ref(Box<Env>, Base, Box<B>), /*closure,?*/
+    Fun(Id, Box<T<Env, B>>, Box<T<Env, B>>),
     // type variable -- TODO
-    Metavar(Metavar),
 }
 
-
-
-pub type Type = T<implicit::Expr>;
-pub type Expr = typed::Expr<Type>;
+//pub type Type = T<(), implicit::Expr>;
+//pub type Expr = typed::Expr<Type>;

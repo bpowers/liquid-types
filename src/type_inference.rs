@@ -243,6 +243,8 @@ fn gen_constraints<'a>(m: &mut MVEnv,
             c1.push((t3, Type::TInt));
             (c1, Type::TIntArray)
         }
+        E::Star => panic!("star found when it shouldn't be"),
+        E::V => panic!("v found when it shouldn't be"),
     };
 
     Ok(result)
@@ -424,6 +426,8 @@ fn remove_metavars(env: &HashMap<Metavar, Type>, exp: &explicit::Expr) -> Result
             let v = remove_metavars(env, v)?;
             E::SetArray(id, idx, v)
         }
+        E::Star => panic!("star found when it shouldn't be"),
+        E::V => panic!("v found when it shouldn't be"),
     };
 
     Ok(box result)

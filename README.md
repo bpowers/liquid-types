@@ -23,7 +23,7 @@ TODO
 - [ ] Allow specifying Q on commandline (like Q = {0 ≤ ν; ν < len a} // from pg. 21)
 - [ ] Uninterpreted function terms in Z3
 - [ ] fix: "expr typechecks if there is an appropriate liquid type that can be instantiated for the α in the polymorphic type of fix; intuitively, this liquid type corresponds to the type of the recursive function f"
-- [ ] α-rename variables
+- [ ] Should we α-rename variables in HM?
 - [ ] Does Γ include both Dependent Types AND Liquid Types?
 - [ ] Builtin functions - in the builtin type environment and evaluation context
 - [ ] Divide by zero

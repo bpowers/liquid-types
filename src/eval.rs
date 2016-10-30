@@ -152,6 +152,8 @@ fn subst(ctx: &Closure, id: &String, fix: &Expr, e: &Expr) -> Expr {
             let v = box subst(ctx, id, fix, v);
             SetArray(iid, idx, v)
         }
+        Star => panic!("star found when it shouldn't be"),
+        V => panic!("v found when it shouldn't be"),
     }
 }
 
@@ -246,6 +248,8 @@ fn eval(ctx: &Closure, expr: &Expr) -> Value {
             arr[idx as usize] = v;
             VIntArray(arr)
         }
+        Star => panic!("star found when it shouldn't be"),
+        V => panic!("v found when it shouldn't be"),
     }
 }
 
