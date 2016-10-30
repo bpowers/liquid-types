@@ -35,19 +35,27 @@ pub type Constraint = Expr; // Boolean valued expressions
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Env {
     refined_env: Box<HashMap<String, Type>>,
-    path_constraints: Box<LinkedList<Expr>>,
+    path_constraints: LinkedList<explicit::Expr>,
 }
 
 impl Env {
     fn new() -> Env {
         Env {
             refined_env: box HashMap::new(),
-            path_constraints: box LinkedList::new(),
+            path_constraints: LinkedList::new(),
         }
     }
 
     fn get(&self, s: &String) -> Type {
         self.refined_env.get(s).unwrap().clone()
+    }
+
+    fn insert(&mut self, s: &String, ty: &Type) {
+        self.refined_env.insert(s.clone(), ty.clone());
+    }
+
+    fn add_constraint(&mut self, e: &explicit::Expr) {
+        self.path_constraints.push_back(e.clone())
     }
 }
 
@@ -79,16 +87,16 @@ impl KEnv {
     }
 }
 
-fn ty<'a>(k_env: &mut KEnv, env: &Env, c: &common::Const) -> (Env, Type) {
+fn ty<'a>(k_env: &mut KEnv, env: &Env, c: &common::Const) -> Type {
     use common::Const::*;
     match *c {
         Int(ref i) => {
             println!("ty(int)");
-            (env.clone(), k_env.fresh(env, &explicit::Type::TInt))
+            k_env.fresh(env, &explicit::Type::TInt)
         }
         Bool(ref b) => {
             println!("ty(bool)");
-            (env.clone(), k_env.fresh(env, &explicit::Type::TBool))
+            k_env.fresh(env, &explicit::Type::TBool)
         }
     }
 }
@@ -103,7 +111,6 @@ fn base(ty: &Type) -> Option<Base> {
 pub fn cons<'a>(k_env: &mut KEnv, env: &Env, expr: &explicit::Expr) -> (Type, LinkedList<Constraint>) {
     use typed::Expr::*;
 
-    let mut env = env.clone();
     match expr {
         &Var(ref id) => {
             let ty: Type = if let Some(b) = base(&env.get(id)) {
@@ -115,16 +122,22 @@ pub fn cons<'a>(k_env: &mut KEnv, env: &Env, expr: &explicit::Expr) -> (Type, Li
             (ty, LinkedList::new())
         }
         &Const(ref c) => {
-            let (env, t) = ty(k_env, &env, c);
-            (t, LinkedList::new())
+            (ty(k_env, &env, c), LinkedList::new())
         }
         &If(ref e1, ref e2, ref e3) => {
+            let mut env_t = env.clone();
+            let mut env_f = env.clone();
+            env_t.add_constraint(&e1.clone());
+            env_f.add_constraint(&App(box Var(String::from("not")), e1.clone()));
+
             // FIXME: need to pass up type of expr?
             let f = k_env.fresh(&env, &explicit::Type::TInt);
             // type of e1 has already been verified to be a bool by HM
             let (_, mut c1) = cons(k_env, &env, e1);
-            let (t2, mut c2) = cons(k_env, &env, e2);
-            let (t3, mut c3) = cons(k_env, &env, e3);
+            // add e1 to path constraints in env_t
+            // add not e1 to path constraints in env_f
+            let (t2, mut c2) = cons(k_env, &env_t, e2);
+            let (t3, mut c3) = cons(k_env, &env_f, e3);
             c1.append(&mut c2);
             c1.append(&mut c3);
             // TODO: add constraints:
@@ -134,7 +147,9 @@ pub fn cons<'a>(k_env: &mut KEnv, env: &Env, expr: &explicit::Expr) -> (Type, Li
             (f, c1)
         }
         &Fun(ref x, ref ty, ref e) => {
+            let mut env = env.clone();
             let fx = k_env.fresh(&env, ty);
+            env.insert(x, &fx);
             let f = k_env.fresh(&env, ty);
             let ffn = T::Fun(x.clone(), box fx.clone(), box f.clone());
             let (fe, c) = cons(k_env, &env, e);
