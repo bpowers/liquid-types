@@ -80,15 +80,6 @@ fn add_metavars_in(env: &mut MVEnv, exp: &implicit::Expr) -> explicit::Expr {
             let mv = env.alloc(id);
             E::Fix(id.clone(), mv, ee)
         }
-        I::Empty => E::Empty(env.alloc_empty()),
-        I::Cons(ref hd, ref tl) => {
-            let ehd = box add_metavars_in(env, hd);
-            let etl = box add_metavars_in(env, tl);
-            E::Cons(ehd, etl)
-        }
-        I::Head(ref e) => E::Head(box add_metavars_in(env, e)),
-        I::Tail(ref e) => E::Tail(box add_metavars_in(env, e)),
-        I::IsEmpty(ref e) => E::IsEmpty(box add_metavars_in(env, e)),
         I::MkArray(ref sz, ref n) => {
             let sz = box add_metavars_in(env, sz);
             let n = box add_metavars_in(env, n);
@@ -182,34 +173,6 @@ fn gen_constraints<'a>(m: &mut MVEnv,
             c1.append(&mut c2);
             c1.push((t1.clone(), Type::TFun(box t2.clone(), box mv.clone())));
             (c1, mv)
-        }
-        E::Empty(ref t1) => (Vec::new(), Type::TList(box t1.clone())),
-        E::Cons(ref e1, ref e2) => {
-            let mv = m.alloc_empty();
-            let (mut c1, t1) = gen_constraints(m, env, e1)?;
-            let (mut c2, t2) = gen_constraints(m, env, e2)?;
-            c1.append(&mut c2);
-            c1.push((t1, mv.clone()));
-            c1.push((t2, Type::TList(box mv.clone())));
-            (c1, Type::TList(box mv))
-        }
-        E::Head(ref e) => {
-            let mv = m.alloc_empty();
-            let (mut c, t) = gen_constraints(m, env, e)?;
-            c.push((t, Type::TList(box mv.clone())));
-            (c, mv)
-        }
-        E::Tail(ref e) => {
-            let mv = m.alloc_empty();
-            let (mut c, t) = gen_constraints(m, env, e)?;
-            c.push((t, Type::TList(box mv.clone())));
-            (c, Type::TList(box mv))
-        }
-        E::IsEmpty(ref e) => {
-            let mv = m.alloc_empty();
-            let (mut c, t) = gen_constraints(m, env, e)?;
-            c.push((t, Type::TList(box mv.clone())));
-            (c, Type::TBool)
         }
         E::MkArray(ref sz, ref n) => {
             let (mut c1, t1) = gen_constraints(m, env, sz)?;
@@ -388,24 +351,6 @@ fn remove_metavars(env: &HashMap<Metavar, Type>, exp: &explicit::Expr) -> Result
             let e2 = remove_metavars(env, e2)?;
             E::App(e1, e2)
         }
-        E::Empty(ref t1) => E::Empty(apply(env, t1)),
-        E::Cons(ref e1, ref e2) => {
-            let e1 = remove_metavars(env, e1)?;
-            let e2 = remove_metavars(env, e2)?;
-            E::Cons(e1, e2)
-        }
-        E::Head(ref e) => {
-            let e = remove_metavars(env, e)?;
-            E::Head(e)
-        }
-        E::Tail(ref e) => {
-            let e = remove_metavars(env, e)?;
-            E::Tail(e)
-        }
-        E::IsEmpty(ref e) => {
-            let e = remove_metavars(env, e)?;
-            E::IsEmpty(e)
-        }
         E::MkArray(ref sz, ref n) => {
             let sz = remove_metavars(env, sz)?;
             let n = remove_metavars(env, n)?;
@@ -497,16 +442,16 @@ fn implicit_parse() {
     test_parse!("((((-22))))");
     test_parse!("((((-22))))");
 
-    test_parse!("1 :: 2 :: empty");
-    test_parse!("true :: false :: empty");
-    test_parse!("true :: true :: empty");
+    // test_parse!("1 :: 2 :: empty");
+    // test_parse!("true :: false :: empty");
+    // test_parse!("true :: true :: empty");
     test_parse!("(2 + 3 - 2) + 3");
     test_parse!("fun x -> x + 1");
     test_parse!("let inc = fun x -> x + 1 in inc 3");
     test_parse!("let factorial = fix fac -> fun n -> if n = 0 then 1 else n * (fac (n - 1)) in factorial 5");
     test_parse!("let b = true in if b then true else false");
     test_parse!("let double = fun x -> x * 2 in double 3");
-    test_parse!("let h = (fun l -> head l) in let l = 1 :: 2 :: empty in (h l) :: l");
+    // test_parse!("let h = (fun l -> head l) in let l = 1 :: 2 :: empty in (h l) :: l");
 
     test_parse_fails!("((22)");
     test_parse_fails!("let x = 1"); // only let-in supported

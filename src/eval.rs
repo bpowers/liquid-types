@@ -9,9 +9,7 @@ pub enum Value {
     VInt(i64),
     VBool(bool),
     VClosure(Box<Closure>, String, Box<Expr>),
-    VCons(Box<Value>, Box<Value>),
     VIntArray(Box<Vec<i64>>),
-    VEmpty,
 }
 
 fn vint(v: Value) -> i64 {
@@ -118,24 +116,6 @@ fn subst(ctx: &Closure, id: &String, fix: &Expr, e: &Expr) -> Expr {
             let e2 = box subst(ctx, id, fix, e2);
             App(e1, e2)
         }
-        Empty(ref ty) => Empty(ty.clone()),
-        Cons(ref e1, ref e2) => {
-            let e1 = box subst(ctx, id, fix, e1);
-            let e2 = box subst(ctx, id, fix, e2);
-            Cons(e1, e2)
-        }
-        Head(ref e) => {
-            let e = box subst(ctx, id, fix, e);
-            Head(e)
-        }
-        Tail(ref e) => {
-            let e = box subst(ctx, id, fix, e);
-            Tail(e)
-        }
-        IsEmpty(ref e) => {
-            let e = box subst(ctx, id, fix, e);
-            IsEmpty(e)
-        }
         MkArray(ref sz, ref n) => {
             let sz = box subst(ctx, id, fix, sz);
             let n = box subst(ctx, id, fix, n);
@@ -155,15 +135,6 @@ fn subst(ctx: &Closure, id: &String, fix: &Expr, e: &Expr) -> Expr {
         Star => panic!("star found when it shouldn't be"),
         V => panic!("v found when it shouldn't be"),
         WellFormed(_) => panic!("wellformed found when it shouldn't be"),
-    }
-}
-
-fn is_empty(v: &Value) -> Value {
-    use self::Value::*;
-    match *v {
-        VEmpty => VBool(true),
-        VCons(_, _) => VBool(false),
-        _ => panic!("is_empty unreachable"),
     }
 }
 
@@ -210,25 +181,6 @@ fn eval(ctx: &Closure, expr: &Expr) -> Value {
             let mut new_ctx = ctx.clone();
             new_ctx.insert(id, v);
             eval(&new_ctx, &e)
-        }
-        Empty(_) => VEmpty,
-        Cons(ref e1, ref e2) => VCons(box eval(ctx, e1), box eval(ctx, e2)),
-        Head(ref e) => {
-            if let VCons(ref hd, _) = eval(ctx, e) {
-                *hd.clone()
-            } else {
-                panic!("unreachable - head w/o cons: {:?}", e)
-            }
-        }
-        Tail(ref e) => {
-            if let VCons(_, ref tl) = eval(ctx, e) {
-                *tl.clone()
-            } else {
-                panic!("unreachable - tail w/o cons")
-            }
-        }
-        IsEmpty(ref e) => {
-            is_empty(&eval(ctx, e))
         }
         MkArray(ref sz, ref n) => {
             let sz = vint(eval(ctx, sz));

@@ -36,12 +36,7 @@ Add: Box<Expr> = {
 };
 
 Mul: Box<Expr> = {
-    <l:Mul> "*" <r:List> => Box::new(Op2(Mul, l, r)),
-    List,
-};
-
-List: Box<Expr> = {
-    <hd:Get> "::" <tl:List> => Box::new(Cons(hd, tl)),
+    <l:Mul> "*" <r:Get> => Box::new(Op2(Mul, l, r)),
     Get,
 };
 
@@ -53,9 +48,6 @@ Get: Box<Expr> = {
 
 App: Box<Expr> = {
     "array" "(" <sz:Add> "," <n:Add> ")" => Box::new(MkArray(sz, n)),
-    "head" <l:Atom>                      => Box::new(Head(l)),
-    "tail" <l:Atom>                      => Box::new(Tail(l)),
-    "empty?" <l:Atom>                    => Box::new(IsEmpty(l)),
     "!" <a:Atom>                         => Box::new(App(Box::new(Var(String::from("not"))), a)),
     <a:App> <b:Atom>                     => Box::new(App(a, b)),
     Atom,
@@ -65,7 +57,6 @@ Atom: Box<Expr> = {
     <id:Ident>    => Box::new(Var(id)),
     "true"        => Box::new(Const(Bool(true))),
     "false"       => Box::new(Const(Bool(true))),
-    "empty"       => Box::new(Empty),
     "(" <Exprs> ")",
     Int,
 };

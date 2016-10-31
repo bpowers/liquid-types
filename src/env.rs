@@ -89,7 +89,6 @@ fn convert(n: i32, env: &mut HashMap<String, Type>, renamed: &HashMap<String, St
         E::Star => panic!("star found when it shouldn't be"),
         E::V => panic!("v found when it shouldn't be"),
         E::WellFormed(_) => panic!("wellformed found when it shouldn't be"),
-        _ => panic!("! fixme"),
     }
 }
 
