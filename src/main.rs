@@ -4,7 +4,7 @@
 extern crate lazy_static;
 extern crate unicode_xid;
 
-use std::{env, error};
+use std::error;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
@@ -18,14 +18,15 @@ mod tok;
 mod implicit;
 mod explicit;
 mod refined;
-mod liquid;
 mod hindley_milner;
+mod env;
+mod liquid;
 mod eval;
 
 use common::{LiquidError, Result};
 
 fn usage() -> ! {
-    let argv0 = env::args().nth(0).unwrap_or("<mdl>".to_string());
+    let argv0 = std::env::args().nth(0).unwrap_or("<mdl>".to_string());
     die!("Usage: {} [OPTION...] PATH\n\
           Type inference.\n\
           \n\
@@ -36,7 +37,7 @@ fn usage() -> ! {
 
 fn parse_args() -> String {
 
-    for arg in env::args().skip(1) {
+    for arg in std::env::args().skip(1) {
         if arg == "-help" {
             usage();
         } else if arg.chars().nth(0).unwrap_or(' ') == '-' {
