@@ -23,7 +23,7 @@ pub use explicit::Metavar;
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum C {
     WellFormed(Box<Type>),
-    SubType(Box<Type>, Box<Type>),
+    Subtype(Box<Type>, Box<Type>),
 }
 
 
@@ -54,7 +54,10 @@ impl Env {
     }
 
     fn get(&self, s: &Id) -> Type {
-        self.refined_env.get(s).unwrap().clone()
+        match self.refined_env.get(s) {
+            Some(ty) => ty.clone(),
+            None => panic!("env.get('{}' missing ({:?})", s, self.in_scope()),
+        }
     }
 
     fn insert(&mut self, s: &Id, ty: &Type) {
@@ -173,8 +176,8 @@ pub fn cons<'a>(k_env: &mut KEnv, env: &Env, expr: &Expr) -> (Type, LinkedList<C
     use implicit::Expr::*;
     use common::Op2::Eq;
 
-    match expr {
-        &Var(ref id) => {
+    match *expr {
+        Var(ref id) => {
             let ty: Type = if let Some(b) = base(&env.get(id)) {
                 let eq = Op2(Eq, box V, box Var(id.clone()));
                 T::Ref(env.in_scope(), b, box Liquid::E(eq))
@@ -183,51 +186,88 @@ pub fn cons<'a>(k_env: &mut KEnv, env: &Env, expr: &Expr) -> (Type, LinkedList<C
             };
             (ty, LinkedList::new())
         }
-        &Const(ref c) => {
+        Const(ref c) => {
             (ty(k_env, &env, c), LinkedList::new())
         }
-        &If(ref e1, ref e2, ref e3) => {
+        Op2(op, ref e1, ref e2) => {
+            let (f1, mut c1) = cons(k_env, env, e1);
+            let (f2, mut c2) = cons(k_env, env, e2);
+            c1.append(&mut c2);
+
+            let ty = explicit::opty(op);
+            let base = match ty {
+                explicit::Type::TInt => Base::Int,
+                explicit::Type::TBool => Base::Bool,
+                _ => panic!("FIXME: handle {:?}", ty),
+            };
+
+            let eq = Op2(Eq, box V, box expr.clone());
+            let f = T::Ref(env.in_scope(), base, box Liquid::E(eq));
+            println!("!!f:\t{:?}", f);
+
+            (f, c1)
+        }
+        If(ref e1, ref e2, ref e3) => {
             let mut env_t = env.clone();
             let mut env_f = env.clone();
             env_t.add_constraint(&e1.clone());
             env_f.add_constraint(&App(box Var(String::from("not")), e1.clone()));
 
-            // FIXME: need to pass up type of expr?
             let f = k_env.fresh(&env, expr);
             // type of e1 has already been verified to be a bool by HM
             let (_, mut c1) = cons(k_env, &env, e1);
-            // add e1 to path constraints in env_t
-            // add not e1 to path constraints in env_f
             let (f2, mut c2) = cons(k_env, &env_t, e2);
             let (f3, mut c3) = cons(k_env, &env_f, e3);
             c1.append(&mut c2);
             c1.append(&mut c3);
             // Γ ⊢ (f)
             c1.push_back((env.snapshot(), C::WellFormed(box f.clone())));
-
-            // TODO: add constraints:
             // Γ,e1 ⊢ (f2 <: f)
+            c1.push_back((env_t.snapshot(), C::Subtype(box f2.clone(), box f.clone())));
             // Γ,¬e1 ⊢ (f3 <: f)
+            c1.push_back((env_f.snapshot(), C::Subtype(box f3.clone(), box f.clone())));
 
-            (f2, c1)
+            (f, c1)
         }
-        &Fun(ref x, ref e) => {
+        Fun(ref x, ref e) => {
             let mut env = env.clone();
             let fx = k_env.fresh(&env, &Var(x.clone()));
             env.insert(x, &fx);
-            // FIXME: Trump-esque WRONG.
             let f = k_env.fresh(&env, e);
-            let ffn = T::Fun(x.clone(), box fx.clone(), box f.clone());
             let (fe, mut c) = cons(k_env, &env, e);
             // Γ ⊢ (x:fx → f)
             c.push_back((env.snapshot(), C::WellFormed(box f.clone())));
-
-            // TODO: add constraints:
             // Γ,x:fx ⊢ (fe <: f)
+            c.push_back((env.snapshot(), C::Subtype(box fe.clone(), box f.clone())));
 
-            (ffn, c)
+            (f, c)
+        }
+        Fix(ref x, ref e) => {
+            // const w/ ∀α.(α→α)→α
+            let mut env = env.clone();
+            let fx = k_env.fresh(&env, e);
+            env.insert(x, &fx);
+
+            // FIXME
+            cons(k_env, &env, e)
+        }
+        Let(ref id, ref e1, ref e2) => {
+            let mut env = env.clone();
+
+            let f = k_env.fresh(&env, expr);
+            let (f1, mut c1) = cons(k_env, &env, e1);
+            env.insert(id, &f1);
+            let (f2, mut c2) = cons(k_env, &env, e2);
+            c1.append(&mut c2);
+            // Γ ⊢ (f)
+            c1.push_back((env.snapshot(), C::WellFormed(box f.clone())));
+            // Γ,x:f1 ⊢ (f2 <: f)
+            c1.push_back((env.snapshot(), C::Subtype(box f2.clone(), box f.clone())));
+
+            (f, c1)
         }
         _ => {
+            println!("unhandled {:?}", expr);
             (T::Ref(env.in_scope(), Base::Bool, box Liquid::E(Const(common::Const::Bool(true)))), LinkedList::new())
         }
     }
