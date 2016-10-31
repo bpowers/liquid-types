@@ -70,61 +70,22 @@ fn convert(n: i32, env: &mut HashMap<String, Type>, renamed: &HashMap<String, St
             };
             (n, I::App(box e1, box e2), t)
         }
-        E::Empty(ref t1) => (n, I::Empty, t1.clone()),
-        // E::Cons(ref e1, ref e2) => {
-        //     let mv = m.alloc_empty();
-        //     let (mut c1, t1) = gen_constraints(m, env, e1)?;
-        //     let (mut c2, t2) = gen_constraints(m, env, e2)?;
-        //     c1.append(&mut c2);
-        //     c1.push((t1, mv.clone()));
-        //     c1.push((t2, Type::TList(box mv.clone())));
-        //     (c1, Type::TList(box mv))
-        // }
-        // E::Head(ref e) => {
-        //     let mv = m.alloc_empty();
-        //     let (mut c, t) = gen_constraints(m, env, e)?;
-        //     c.push((t, Type::TList(box mv.clone())));
-        //     (c, mv)
-        // }
-        // E::Tail(ref e) => {
-        //     let mv = m.alloc_empty();
-        //     let (mut c, t) = gen_constraints(m, env, e)?;
-        //     c.push((t, Type::TList(box mv.clone())));
-        //     (c, Type::TList(box mv))
-        // }
-        // E::IsEmpty(ref e) => {
-        //     let mv = m.alloc_empty();
-        //     let (mut c, t) = gen_constraints(m, env, e)?;
-        //     c.push((t, Type::TList(box mv.clone())));
-        //     (c, Type::TBool)
-        // }
-        // E::MkArray(ref sz, ref n) => {
-        //     let (mut c1, t1) = gen_constraints(m, env, sz)?;
-        //     let (mut c2, t2) = gen_constraints(m, env, n)?;
-        //     c1.append(&mut c2);
-        //     c1.push((t1, Type::TInt));
-        //     c1.push((t2, Type::TInt));
-        //     (c1, Type::TIntArray)
-        // }
-        // E::GetArray(ref id, ref idx) => {
-        //     let (mut c1, t1) = gen_constraints(m, env, id)?;
-        //     let (mut c2, t2) = gen_constraints(m, env, idx)?;
-        //     c1.append(&mut c2);
-        //     c1.push((t1, Type::TIntArray));
-        //     c1.push((t2, Type::TInt));
-        //     (c1, Type::TInt)
-        // }
-        // E::SetArray(ref id, ref idx, ref v) => {
-        //     let (mut c1, t1) = gen_constraints(m, env, id)?;
-        //     let (mut c2, t2) = gen_constraints(m, env, idx)?;
-        //     let (mut c3, t3) = gen_constraints(m, env, v)?;
-        //     c1.append(&mut c2);
-        //     c1.append(&mut c3);
-        //     c1.push((t1, Type::TIntArray));
-        //     c1.push((t2, Type::TInt));
-        //     c1.push((t3, Type::TInt));
-        //     (c1, Type::TIntArray)
-        // }
+        E::MkArray(ref sz, ref val) => {
+            let (n, sz, _) = convert(n, env, renamed, sz);
+            let (n, val, _) = convert(n, env, renamed, val);
+            (n, I::MkArray(box sz, box val), Type::TIntArray)
+        }
+        E::GetArray(ref id, ref idx) => {
+            let (n, id, _) = convert(n, env, renamed, id);
+            let (n, idx, _) = convert(n, env, renamed, idx);
+            (n, I::GetArray(box id, box idx), Type::TInt)
+        }
+        E::SetArray(ref id, ref idx, ref v) => {
+            let (n, id, _) = convert(n, env, renamed, id);
+            let (n, idx, _) = convert(n, env, renamed, idx);
+            let (n, v, _) = convert(n, env, renamed, v);
+            (n, I::SetArray(box id, box idx, box v), Type::TIntArray)
+        }
         E::Star => panic!("star found when it shouldn't be"),
         E::V => panic!("v found when it shouldn't be"),
         E::WellFormed(_) => panic!("wellformed found when it shouldn't be"),
