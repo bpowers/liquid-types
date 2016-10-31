@@ -23,7 +23,6 @@ mod hindley_milner;
 mod env;
 mod liquid;
 mod eval;
-mod lambdal;
 
 use common::{LiquidError, Result};
 

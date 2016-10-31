@@ -42,11 +42,11 @@ impl<'a> MVEnv<'a> {
     }
 }
 
-fn add_metavars_in(env: &mut MVEnv, exp: &implicit::Expr) -> explicit::Expr {
+fn add_metavars_in(env: &mut MVEnv, expr: &implicit::Expr) -> explicit::Expr {
     use implicit::Expr as I;
     use typed::Expr as E;
 
-    match *exp {
+    match *expr {
         I::Var(ref id) => E::Var(id.clone()),
         I::Const(ref c) => E::Const(*c),
         I::Op2(ref op, ref l, ref r) => {
@@ -98,23 +98,22 @@ fn add_metavars_in(env: &mut MVEnv, exp: &implicit::Expr) -> explicit::Expr {
         }
         I::Star => panic!("star found when it shouldn't be"),
         I::V => panic!("v found when it shouldn't be"),
-        I::WellFormed(_) => panic!("wellformed found when it shouldn't be"),
     }
 }
 
-fn add_metavars(exp: &implicit::Expr) -> Box<explicit::Expr> {
+fn add_metavars(expr: &implicit::Expr) -> Box<explicit::Expr> {
     let mut env = MVEnv::new("α");
-    box add_metavars_in(&mut env, exp)
+    box add_metavars_in(&mut env, expr)
 }
 
 fn gen_constraints<'a>(m: &mut MVEnv,
                        env: &HashMap<&'a str, Type>,
-                       exp: &'a explicit::Expr)
+                       expr: &'a explicit::Expr)
                        -> Result<(Vec<(Type, Type)>, Type)> {
     use common::{Const, Op2};
     use typed::Expr as E;
 
-    let result = match *exp {
+    let result = match *expr {
         E::Const(Const::Int(_)) => (Vec::new(), Type::TInt),
         E::Const(Const::Bool(_)) => (Vec::new(), Type::TBool),
         E::Op2(op, ref e1, ref e2) => {
@@ -316,10 +315,10 @@ fn unify_all(constraints: &[(Type, Type)]) -> Result<HashMap<Metavar, Type>> {
     Ok(r)
 }
 
-fn remove_metavars(env: &HashMap<Metavar, Type>, exp: &explicit::Expr) -> Result<Box<explicit::Expr>> {
+fn remove_metavars(env: &HashMap<Metavar, Type>, expr: &explicit::Expr) -> Result<Box<explicit::Expr>> {
     use typed::Expr as E;
 
-    let result: explicit::Expr = match *exp {
+    let result: explicit::Expr = match *expr {
         E::Const(ref c) => E::Const(c.clone()),
         E::Op2(op, ref e1, ref e2) => {
             let e1 = remove_metavars(env, e1)?;
@@ -372,8 +371,8 @@ fn remove_metavars(env: &HashMap<Metavar, Type>, exp: &explicit::Expr) -> Result
     Ok(box result)
 }
 
-pub fn infer(exp: &implicit::Expr) -> Result<explicit::Expr> {
-    let typed_w_metavars = add_metavars(&exp);
+pub fn infer(expr: &implicit::Expr) -> Result<explicit::Expr> {
+    let typed_w_metavars = add_metavars(&expr);
     let mut cg_env = MVEnv::new("β");
     let id_env = HashMap::new();
     let constraints = match gen_constraints(&mut cg_env, &id_env, &typed_w_metavars) {
@@ -387,7 +386,7 @@ pub fn infer(exp: &implicit::Expr) -> Result<explicit::Expr> {
     };
 
     let typed = match remove_metavars(&mv_env, &typed_w_metavars) {
-        Ok(exp) => exp,
+        Ok(expr) => expr,
         Err(e) => die!("remove_metavars failed: {}", error::Error::description(&e)),
     };
 

@@ -16,5 +16,4 @@ pub enum Expr {
     // liquid-type constructs
     Star,
     V,
-    WellFormed(Id),
 }
