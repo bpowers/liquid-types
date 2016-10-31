@@ -1,4 +1,5 @@
 #![feature(box_syntax,box_patterns)]
+#![feature(non_ascii_idents)]
 
 #[macro_use]
 extern crate lazy_static;
@@ -115,4 +116,8 @@ fn main() {
     let val = eval::interpret(&expr);
 
     println!("result:\n\n{:?}\n", val);
+
+    let (e, gamma) = env::extract(&expr);
+    println!("implicit: {:?}\n", e);
+    println!("gamma   : {:?}\n", gamma);
 }

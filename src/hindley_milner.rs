@@ -124,11 +124,6 @@ fn gen_constraints<'a>(m: &mut MVEnv,
         E::Const(Const::Int(_)) => (Vec::new(), Type::TInt),
         E::Const(Const::Bool(_)) => (Vec::new(), Type::TBool),
         E::Op2(op, ref e1, ref e2) => {
-            let opty = match op {
-                Op2::And | Op2::Or | Op2::Impl | Op2::Iff |
-                Op2::LT | Op2::GT | Op2::Eq => Type::TBool,
-                Op2::Add | Op2::Sub | Op2::Mul => Type::TInt,
-            };
             let (mut c1, t1) = gen_constraints(m, env, e1)?;
             let (mut c2, t2) = gen_constraints(m, env, e2)?;
             c1.append(&mut c2);
@@ -139,7 +134,7 @@ fn gen_constraints<'a>(m: &mut MVEnv,
             };
             c1.push((t1, expected.clone()));
             c1.push((t2, expected));
-            (c1, opty)
+            (c1, explicit::opty(op))
         }
         E::If(ref e1, ref e2, ref e3) => {
             let (mut c1, t1) = gen_constraints(m, env, e1)?;
