@@ -15,7 +15,6 @@ Subtraction: - make sure there are spaces around `-` like in `k - 1`. `k-1` does
 TODO
 ----
 
-- [ ] α-rename explicit -> implicit + Shape(Γ)
 - [ ] Generate liquid type constraints from implicit + Shape(Γ)
 - [ ] Solve constraints in z3 (what about uninterpreted function terms in Z3?)
 - [ ] Builtin functions - in the builtin type environment and evaluation context
