@@ -172,6 +172,11 @@ fn base(ty: &Type) -> Option<Base> {
     }
 }
 
+fn subst(id: &Id, expr: &Expr, ty: &Type) -> Type {
+    println!("TODO: subst");
+    ty.clone()
+}
+
 pub fn cons<'a>(k_env: &mut KEnv, env: &Env, expr: &Expr) -> (Type, LinkedList<Constraint>) {
     use implicit::Expr::*;
     use common::Op2::Eq;
@@ -179,9 +184,11 @@ pub fn cons<'a>(k_env: &mut KEnv, env: &Env, expr: &Expr) -> (Type, LinkedList<C
     match *expr {
         Var(ref id) => {
             let ty: Type = if let Some(b) = base(&env.get(id)) {
+                println!("{} is base ({:?})", id, b);
                 let eq = Op2(Eq, box V, box Var(id.clone()));
                 T::Ref(env.in_scope(), b, box Liquid::E(eq))
             } else {
+                println!("{} not base -- using just env ({:?})", id, env.get(id));
                 env.get(id)
             };
             (ty, LinkedList::new())
@@ -203,7 +210,6 @@ pub fn cons<'a>(k_env: &mut KEnv, env: &Env, expr: &Expr) -> (Type, LinkedList<C
 
             let eq = Op2(Eq, box V, box expr.clone());
             let f = T::Ref(env.in_scope(), base, box Liquid::E(eq));
-            println!("!!f:\t{:?}", f);
 
             (f, c1)
         }
@@ -265,6 +271,27 @@ pub fn cons<'a>(k_env: &mut KEnv, env: &Env, expr: &Expr) -> (Type, LinkedList<C
             c1.push_back((env.snapshot(), C::Subtype(box f2.clone(), box f.clone())));
 
             (f, c1)
+        }
+        App(ref e1, ref e2) => {
+            let (f1, mut c1) = cons(k_env, env, e1);
+            println!("## {:?}\t:\t{:?}", e1, f1);
+            let (f2, mut c2) = cons(k_env, env, e2);
+            c1.append(&mut c2);
+            if let T::Fun(ref x, ref fx, ref f) = f1 {
+                let f = subst(x, e2, f);
+                // Γ ⊢ (f2 <: fx)
+                c1.push_back((env.snapshot(), C::Subtype(box f2.clone(), fx.clone())));
+                return (f, c1);
+            } else {
+                panic!("expected TFun, not {:?}", f1);
+            }
+            //             let (x:Fx → F, C1) = Cons(Γ, e1) in
+            // let (F
+            // 0
+            // x, C2) = Cons(Γ, e2) in
+            // ([e2/x]F, C1 ∪ C2 ∪ {Γ ` F
+            // 0
+            // x <: Fx})
         }
         _ => {
             println!("unhandled {:?}", expr);
