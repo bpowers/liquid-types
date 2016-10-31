@@ -106,7 +106,12 @@ fn main() {
 
     println!("typed:\n\n{:?}\n", expr);
 
-    let refined = match liquid::infer(&expr) {
+    let (αexpr, env) = env::extract(&expr);
+    println!("α-implicit: {:?}\n", αexpr);
+    println!("Γ         : {:?}\n", env);
+
+
+    let refined = match liquid::infer(&αexpr, &env) {
         Ok(expr) => expr,
         Err(e) => die!("infer: {}", error::Error::description(&e)),
     };
@@ -116,8 +121,4 @@ fn main() {
     let val = eval::interpret(&expr);
 
     println!("result:\n\n{:?}\n", val);
-
-    let (e, gamma) = env::extract(&expr);
-    println!("implicit: {:?}\n", e);
-    println!("gamma   : {:?}\n", gamma);
 }

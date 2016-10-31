@@ -1,6 +1,6 @@
 pub use common::{Id, Op2, Const};
 
-#[derive(Debug)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub enum Expr {
     Var(Id),
     Const(Const),
@@ -13,4 +13,8 @@ pub enum Expr {
     MkArray(Box<Expr>, Box<Expr>),
     GetArray(Box<Expr>, Box<Expr>),
     SetArray(Box<Expr>, Box<Expr>, Box<Expr>),
+    // liquid-type constructs
+    Star,
+    V,
+    WellFormed(Id),
 }

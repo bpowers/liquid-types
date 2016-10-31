@@ -1,4 +1,5 @@
-pub use common::{Id};
+use std::collections::HashSet;
+pub use common::Id;
 
 pub type Metavar = (i32, String);
 
@@ -9,12 +10,9 @@ pub enum Base {
     IntArray,
 }
 
-#[derive(PartialEq, Eq, Hash, Debug, Clone)]
-pub enum T<Env, B> {
-    Ref(Box<Env>, Base, Box<B>), /*closure,?*/
-    Fun(Id, Box<T<Env, B>>, Box<T<Env, B>>),
-    // type variable -- TODO
+#[derive(PartialEq, Eq, Debug, Clone)]
+pub enum T<B> {
+    Ref(HashSet<Id>, Base, Box<B>), // set of identifiers in scope
+    Fun(Id, Box<T<B>>, Box<T<B>>),
+    // TODO: type variable?
 }
-
-//pub type Type = T<(), implicit::Expr>;
-//pub type Expr = typed::Expr<Type>;

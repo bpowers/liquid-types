@@ -2,10 +2,11 @@ use implicit;
 use explicit;
 use typed;
 
+use common::Id;
 use std::collections::HashMap;
 use explicit::Type;
 
-fn convert(n: i32, env: &mut HashMap<String, Type>, renamed: &HashMap<String, String>, expr: &explicit::Expr) -> (i32, implicit::Expr, Type) {
+fn convert(n: i32, env: &mut HashMap<Id, Type>, renamed: &HashMap<Id, Id>, expr: &explicit::Expr) -> (i32, implicit::Expr, Type) {
     use common::Const;
     use implicit::Expr as I;
     use typed::Expr as E;
@@ -86,16 +87,13 @@ fn convert(n: i32, env: &mut HashMap<String, Type>, renamed: &HashMap<String, St
             let (n, v, _) = convert(n, env, renamed, v);
             (n, I::SetArray(box id, box idx, box v), Type::TIntArray)
         }
-        E::Star => panic!("star found when it shouldn't be"),
-        E::V => panic!("v found when it shouldn't be"),
-        E::WellFormed(_) => panic!("wellformed found when it shouldn't be"),
     }
 }
 
-pub fn extract(expr: &explicit::Expr) -> (implicit::Expr, HashMap<String, Type>) {
-    let mut env: HashMap<String, Type> = HashMap::new();
+pub fn extract(expr: &explicit::Expr) -> (implicit::Expr, HashMap<Id, Type>) {
+    let mut env: HashMap<Id, Type> = HashMap::new();
     // keep track of α-renaming
-    let mut renamed: HashMap<String, String> = HashMap::new();
+    let mut renamed: HashMap<Id, Id> = HashMap::new();
 
     let (_, iexpr, _) = convert(1, &mut env, &renamed, expr);
 

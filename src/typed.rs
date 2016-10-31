@@ -1,6 +1,6 @@
 pub use common::{Id, Op2, Const};
 
-#[derive(PartialEq, Eq, Hash, Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub enum Expr<Ty> {
     Var(Id),
     Const(Const),
@@ -13,9 +13,4 @@ pub enum Expr<Ty> {
     MkArray(Box<Expr<Ty>>, Box<Expr<Ty>>),
     GetArray(Box<Expr<Ty>>, Box<Expr<Ty>>),
     SetArray(Box<Expr<Ty>>, Box<Expr<Ty>>, Box<Expr<Ty>>),
-
-    // what is needed to represent liquid templates?
-    Star,
-    V,
-    WellFormed(Box<Ty>),
 }

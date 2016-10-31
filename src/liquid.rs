@@ -1,11 +1,14 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::collections::LinkedList;
 
 use common;
+use implicit;
 use explicit;
 use typed;
 
-use common::Result;
+use implicit::Expr;
+use common::{Id, Result};
 use refined::{Base, T};
 pub use explicit::Metavar;
 
@@ -20,82 +23,93 @@ pub use explicit::Metavar;
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum Liquid {
-    E(typed::Expr<explicit::Type>),
-    K(Metavar, Box<LinkedList<explicit::Expr>>), // list of pending substitutions
+    E(implicit::Expr),
+    K(Metavar, Box<LinkedList<Expr>>), // list of pending substitutions
 }
 
-pub type Type = T<Env, Liquid>;
-pub type Expr = typed::Expr<Type>;
+pub type Type = T<Liquid>;
 
-pub type Constraint = (Env, Expr); // Boolean valued expressions & their environments
+pub type Constraint = (HashSet<Id>, Expr); // Boolean valued expressions & their environments
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Env {
-    refined_env: Box<HashMap<String, Type>>,
-    path_constraints: LinkedList<explicit::Expr>,
+    shape: HashMap<Id, explicit::Type>,
+    refined_env: HashMap<Id, Type>,
+    path_constraints: LinkedList<Expr>,
 }
 
 impl Env {
-    fn new() -> Env {
+    fn new(shape: &HashMap<Id, explicit::Type>) -> Env {
         Env {
-            refined_env: box HashMap::new(),
+            shape: shape.clone(),
+            refined_env: HashMap::new(),
             path_constraints: LinkedList::new(),
         }
     }
 
-    fn get(&self, s: &String) -> Type {
+    fn get(&self, s: &Id) -> Type {
         self.refined_env.get(s).unwrap().clone()
     }
 
-    fn insert(&mut self, s: &String, ty: &Type) {
+    fn insert(&mut self, s: &Id, ty: &Type) {
         self.refined_env.insert(s.clone(), ty.clone());
     }
 
-    fn add_constraint(&mut self, e: &explicit::Expr) {
+    fn add_constraint(&mut self, e: &Expr) {
         self.path_constraints.push_back(e.clone())
+    }
+
+    fn in_scope(&self) -> HashSet<Id> {
+        let keys: HashSet<_> = self.refined_env.keys().cloned().collect();
+        return keys
     }
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct KEnv {
+    shape: HashMap<Id, explicit::Type>,
     env_id: String,
     next_id: i32,
 }
 
 impl KEnv {
-    fn new() -> KEnv {
+    fn new(shape: &HashMap<Id, explicit::Type>) -> KEnv {
         KEnv {
+            shape: shape.clone(),
             env_id: String::from("κ"), // ν
             next_id: 0,
         }
     }
 
-    fn fresh(&mut self, env: &Env, ty: &explicit::Type) -> Type {
+    fn fresh(&mut self, env: &Env, x: &Id) -> Type {
         let id = self.next_id;
         self.next_id += 1;
 
-        let base = match ty {
+        let base = match self.shape.get(x).unwrap() {
             &explicit::Type::TInt => Base::Int,
             &explicit::Type::TBool => Base::Bool,
             _ => panic!("FIXME: handle more base types in alloc")
         };
         let k = Liquid::K((id, self.env_id.clone()), box LinkedList::new());
-        T::Ref(box env.clone(), base, box k)
+        T::Ref(env.in_scope(), base, box k)
     }
 }
 
 fn ty<'a>(k_env: &mut KEnv, env: &Env, c: &common::Const) -> Type {
+    use common::Op2;
     use common::Const::*;
-    match *c {
-        Int(ref i) => {
-            println!("ty(int)");
-            k_env.fresh(env, &explicit::Type::TInt)
-        }
-        Bool(ref b) => {
-            println!("ty(bool)");
-            k_env.fresh(env, &explicit::Type::TBool)
-        }
-    }
+    use self::Liquid::E;
+
+    let base = match *c {
+        Int(_) => Base::Int,
+        Bool(_) => Base::Bool,
+    };
+
+    println!("ty({:?})", base);
+
+    // {ν : int | ν = 3 }
+    let eq = E(Expr::Op2(Op2::Eq, box Expr::V, box Expr::Const(*c)));
+    T::Ref(HashSet::new(), base, box eq)
 }
 
 fn base(ty: &Type) -> Option<Base> {
@@ -105,14 +119,15 @@ fn base(ty: &Type) -> Option<Base> {
     }
 }
 
-pub fn cons<'a>(k_env: &mut KEnv, env: &Env, expr: &explicit::Expr) -> (Type, LinkedList<Constraint>) {
-    use typed::Expr::*;
+pub fn cons<'a>(k_env: &mut KEnv, env: &Env, expr: &Expr) -> (Type, LinkedList<Constraint>) {
+    use implicit::Expr::*;
+    use common::Op2::Eq;
 
     match expr {
         &Var(ref id) => {
             let ty: Type = if let Some(b) = base(&env.get(id)) {
-                let eq = Op2(common::Op2::Eq, box V, box Var(id.clone()));
-                T::Ref(box env.clone(), b, box Liquid::E(eq))
+                let eq = Op2(Eq, box V, box Var(id.clone()));
+                T::Ref(env.in_scope(), b, box Liquid::E(eq))
             } else {
                 env.get(id)
             };
@@ -128,7 +143,7 @@ pub fn cons<'a>(k_env: &mut KEnv, env: &Env, expr: &explicit::Expr) -> (Type, Li
             env_f.add_constraint(&App(box Var(String::from("not")), e1.clone()));
 
             // FIXME: need to pass up type of expr?
-            let f = k_env.fresh(&env, &explicit::Type::TInt);
+            //let f = k_env.fresh(&env, &explicit::Type::TInt);
             // type of e1 has already been verified to be a bool by HM
             let (_, mut c1) = cons(k_env, &env, e1);
             // add e1 to path constraints in env_t
@@ -138,23 +153,24 @@ pub fn cons<'a>(k_env: &mut KEnv, env: &Env, expr: &explicit::Expr) -> (Type, Li
             c1.append(&mut c2);
             c1.append(&mut c3);
             // Γ ⊢ (f)
-            c1.push_back((env.clone(), WellFormed(box f.clone())));
+            c1.push_back((env.in_scope(), WellFormed(String::from("__if"))));
 
             // TODO: add constraints:
             // Γ,e1 ⊢ (f2 <: f)
             // Γ,¬e1 ⊢ (f3 <: f)
 
-            (f, c1)
+            (f2, c1)
         }
-        &Fun(ref x, ref ty, ref e) => {
+        &Fun(ref x, ref e) => {
             let mut env = env.clone();
-            let fx = k_env.fresh(&env, ty);
+            let fx = k_env.fresh(&env, x);
             env.insert(x, &fx);
-            let f = k_env.fresh(&env, ty);
+            // FIXME: Trump-esque WRONG.
+            let f = k_env.fresh(&env, x);
             let ffn = T::Fun(x.clone(), box fx.clone(), box f.clone());
             let (fe, mut c) = cons(k_env, &env, e);
             // Γ ⊢ (x:fx → f)
-            c.push_back((env.clone(), WellFormed(box ffn.clone())));
+            c.push_back((env.in_scope(), WellFormed(String::from("__fun"))));
 
             // TODO: add constraints:
             // Γ,x:fx ⊢ (fe <: f)
@@ -162,16 +178,21 @@ pub fn cons<'a>(k_env: &mut KEnv, env: &Env, expr: &explicit::Expr) -> (Type, Li
             (ffn, c)
         }
         _ => {
-            (T::Ref(box env.clone(), Base::Bool, box Liquid::E(typed::Expr::Const(common::Const::Bool(true)))), LinkedList::new())
+            (T::Ref(env.in_scope(), Base::Bool, box Liquid::E(Const(common::Const::Bool(true)))), LinkedList::new())
         }
     }
 }
 
-pub fn infer(expr: &explicit::Expr) -> Result<Expr> {
-    let mut k_env = KEnv::new();
-    let (f, c) = cons(&mut k_env, &Env::new(), expr);
+pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>) -> Result<Expr> {
+    let mut k_env = KEnv::new(env);
+    let (f, c) = cons(&mut k_env, &Env::new(env), expr);
     println!("CONS:\n");
     println!("f\t{:?}", f);
     println!("c\t{:?}", c);
-    Ok(typed::Expr::Const(common::Const::Bool(false)))
+
+    // TODO:
+    // let a = Solve(Split(c), λκ.Inst(Γ, e, Q)) in
+    // a(f)
+
+    Ok(Expr::Const(common::Const::Bool(false)))
 }
