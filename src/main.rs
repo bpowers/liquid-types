@@ -4,6 +4,18 @@
 #[macro_use]
 extern crate lazy_static;
 extern crate unicode_xid;
+extern crate rustproof_libsmt;
+
+use rustproof_libsmt::backends::smtlib2::*;
+use rustproof_libsmt::backends::backend::*;
+use rustproof_libsmt::backends::z3;
+
+// Include the Core (bool) and Int theory and its functions
+use rustproof_libsmt::theories::{core,integer};
+
+// Include the LIA logic
+use rustproof_libsmt::logics::lia::LIA;
+
 
 use std::error;
 use std::fs::File;
@@ -121,4 +133,34 @@ fn main() {
     let val = eval::interpret(&expr);
 
     println!("result:\n\n{:?}\n", val);
+
+        let mut z3: z3::Z3 = Default::default();
+    // Defining an instance of Z3 solver
+    let mut solver = SMTLib2::new(Some(LIA));
+    solver.set_logic(&mut z3);
+
+    // Defining the symbolic vars x & y
+    let x = solver.new_var(Some("x"),integer::Sorts::Int);
+    let y = solver.new_var(Some("y"),integer::Sorts::Int);
+
+    // Defining the integer constants
+    let int5 = solver.new_const(integer::OpCodes::Const(5));
+    let int1 = solver.new_const(integer::OpCodes::Const(1));
+
+    // Defining the assert conditions
+    let cond1 = solver.assert(integer::OpCodes::Add, &[x, y]);
+    let _  = solver.assert(integer::OpCodes::Gt, &[cond1, int5]);
+    let _  = solver.assert(integer::OpCodes::Gt, &[x, int1]);
+    let _  = solver.assert(integer::OpCodes::Gt, &[y, int1]);
+
+    let (result, response) = solver.solve(&mut z3, false);
+    println!("result: {:?}", result);
+    println!("response: {:?}", response);
+    match result {
+        Ok(result) => {
+            println!("found answers.");
+            println!("x: {}; y: {}", result[&x], result[&y]);
+        }
+        Err(e) => println!("No solutions for x and y found for given set of constraints ({:?})", e),
+    }
 }
