@@ -348,7 +348,7 @@ fn build_a(constraints: &HashMap<Idx, Constraint>) -> HashMap<Id, KInfo> {
     HashMap::new()
 }
 
-pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>) -> Result<Expr> {
+pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr]) -> Result<Expr> {
     let mut k_env = KEnv::new(env);
     let (f, constraint_list) = cons(&mut k_env, &Env::new(env), expr);
 

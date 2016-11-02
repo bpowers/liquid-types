@@ -6,6 +6,8 @@ pub type Id = String;
 pub enum Op2 {
     LT,
     GT,
+    LTE,
+    GTE,
     Eq,
     Add,
     Sub,

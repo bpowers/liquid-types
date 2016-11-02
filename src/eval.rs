@@ -47,14 +47,16 @@ fn op2_eval(ctx: &Closure, op: Op2, l: &Expr, r: &Expr) -> Value {
     // all binary ops operate on ints, and at this point have passed
     // typechecking
     match op {
-        LT | GT | Eq | Add | Sub | Mul => {
+        LT | LTE | GT | GTE | Eq | Add | Sub | Mul => {
             let vl = vint(eval(ctx, l));
             let vr = vint(eval(ctx, r));
 
             match op {
-                LT => VBool(vl < vr),
-                GT => VBool(vl > vr),
-                Eq => VBool(vl == vr),
+                LT  => VBool(vl < vr),
+                LTE => VBool(vl <= vr),
+                GT  => VBool(vl > vr),
+                GTE => VBool(vl >= vr),
+                Eq  => VBool(vl == vr),
                 Add => VInt(vl + vr),
                 Sub => VInt(vl - vr),
                 Mul => VInt(vl * vr),

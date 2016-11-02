@@ -111,7 +111,19 @@ fn main() {
     println!("α-implicit: {:?}\n", αexpr);
     println!("Γ         : {:?}\n", env);
 
-    let refined = match liquid::infer(&αexpr, &env) {
+    let q = {
+        use implicit::Expr::*;
+        use common::Op2::*;
+        use common::Const::*;
+        [
+            Op2(LTE, box Const(Int(0)), box V),
+            Op2(LTE, box Star, box V),
+            Op2(LT, box V, box Star),
+            Op2(LT, box V, box App(box Var(String::from("len")), box Star)),
+        ]
+    };
+
+    let refined = match liquid::infer(&αexpr, &env, &q) {
         Ok(expr) => expr,
         Err(e) => die!("infer: {}", error::Error::description(&e)),
     };

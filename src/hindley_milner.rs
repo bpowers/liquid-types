@@ -121,7 +121,7 @@ fn gen_constraints<'a>(m: &mut MVEnv,
             let (mut c2, t2) = gen_constraints(m, env, e2)?;
             c1.append(&mut c2);
             let expected = match op {
-                Op2::LT | Op2::GT | Op2::Eq |
+                Op2::LT | Op2::LTE | Op2::GT | Op2::GTE | Op2::Eq |
                 Op2::Add | Op2::Sub | Op2::Mul => Type::TInt,
                 Op2::And | Op2::Or | Op2::Impl | Op2::Iff => Type::TBool,
             };
