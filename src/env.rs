@@ -29,7 +29,7 @@ fn convert(n: i32, env: &mut HashMap<Id, Type>, renamed: &HashMap<Id, Id>, expr:
         }
         E::Let(ref id, ref e1, ref e2) => {
             let mut renamed = renamed.clone();
-            let (n, αid) = (n+1, format!("{}-α{}", id, n));
+            let (n, αid) = (n+1, format!("{}!a{}", id, n));
 
             let (n, e1, t1) = convert(n, env, &renamed, e1);
 
@@ -41,7 +41,7 @@ fn convert(n: i32, env: &mut HashMap<Id, Type>, renamed: &HashMap<Id, Id>, expr:
         }
         E::Fun(ref id, ref t1, ref e) => {
             let mut renamed = renamed.clone();
-            let (n, αid) = (n+1, format!("{}-α{}", id, n));
+            let (n, αid) = (n+1, format!("{}!a{}", id, n));
 
             renamed.insert(id.clone(), αid.clone());
             env.insert(αid.clone(), t1.clone());
@@ -52,7 +52,7 @@ fn convert(n: i32, env: &mut HashMap<Id, Type>, renamed: &HashMap<Id, Id>, expr:
         }
         E::Fix(ref id, ref t1, ref e) => {
             let mut renamed = renamed.clone();
-            let (n, αid) = (n+1, format!("{}-α{}", id, n));
+            let (n, αid) = (n+1, format!("{}!a{}", id, n));
 
             renamed.insert(id.clone(), αid.clone());
             env.insert(αid.clone(), t1.clone());

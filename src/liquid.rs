@@ -9,7 +9,6 @@ use explicit;
 use implicit::Expr;
 use common::{Id, Result};
 use refined::{Base, T};
-pub use explicit::Metavar;
 
 // Qbc (bounds checking)
 // X: 0, *, len *
@@ -29,7 +28,7 @@ pub enum C {
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum Liquid {
     E(implicit::Expr),
-    K(Metavar, Box<LinkedList<Expr>>), // list of pending substitutions
+    K(Id, Box<LinkedList<Expr>>), // list of pending substitutions
 }
 
 pub type Type = T<Liquid>;
@@ -130,7 +129,7 @@ impl KEnv {
             explicit::Type::TBool => Base::Bool,
             _ => panic!("FIXME: handle {:?}", ty),
         };
-        let k = Liquid::K((id, self.env_id.clone()), box LinkedList::new());
+        let k = Liquid::K(format!("!k{}", id), box LinkedList::new());
         T::Ref(env.in_scope(), base, box k)
     }
 
@@ -183,7 +182,6 @@ pub fn cons<'a>(k_env: &mut KEnv, env: &Env, expr: &Expr) -> (Type, LinkedList<C
     match *expr {
         Var(ref id) => {
             let ty: Type = if let Some(b) = base(&env.get(id)) {
-                println!("{} is base ({:?})", id, b);
                 let eq = Op2(Eq, box V, box Var(id.clone()));
                 T::Ref(env.in_scope(), b, box Liquid::E(eq))
             } else {
@@ -284,7 +282,7 @@ pub fn cons<'a>(k_env: &mut KEnv, env: &Env, expr: &Expr) -> (Type, LinkedList<C
             } else {
                 panic!("expected TFun, not {:?}", f1);
             }
-            //             let (x:Fx → F, C1) = Cons(Γ, e1) in
+            // let (x:Fx → F, C1) = Cons(Γ, e1) in
             // let (F
             // 0
             // x, C2) = Cons(Γ, e2) in
@@ -302,9 +300,13 @@ pub fn cons<'a>(k_env: &mut KEnv, env: &Env, expr: &Expr) -> (Type, LinkedList<C
 pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>) -> Result<Expr> {
     let mut k_env = KEnv::new(env);
     let (f, c) = cons(&mut k_env, &Env::new(env), expr);
-    println!("CONS:\n");
+    println!("CONS ({}):\n", k_env.next_id);
     println!("f\t{:?}", f);
-    println!("c\t{:?}", c);
+    println!("constraints");
+    for co in c.iter() {
+        let ((_, pathc), constr) = co.clone();
+        println!("\t{:?}\n\t\t{:?}", pathc, constr);
+    };
 
     // TODO:
     // let a = Solve(Split(c), λκ.Inst(Γ, e, Q)) in
