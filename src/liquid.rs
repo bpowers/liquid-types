@@ -462,17 +462,17 @@ fn solve(constraints: &HashMap<Idx, Constraint>, a: &HashMap<Id, KInfo>) -> Resu
 
 pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr]) -> Result<HashMap<Id, HashSet<implicit::Expr>>> {
     let mut k_env = KEnv::new(env);
-    let (f, constraint_list) = cons(&mut k_env, &Env::new(env), expr);
+    let (_, constraint_list) = cons(&mut k_env, &Env::new(env), expr);
 
     let mut constraints: HashMap<Idx, Constraint> = HashMap::new();
     split(&mut constraints, &constraint_list);
 
-    let mut a = build_a(&constraints, env, q);
+    let a = build_a(&constraints, env, q);
 
-    let a = solve(&constraints, &a)?;
+    let min_a = solve(&constraints, &a)?;
 
     let mut res = HashMap::new();
-    for (k, v) in a {
+    for (k, v) in min_a {
         res.insert(k, v.curr_qs.clone());
     }
 
