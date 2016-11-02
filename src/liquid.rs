@@ -57,9 +57,8 @@ pub type Constraint = ((HashSet<Id>, LinkedList<Expr>), C); // Boolean valued ex
 
 #[derive(Debug, Clone)]
 pub struct KInfo {
-    allq: HashSet<implicit::Expr>,
-    currq: HashSet<implicit::Expr>,
-    deps: Vec<Idx>,
+    all_qs: HashSet<implicit::Expr>,
+    curr_qs: HashSet<implicit::Expr>,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -380,14 +379,13 @@ fn replace(v: &Id, q: &implicit::Expr) -> Option<implicit::Expr> {
 // instantiate Q for k w/ alpha-renamed variables that are in-scope
 // and of the right shape at the location of the well-formedness
 // constraint
-fn qstar(id: &Id, in_scope: &HashSet<Id>, env: &HashMap<Id, explicit::Type>, qset: &[implicit::Expr]) -> HashSet<implicit::Expr> {
+fn qstar(_: &Id, in_scope: &HashSet<Id>, _: &HashMap<Id, explicit::Type>, qset: &[implicit::Expr]) -> HashSet<implicit::Expr> {
     let mut qstar: HashSet<implicit::Expr> = HashSet::new();
 
     for tmpl in qset {
         for v in in_scope.iter() {
             match replace(v, tmpl) {
                 Some(e) => {
-                    println!("qstar:\t{:?}", e);
                     qstar.insert(e);
                 },
                 None => {
@@ -402,39 +400,27 @@ fn qstar(id: &Id, in_scope: &HashSet<Id>, env: &HashMap<Id, explicit::Type>, qse
 
 fn build_a(constraints: &HashMap<Idx, Constraint>, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr]) -> HashMap<Id, KInfo> {
     let mut a: HashMap<Id, KInfo> = HashMap::new();
-    let mut qs: HashMap<Id, HashSet<implicit::Expr>> = HashMap::new();
 
-    for (idx, c) in constraints.iter() {
+    for (_, c) in constraints.iter() {
         if let &((_, _), C::WellFormed(ref ty)) = c {
-            if let &box T::Ref(ref in_scope, base, box Liquid::K(ref id, _)) = ty {
+            if let &box T::Ref(ref in_scope, _, box Liquid::K(ref id, _)) = ty {
                 // TODO: subst?
-                qs.insert(id.clone(), qstar(id, in_scope, env, q));
-                // // if ! well formed, pass
-                // a.insert(idx, KInfo{
-                // });
+                let all_qs = qstar(id, in_scope, env, q);
+                a.insert(id.clone(), KInfo{
+                    all_qs: all_qs.clone(),
+                    curr_qs: all_qs,
+                });
             } else {
                 panic!("WellFormed with E doesn't make sense: {:?}.", ty)
             }
         }
+        // TODO: track antecedents that reference each k
     }
-
-    // check len of set of keys in q == k
 
     a
 }
 
-pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr]) -> Result<Expr> {
-    let mut k_env = KEnv::new(env);
-    let (f, constraint_list) = cons(&mut k_env, &Env::new(env), expr);
-
-    let mut constraints: HashMap<Idx, Constraint> = HashMap::new();
-    split(&mut constraints, &constraint_list);
-
-    let mut a = build_a(&constraints, env, q);
-
-    println!("CONS ({}):\n", k_env.next_id);
-    println!("a\t{:?}", a);
-
+fn solve(constraints: &HashMap<Idx, Constraint>, a: &HashMap<Id, KInfo>) -> Result<HashMap<Id, KInfo>> {
     // for co in c.iter() {
     //     let ((_, pathc), constr) = co.clone();
     //     println!("\t{:?}\n\t\t{:?}", pathc, constr);
@@ -471,5 +457,24 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
     // let a = Solve(Split(c), λκ.Inst(Γ, e, Q)) in
     // a(f)
 
-    Ok(Expr::Const(common::Const::Bool(false)))
+    Ok(a.clone())
+}
+
+pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr]) -> Result<HashMap<Id, HashSet<implicit::Expr>>> {
+    let mut k_env = KEnv::new(env);
+    let (f, constraint_list) = cons(&mut k_env, &Env::new(env), expr);
+
+    let mut constraints: HashMap<Idx, Constraint> = HashMap::new();
+    split(&mut constraints, &constraint_list);
+
+    let mut a = build_a(&constraints, env, q);
+
+    let a = solve(&constraints, &a)?;
+
+    let mut res = HashMap::new();
+    for (k, v) in a {
+        res.insert(k, v.curr_qs.clone());
+    }
+
+    Ok(res)
 }
