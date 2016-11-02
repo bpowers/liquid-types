@@ -317,19 +317,26 @@ pub fn cons<'a>(k_env: &mut KEnv, env: &Env, expr: &Expr) -> (Type, LinkedList<C
     }
 }
 
-fn split(constraints: &LinkedList<Constraint>) -> HashMap<Idx, Constraint> {
-    let mut map: HashMap<Idx, Constraint> = HashMap::new();
+fn split(map: &mut HashMap<Idx, Constraint>, constraints: &LinkedList<Constraint>) {
     let mut idx = 1;
 
     for c in constraints.iter() {
-        if let &((_, _), C::Subtype(_, box T::Fun(_, _, _))) = c {
-            panic!("TODO: split fun into 2 implications")
-        };
-        map.insert(idx, c.clone());
-        idx += 1;
-    }
+        if let &((ref scope, ref pathc), C::Subtype(box T::Fun(_, ref tx1, ref t1), box T::Fun(ref x2, ref tx2, ref t2))) = c {
+            let mut contra_cs: LinkedList<Constraint> = LinkedList::new();
 
-    map
+            contra_cs.push_back(((scope.clone(), pathc.clone()), C::Subtype(tx2.clone(), tx1.clone())));
+
+            let mut rscope = scope.clone();
+            rscope.insert(x2.clone());
+            contra_cs.push_back(((rscope, pathc.clone()), C::Subtype(t1.clone(), t2.clone())));
+
+            // recurse
+            split(map, &contra_cs);
+        } else {
+            map.insert(idx, c.clone());
+            idx += 1;
+        }
+    }
 }
 
 fn build_a(constraints: &HashMap<Idx, Constraint>) -> HashMap<Id, KInfo> {
@@ -337,15 +344,21 @@ fn build_a(constraints: &HashMap<Idx, Constraint>) -> HashMap<Id, KInfo> {
         // if ! well formed, pass
 
     }
+
     HashMap::new()
 }
 
 pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>) -> Result<Expr> {
     let mut k_env = KEnv::new(env);
-    let (f, c) = cons(&mut k_env, &Env::new(env), expr);
-    let c = split(&c);
+    let (f, constraint_list) = cons(&mut k_env, &Env::new(env), expr);
+
+    let mut constraints: HashMap<Idx, Constraint> = HashMap::new();
+    split(&mut constraints, &constraint_list);
+
+    let a = build_a(&constraints);
+
     println!("CONS ({}):\n", k_env.next_id);
-    println!("f\t{:?}", f);
+    println!("a\t{:?}", a);
 
     // for co in c.iter() {
     //     let ((_, pathc), constr) = co.clone();
