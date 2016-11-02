@@ -28,6 +28,13 @@ use rustproof_libsmt::logics::lia::LIA;
 // ν >= X
 // ν > X
 
+macro_rules! otry {
+    ($expr:expr) => (match $expr {
+        Some(val) => val,
+        None => return None,
+    })
+}
+
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum C {
     WellFormed(Box<Type>),
@@ -332,6 +339,15 @@ fn split(map: &mut HashMap<Idx, Constraint>, constraints: &LinkedList<Constraint
 
             // recurse
             split(map, &contra_cs);
+        } else if let &((ref scope, ref pathc), C::WellFormed(box T::Fun(ref id, _, ref t))) = c {
+            let mut wf_cs: LinkedList<Constraint> = LinkedList::new();
+
+            let mut scope = scope.clone();
+            scope.insert(id.clone());
+            wf_cs.push_back(((scope, pathc.clone()), C::WellFormed(t.clone())));
+
+            // recurse
+            split(map, &wf_cs);
         } else {
             map.insert(idx, c.clone());
             idx += 1;
@@ -339,13 +355,72 @@ fn split(map: &mut HashMap<Idx, Constraint>, constraints: &LinkedList<Constraint
     }
 }
 
-fn build_a(constraints: &HashMap<Idx, Constraint>) -> HashMap<Id, KInfo> {
-    for (idx, c) in constraints.iter() {
-        // if ! well formed, pass
+fn replace(v: &Id, q: &implicit::Expr) -> Option<implicit::Expr> {
+    use implicit::Expr as I;
 
+    let r = match *q {
+        I::Var(ref id)                        => I::Var(id.clone()),
+        I::Const(ref c)                       => I::Const(*c),
+        I::Op2(ref op, ref l, ref r)          => I::Op2(*op, box otry!(replace(v, l)), box otry!(replace(v, r))),
+        I::Fun(ref id, ref e)                 => I::Fun(id.clone(), box otry!(replace(v, e))),
+        I::App(ref e1, ref e2)                => I::App(box otry!(replace(v, e1)), box otry!(replace(v, e2))),
+        I::If(ref e1, ref e2, ref e3)         => I::If(box otry!(replace(v, e1)), box otry!(replace(v, e2)), box otry!(replace(v, e3))),
+        I::Let(ref id, ref e1, ref e2)        => I::Let(id.clone(), box otry!(replace(v, e1)), box otry!(replace(v, e2))),
+        I::Fix(ref id, ref e)                 => I::Fix(id.clone(), box otry!(replace(v, e))),
+        I::MkArray(ref sz, ref n)             => I::MkArray(box otry!(replace(v, sz)), box otry!(replace(v, n))),
+        I::GetArray(ref id, ref idx)          => I::GetArray(box otry!(replace(v, id)), box otry!(replace(v, idx))),
+        I::SetArray(ref id, ref idx, ref var) => I::SetArray(box otry!(replace(v, id)), box otry!(replace(v, idx)), box otry!(replace(v, var))),
+        I::V                                  => I::V,
+        I::Star                               => I::Var(v.clone()),
+    };
+
+    Some(r)
+}
+
+// instantiate Q for k w/ alpha-renamed variables that are in-scope
+// and of the right shape at the location of the well-formedness
+// constraint
+fn qstar(id: &Id, in_scope: &HashSet<Id>, env: &HashMap<Id, explicit::Type>, qset: &[implicit::Expr]) -> HashSet<implicit::Expr> {
+    let mut qstar: HashSet<implicit::Expr> = HashSet::new();
+
+    for tmpl in qset {
+        for v in in_scope.iter() {
+            match replace(v, tmpl) {
+                Some(e) => {
+                    println!("qstar:\t{:?}", e);
+                    qstar.insert(e);
+                },
+                None => {
+                    println!("not used:\t{:?}", tmpl);
+                },
+            };
+        }
     }
 
-    HashMap::new()
+    qstar
+}
+
+fn build_a(constraints: &HashMap<Idx, Constraint>, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr]) -> HashMap<Id, KInfo> {
+    let mut a: HashMap<Id, KInfo> = HashMap::new();
+    let mut qs: HashMap<Id, HashSet<implicit::Expr>> = HashMap::new();
+
+    for (idx, c) in constraints.iter() {
+        if let &((_, _), C::WellFormed(ref ty)) = c {
+            if let &box T::Ref(ref in_scope, base, box Liquid::K(ref id, _)) = ty {
+                // TODO: subst?
+                qs.insert(id.clone(), qstar(id, in_scope, env, q));
+                // // if ! well formed, pass
+                // a.insert(idx, KInfo{
+                // });
+            } else {
+                panic!("WellFormed with E doesn't make sense: {:?}.", ty)
+            }
+        }
+    }
+
+    // check len of set of keys in q == k
+
+    a
 }
 
 pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr]) -> Result<Expr> {
@@ -355,7 +430,7 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
     let mut constraints: HashMap<Idx, Constraint> = HashMap::new();
     split(&mut constraints, &constraint_list);
 
-    let a = build_a(&constraints);
+    let mut a = build_a(&constraints, env, q);
 
     println!("CONS ({}):\n", k_env.next_id);
     println!("a\t{:?}", a);

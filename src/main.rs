@@ -119,7 +119,7 @@ fn main() {
             Op2(LTE, box Const(Int(0)), box V),
             Op2(LTE, box Star, box V),
             Op2(LT, box V, box Star),
-            Op2(LT, box V, box App(box Var(String::from("len")), box Star)),
+//            Op2(LT, box V, box App(box Var(String::from("len")), box Star)),
         ]
     };
 
