@@ -42,8 +42,18 @@ pub enum Liquid {
 }
 
 pub type Type = T<Liquid>;
+pub type Implication = (LinkedList<Expr>, Box<Type>, Box<Type>);
+
+pub type Idx = i32; // constraint index
 
 pub type Constraint = ((HashSet<Id>, LinkedList<Expr>), C); // Boolean valued expressions & their environments
+
+#[derive(Debug, Clone)]
+pub struct KInfo {
+    allq: HashSet<implicit::Expr>,
+    currq: HashSet<implicit::Expr>,
+    deps: Vec<Idx>,
+}
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Env {
@@ -307,16 +317,40 @@ pub fn cons<'a>(k_env: &mut KEnv, env: &Env, expr: &Expr) -> (Type, LinkedList<C
     }
 }
 
+fn split(constraints: &LinkedList<Constraint>) -> HashMap<Idx, Constraint> {
+    let mut map: HashMap<Idx, Constraint> = HashMap::new();
+    let mut idx = 1;
+
+    for c in constraints.iter() {
+        if let &((_, _), C::Subtype(_, box T::Fun(_, _, _))) = c {
+            panic!("TODO: split fun into 2 implications")
+        };
+        map.insert(idx, c.clone());
+        idx += 1;
+    }
+
+    map
+}
+
+fn build_a(constraints: &HashMap<Idx, Constraint>) -> HashMap<Id, KInfo> {
+    for (idx, c) in constraints.iter() {
+        // if ! well formed, pass
+
+    }
+    HashMap::new()
+}
+
 pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>) -> Result<Expr> {
     let mut k_env = KEnv::new(env);
     let (f, c) = cons(&mut k_env, &Env::new(env), expr);
+    let c = split(&c);
     println!("CONS ({}):\n", k_env.next_id);
     println!("f\t{:?}", f);
-    println!("constraints");
-    for co in c.iter() {
-        let ((_, pathc), constr) = co.clone();
-        println!("\t{:?}\n\t\t{:?}", pathc, constr);
-    };
+
+    // for co in c.iter() {
+    //     let ((_, pathc), constr) = co.clone();
+    //     println!("\t{:?}\n\t\t{:?}", pathc, constr);
+    // };
 
     let mut z3 = Z3::new_with_binary("./z3");
     // Defining an instance of Z3 solver

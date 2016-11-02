@@ -1,6 +1,6 @@
 pub use common::{Id, Op2, Const};
 
-#[derive(PartialEq, Eq, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub enum Expr {
     Var(Id),
     Const(Const),
