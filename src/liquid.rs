@@ -13,20 +13,8 @@ use refined::{Base, T};
 use rustproof_libsmt::backends::smtlib2::*;
 use rustproof_libsmt::backends::backend::*;
 use rustproof_libsmt::backends::z3::Z3;
-
-// Include the Core (bool) and Int theory and its functions
-use rustproof_libsmt::theories::{integer};
-
-// Include the LIA logic
+use rustproof_libsmt::theories::integer;
 use rustproof_libsmt::logics::lia::LIA;
-
-// Qbc (bounds checking)
-// X: 0, *, len *
-// ν < X
-// ν <= X
-// ν = X
-// ν >= X
-// ν > X
 
 macro_rules! otry {
     ($expr:expr) => (match $expr {
@@ -420,11 +408,11 @@ fn build_a(constraints: &HashMap<Idx, Constraint>, env: &HashMap<Id, explicit::T
     a
 }
 
-fn solve(constraints: &HashMap<Idx, Constraint>, a: &HashMap<Id, KInfo>) -> Result<HashMap<Id, KInfo>> {
-    // for co in c.iter() {
-    //     let ((_, pathc), constr) = co.clone();
-    //     println!("\t{:?}\n\t\t{:?}", pathc, constr);
-    // };
+fn solve(constraints: &LinkedList<Implication>, a: &mut HashMap<Id, KInfo>) -> Result<HashMap<Id, KInfo>> {
+
+    for &(ref path, ref a, ref p) in constraints.iter() {
+        println!("C\t{:?}\n\t\t{:?}\n\t\t\t{:?}", path, a, p);
+    };
 
     let mut z3 = Z3::new_with_binary("./z3");
     // Defining an instance of Z3 solver
@@ -453,10 +441,6 @@ fn solve(constraints: &HashMap<Idx, Constraint>, a: &HashMap<Id, KInfo>) -> Resu
         Err(e) => println!("No solutions for x and y found for given set of constraints ({:?})", e),
     }
 
-    // TODO:
-    // let a = Solve(Split(c), λκ.Inst(Γ, e, Q)) in
-    // a(f)
-
     Ok(a.clone())
 }
 
@@ -467,9 +451,16 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
     let mut constraints: HashMap<Idx, Constraint> = HashMap::new();
     split(&mut constraints, &constraint_list);
 
-    let a = build_a(&constraints, env, q);
+    let mut a = build_a(&constraints, env, q);
 
-    let min_a = solve(&constraints, &a)?;
+    let mut all_constraints: LinkedList<Implication> = LinkedList::new();
+    for (_, c) in constraints.iter() {
+        if let &((_, ref path), C::Subtype(ref p, ref e)) = c {
+            all_constraints.push_back((path.clone(), p.clone(), e.clone()));
+        }
+    }
+
+    let min_a = solve(&all_constraints, &mut a)?;
 
     let mut res = HashMap::new();
     for (k, v) in min_a {
