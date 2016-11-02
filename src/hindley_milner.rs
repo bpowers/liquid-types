@@ -222,7 +222,6 @@ fn apply(env: &HashMap<Metavar, Type>, typ_in: &Type) -> Type {
             }
         }
         TFun(ref a, ref b) => TFun(box apply(env, a), box apply(env, b)),
-        TList(ref a) => TList(box apply(env, a)),
         TIntArray | TInt | TBool => typ_in.clone(),
     }
 }
@@ -257,7 +256,6 @@ fn occurs(mv: &Metavar, t: &Type) -> bool {
     match t {
         &TMetavar(ref mv2) => mv == mv2,
         &TFun(ref a, ref b) => occurs(mv, a) || occurs(mv, b),
-        &TList(ref a) => occurs(mv, a),
         &TIntArray | &TInt | &TBool => false,
     }
 }
@@ -292,9 +290,6 @@ fn unify(t1: &Type, t2: &Type) -> Result<HashMap<Metavar, Type>> {
             let s2 = apply(&pi, s2);
             let t2 = apply(&pi, t2);
             env = compose(&unify(&s2, &t2)?, &pi);
-        }
-        (&TList(ref s), &TList(ref t)) => {
-            env = unify(s, t)?;
         }
         _ => return err!("couldn't unify {:?} with {:?}", t1, t2),
     };

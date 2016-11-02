@@ -10,7 +10,6 @@ pub enum Type {
     TBool,
     TIntArray,
     TFun(Box<Type>, Box<Type>),
-    TList(Box<Type>),
 }
 
 pub fn opty(op: Op2) -> Type {
