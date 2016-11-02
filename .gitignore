@@ -2,3 +2,4 @@
 *.bk
 *~
 /Cargo.lock
+/interaction.txt

@@ -8,10 +8,10 @@ extern crate rustproof_libsmt;
 
 use rustproof_libsmt::backends::smtlib2::*;
 use rustproof_libsmt::backends::backend::*;
-use rustproof_libsmt::backends::z3;
+use rustproof_libsmt::backends::z3::Z3;
 
 // Include the Core (bool) and Int theory and its functions
-use rustproof_libsmt::theories::{core,integer};
+use rustproof_libsmt::theories::{integer};
 
 // Include the LIA logic
 use rustproof_libsmt::logics::lia::LIA;
@@ -134,7 +134,7 @@ fn main() {
 
     println!("result:\n\n{:?}\n", val);
 
-        let mut z3: z3::Z3 = Default::default();
+    let mut z3 = Z3::new_with_binary("./z3");
     // Defining an instance of Z3 solver
     let mut solver = SMTLib2::new(Some(LIA));
     solver.set_logic(&mut z3);
@@ -153,12 +153,9 @@ fn main() {
     let _  = solver.assert(integer::OpCodes::Gt, &[x, int1]);
     let _  = solver.assert(integer::OpCodes::Gt, &[y, int1]);
 
-    let (result, response) = solver.solve(&mut z3, false);
-    println!("result: {:?}", result);
-    println!("response: {:?}", response);
+    let (result, _) = solver.solve(&mut z3, false);
     match result {
         Ok(result) => {
-            println!("found answers.");
             println!("x: {}; y: {}", result[&x], result[&y]);
         }
         Err(e) => println!("No solutions for x and y found for given set of constraints ({:?})", e),

@@ -5,7 +5,6 @@ use std::collections::LinkedList;
 use common;
 use implicit;
 use explicit;
-use typed;
 
 use implicit::Expr;
 use common::{Id, Result};
@@ -103,11 +102,11 @@ fn hm_shape(env: &HashMap<Id, explicit::Type>, expr: &Expr) -> explicit::Type {
             }
         }
         If(_, ref e2, _) => hm_shape(env, e2),
-        Let(ref id, ref e1, ref e2) => hm_shape(env, e2),
-        Fix(ref id, ref e) => hm_shape(env, e),
-        MkArray(ref sz, ref n) => TIntArray,
-        GetArray(ref id, ref idx) => TInt,
-        SetArray(ref id, ref idx, ref v) => TIntArray,
+        Let(_, _, ref e2) => hm_shape(env, e2),
+        Fix(_, ref e) => hm_shape(env, e),
+        MkArray(_, _) => TIntArray,
+        GetArray(_, _) => TInt,
+        SetArray(_, _, _) => TIntArray,
         Star => panic!("star found when it shouldn't be"),
         V => panic!("v found when it shouldn't be"),
     }
@@ -148,7 +147,7 @@ impl KEnv {
     }
 }
 
-fn ty<'a>(k_env: &mut KEnv, env: &Env, c: &common::Const) -> Type {
+fn ty<'a>(_: &mut KEnv, _: &Env, c: &common::Const) -> Type {
     use common::Op2;
     use common::Const::*;
     use self::Liquid::E;
@@ -172,7 +171,7 @@ fn base(ty: &Type) -> Option<Base> {
     }
 }
 
-fn subst(id: &Id, expr: &Expr, ty: &Type) -> Type {
+fn subst(_: &Id, _: &Expr, ty: &Type) -> Type {
     println!("TODO: subst");
     ty.clone()
 }
@@ -197,8 +196,8 @@ pub fn cons<'a>(k_env: &mut KEnv, env: &Env, expr: &Expr) -> (Type, LinkedList<C
             (ty(k_env, &env, c), LinkedList::new())
         }
         Op2(op, ref e1, ref e2) => {
-            let (f1, mut c1) = cons(k_env, env, e1);
-            let (f2, mut c2) = cons(k_env, env, e2);
+            let (_, mut c1) = cons(k_env, env, e1);
+            let (_, mut c2) = cons(k_env, env, e2);
             c1.append(&mut c2);
 
             let ty = explicit::opty(op);
