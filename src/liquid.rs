@@ -13,7 +13,7 @@ use implicit::Expr;
 use common::{Id, Result};
 use refined::{Base, T};
 
-use rustproof_libsmt::backends::smtlib2::*;
+use rustproof_libsmt::backends::smtlib2::SMTLib2;
 use rustproof_libsmt::backends::backend::*;
 use rustproof_libsmt::backends::z3::Z3;
 use rustproof_libsmt::theories::{core, integer};
@@ -409,6 +409,62 @@ fn build_a(constraints: &HashMap<Idx, Constraint>, env: &HashMap<Id, explicit::T
     }
 
     a
+}
+
+fn expr_to_term(s: &mut SMTLib2<LIA>, vars: &HashMap<String, <SMTLib2<LIA> as SMTBackend>::Idx>, q: &implicit::Expr) -> <SMTLib2<LIA> as SMTBackend>::Idx {
+    use implicit::Expr as I;
+    use common::Const::*;
+    use common::Op2;
+
+    match *q {
+        I::Var(ref id)                        => vars[id],
+        I::Const(Bool(c))                     => s.new_const(core::OpCodes::Const(c)),
+        I::Const(Int(c))                      => s.new_const(integer::OpCodes::Const(c as u64)),
+        I::Op2(op, ref l, ref r)          => {
+            let il = expr_to_term(s, vars, l);
+            let ir = expr_to_term(s, vars, r);
+            match op {
+                Op2::And | Op2::Or | Op2::Impl | Op2::Iff => {
+                    let opcode = match op {
+                        Op2::And  => core::OpCodes::And,
+                        Op2::Or   => core::OpCodes::Or,
+                        Op2::Impl => core::OpCodes::Imply,
+                        Op2::Iff  => {panic!("iff not implemented");}
+                        _         => unreachable!(),
+                    };
+                    s.assert(opcode, &[il, ir])
+                }
+                Op2::Add | Op2::Sub | Op2::Mul |
+                Op2::LT | Op2::LTE | Op2::GT | Op2::GTE | Op2::Eq => {
+                    let opcode = match op {
+                        Op2::LT  => integer::OpCodes::Lt,
+                        Op2::LTE => integer::OpCodes::Lte,
+                        Op2::GT  => integer::OpCodes::Gt,
+                        Op2::GTE => integer::OpCodes::Gte,
+                        Op2::Eq  => integer::OpCodes::Cmp,
+                        Op2::Add => integer::OpCodes::Add,
+                        Op2::Sub => integer::OpCodes::Sub,
+                        Op2::Mul => integer::OpCodes::Mul,
+                        _        => unreachable!(),
+                    };
+                    s.assert(opcode, &[il, ir])
+                }
+            }
+        }
+        I::V                                  => vars["!v"],
+        I::Star                               => unreachable!(),
+        _ => {
+            panic!("ugh");
+        }
+        // I::Fun(ref id, ref e)                 => I::Fun(id.clone(), box replace(v, e))),
+        // I::App(ref e1, ref e2)                => I::App(box replace(v, e1)), box replace(v, e2))),
+        // I::If(ref e1, ref e2, ref e3)         => I::If(box replace(v, e1)), box replace(v, e2)), box replace(v, e3))),
+        // I::Let(ref id, ref e1, ref e2)        => I::Let(id.clone(), box replace(v, e1)), box replace(v, e2))),
+        // I::Fix(ref id, ref e)                 => I::Fix(id.clone(), box replace(v, e))),
+        // I::MkArray(ref sz, ref n)             => I::MkArray(box replace(v, sz)), box replace(v, n))),
+        // I::GetArray(ref id, ref idx)          => I::GetArray(box replace(v, id)), box replace(v, idx))),
+        // I::SetArray(ref id, ref idx, ref var) => I::SetArray(box replace(v, id)), box replace(v, idx)), box replace(v, var))),
+    }
 }
 
 // whether the conjunction of all p implies the conjunction of all q
