@@ -10,7 +10,7 @@ use implicit;
 use explicit;
 
 use implicit::Expr;
-use common::{Id, Result};
+use common::{Id, Result, LiquidError};
 use refined::{Base, T};
 
 use rustproof_libsmt::backends::smtlib2::SMTLib2;
@@ -523,6 +523,44 @@ fn implication_holds(env: &HashMap<Id, explicit::Type>, p: &[implicit::Expr], q:
     }
 }
 
+// whether the conjunction of all p implies the conjunction of all q
+fn weaken(
+    env: &HashMap<Id, explicit::Type>,
+    a: &HashMap<Id, KInfo>,
+    all_p: &Vec<(LinkedList<Expr>, Box<Type>)>,
+    qs: &HashSet<implicit::Expr>) -> Option<Vec<implicit::Expr>> {
+
+    let const_true = implicit::Expr::Const(common::Const::Bool(true));
+
+    let mut curr_qs: Vec<implicit::Expr> = Vec::new();
+    for q in qs {
+        curr_qs.push(q.clone());
+
+        for &(ref path_constraints, ref p) in all_p {
+            let mut p = match *p {
+                box T::Ref(_, _, box Liquid::E(ref expr)) => vec![expr.clone()],
+                box T::Ref(_, _, box Liquid::K(ref p_id, _)) => match a.get(p_id) {
+                    Some(ps) => ps.clone().curr_qs,
+                    None => vec![const_true.clone()],
+                },
+                box T::Fun(_, _, _) => {
+                    panic!("unexpected {:?} -- should all be split() by now", p)
+                }
+            };
+            for pc in path_constraints {
+                p.push(pc.clone());
+            }
+
+            println!("check: {:?}", curr_qs);
+            if !implication_holds(env, &p, &curr_qs) {
+                let _ = curr_qs.pop();
+                break;
+            }
+        };
+    };
+
+    Some(curr_qs)
+}
 
 fn solve(
     env: &HashMap<Id, explicit::Type>,
@@ -537,8 +575,15 @@ fn solve(
         // if we don't find the ID in our environment, it means we are
         // looking at unbound function parameters -- which means we can just look
         let ref qs = match a.get(id) {
-            Some(q) => q.clone().curr_qs,
-            None => vec![const_true.clone()],
+            Some(q) => q.clone(),
+            None => {
+                let mut all_qs = HashSet::new();
+                all_qs.insert(const_true.clone());
+                KInfo{
+                    all_qs: all_qs,
+                    curr_qs: vec![const_true.clone()],
+                }
+            }
         };
 
         for &(ref path_constraints, ref p) in all_p {
@@ -555,8 +600,24 @@ fn solve(
             for pc in path_constraints {
                 p.push(pc.clone());
             }
-            if !implication_holds(env, &p, qs) {
-                println!("TODO: weaken");
+            if !implication_holds(env, &p, &qs.curr_qs) {
+                if qs.curr_qs[0] == const_true {
+                    return err!("implication failure for -> true");
+                }
+                match weaken(env, a, all_p, &qs.all_qs) {
+                    Some(new_qs) => {
+                        let mut new_a = a.clone();
+                        new_a.insert(id.clone(), KInfo{
+                            all_qs: qs.all_qs.clone(),
+                            curr_qs: new_qs,
+                        });
+                        println!("RECURSOIN");
+                        return solve(env, constraints, &new_a);
+                    }
+                    None => {
+                        return err!("Weaken failed for {:?}", p);
+                    }
+                }
             } else {
                 println!("{} is ok", id);
             }
