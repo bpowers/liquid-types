@@ -468,29 +468,37 @@ fn expr_to_term(s: &mut SMTLib2<LIA>, vars: &HashMap<String, <SMTLib2<LIA> as SM
 }
 
 // whether the conjunction of all p implies the conjunction of all q
-fn implication_holds(p: &[implicit::Expr], q: &[implicit::Expr]) -> bool {
+fn implication_holds(env: &HashMap<Id, explicit::Type>, p: &[implicit::Expr], q: &[implicit::Expr]) -> bool {
     let mut z3 = Z3::new_with_binary("./z3");
     let mut solver = SMTLib2::new(Some(LIA));
     solver.set_logic(&mut z3);
 
+    let mut senv: HashMap<Id, _> = HashMap::new();
+
     // Defining the symbolic vars x & y
-    let x = solver.new_var(Some("x"), integer::Sorts::Int);
-    let y = solver.new_var(Some("y"), integer::Sorts::Int);
-    let v = solver.new_var(Some("v"), integer::Sorts::Int);
+    for (var, ty) in env {
+        let sty = match *ty {
+            explicit::Type::TInt => integer::Sorts::Int,
+            _ => panic!("TODO: more sorts than int"),
+        };
+        let idx = solver.new_var(Some(&var), sty);
+        senv.insert(var.clone(), idx);
+    }
+    senv.insert(String::from("v"), solver.new_var(Some("v"), integer::Sorts::Int));
 
-    // Defining the integer constants
-    //let int0 = solver.new_const(integer::OpCodes::Const(0));
+    let mut ps: Vec<_> = Vec::new();
+    for t in p {
+        ps.push(expr_to_term(&mut solver, &senv, t));
+    }
 
-    let p1 = solver.assert(integer::OpCodes::Lte, &[x, y]);
-    let p2 = solver.assert(integer::OpCodes::Cmp, &[v, y]);
-    let p_all = solver.assert(core::OpCodes::And, &[p1, p2]);
+    let mut qs: Vec<_> = Vec::new();
+    for t in q {
+        qs.push(expr_to_term(&mut solver, &senv, t));
+    }
 
-
-    let k1 = solver.assert(integer::OpCodes::Gte, &[v, x]);
-    let k2 = solver.assert(integer::OpCodes::Gte, &[v, y]);
-    let k_all = solver.assert(core::OpCodes::And, &[k1, k2]);
-
-    let imply = solver.assert(core::OpCodes::Imply, &[p_all, k_all]);
+    let p_all = solver.assert(core::OpCodes::And, &ps);
+    let q_all = solver.assert(core::OpCodes::And, &qs);
+    let imply = solver.assert(core::OpCodes::Imply, &[p_all, q_all]);
     let _ = solver.assert(core::OpCodes::Not, &[imply]);
 
     let (_, sat) = solver.solve(&mut z3, false);
@@ -534,6 +542,52 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
     }
 
     Ok(res)
+}
+
+#[test]
+fn test_implication() {
+    use implicit::Expr::*;
+    use common::Op2::*;
+
+    let mut env: HashMap<Id, explicit::Type> = HashMap::new();
+    env.insert(String::from("x"), explicit::Type::TInt);
+    env.insert(String::from("y"), explicit::Type::TInt);
+
+    let p = [
+        Op2(And,
+            box Op2(LTE, box Var(String::from("x")), box Var(String::from("y"))),
+            box Op2(Eq, box Var(String::from("v")), box Var(String::from("y")))),
+    ];
+
+    let q = [
+        Op2(And,
+            box Op2(GTE, box Var(String::from("v")), box Var(String::from("x"))),
+            box Op2(GTE, box Var(String::from("v")), box Var(String::from("y")))),
+    ];
+
+    // expect this to hold
+    if !implication_holds(&env, &p, &q) {
+        die!("expected {:?} => {:?}", p, q);
+    }
+
+    let p = [
+        Op2(And,
+            box Op2(LTE, box Var(String::from("x")), box Var(String::from("y"))),
+            box Op2(Eq, box Var(String::from("v")), box Var(String::from("y")))),
+    ];
+
+    let q = [
+        Op2(And,
+            box Op2(LT, box Var(String::from("v")), box Const(common::Const::Int(0))),
+            box Op2(And,
+                    box Op2(GTE, box Var(String::from("v")), box Var(String::from("x"))),
+                    box Op2(GTE, box Var(String::from("v")), box Var(String::from("y"))))),
+    ];
+
+    // but this shouldn't
+    if implication_holds(&env, &p, &q) {
+        die!("expected {:?} => {:?}", p, q);
+    }
 }
 
 #[test]
