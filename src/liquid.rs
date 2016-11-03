@@ -51,7 +51,7 @@ pub type Constraint = ((HashSet<Id>, LinkedList<Expr>), C); // Boolean valued ex
 #[derive(Debug, Clone)]
 pub struct KInfo {
     all_qs: HashSet<implicit::Expr>,
-    curr_qs: HashSet<implicit::Expr>,
+    curr_qs: Vec<implicit::Expr>,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -320,9 +320,10 @@ fn split(map: &mut HashMap<Idx, Constraint>, constraints: &LinkedList<Constraint
     let mut idx = (map.len() as i32)+1;
 
     for c in constraints.iter() {
-        if let &((ref scope, ref pathc), C::Subtype(box T::Fun(_, ref tx1, ref t1), box T::Fun(ref x2, ref tx2, ref t2))) = c {
-            let mut contra_cs: LinkedList<Constraint> = LinkedList::new();
+        if let &((ref scope, ref pathc), C::Subtype(box T::Fun(_, ref tx1, ref t1),
+                                                    box T::Fun(ref x2, ref tx2, ref t2))) = c {
 
+            let mut contra_cs: LinkedList<Constraint> = LinkedList::new();
             contra_cs.push_back(((scope.clone(), pathc.clone()), C::Subtype(tx2.clone(), tx1.clone())));
 
             let mut rscope = scope.clone();
@@ -343,10 +344,6 @@ fn split(map: &mut HashMap<Idx, Constraint>, constraints: &LinkedList<Constraint
             split(map, &wf_cs);
             idx = (map.len() as i32)+1;
         } else {
-            if map.contains_key(&idx) {
-                println!("UGH {:?}", idx);
-            }
-
             map.insert(idx, c.clone());
             idx += 1;
         }
@@ -405,9 +402,10 @@ fn build_a(constraints: &HashMap<Idx, Constraint>, env: &HashMap<Id, explicit::T
             if let &box T::Ref(ref in_scope, _, box Liquid::K(ref id, _)) = ty {
                 // TODO: subst?
                 let all_qs = qstar(id, in_scope, env, q);
+                let curr_qs: Vec<_> = all_qs.iter().cloned().collect();
                 a.insert(id.clone(), KInfo{
-                    all_qs: all_qs.clone(),
-                    curr_qs: all_qs,
+                    all_qs: all_qs,
+                    curr_qs: curr_qs,
                 });
             } else {
                 panic!("WellFormed with E doesn't make sense: {:?}.", ty)
@@ -500,7 +498,7 @@ fn implication_holds(env: &HashMap<Id, explicit::Type>, p: &[implicit::Expr], q:
         let idx = solver.new_var(Some(&var), sty);
         senv.insert(var.clone(), idx);
     }
-    senv.insert(String::from("v"), solver.new_var(Some("v"), integer::Sorts::Int));
+    senv.insert(String::from("!v"), solver.new_var(Some("!v"), integer::Sorts::Int));
 
     let mut ps: Vec<_> = Vec::new();
     for t in p {
@@ -525,28 +523,59 @@ fn implication_holds(env: &HashMap<Id, explicit::Type>, p: &[implicit::Expr], q:
     }
 }
 
+
 fn solve(
     env: &HashMap<Id, explicit::Type>,
     constraints: &LinkedList<STConstraints>,
-    a: &mut HashMap<Id, KInfo>) -> Result<HashMap<Id, KInfo>> {
+    a: &HashMap<Id, KInfo>) -> Result<HashMap<Id, KInfo>> {
 
-    for &(ref all_p, ref q) in constraints.iter() {
+    let const_true = implicit::Expr::Const(common::Const::Bool(true));
 
-        println!("C\n\t\t{:?}\n\t\t\t{:?}", all_p, q);
+    for &(ref all_p, ref id) in constraints.iter() {
+
+        //println!("C\n\t\t{:?}\n\t\t\t{:?}", all_p, id);
+        // if we don't find the ID in our environment, it means we are
+        // looking at unbound function parameters -- which means we can just look
+        let ref qs = match a.get(id) {
+            Some(q) => q.clone().curr_qs,
+            None => vec![const_true.clone()],
+        };
+
+        for &(ref path_constraints, ref p) in all_p {
+            let mut p = match *p {
+                box T::Ref(_, _, box Liquid::E(ref expr)) => vec![expr.clone()],
+                box T::Ref(_, _, box Liquid::K(ref p_id, _)) => match a.get(p_id) {
+                    Some(ps) => ps.clone().curr_qs,
+                    None => vec![const_true.clone()],
+                },
+                box T::Fun(_, _, _) => {
+                    panic!("unexpected {:?} -- should all be split() by now", p)
+                }
+            };
+            for pc in path_constraints {
+                p.push(pc.clone());
+            }
+            if !implication_holds(env, &p, qs) {
+                println!("TODO: weaken");
+            } else {
+                println!("{} is ok", id);
+            }
+        };
     };
 
     Ok(a.clone())
 }
 
-pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr]) -> Result<HashMap<Id, HashSet<implicit::Expr>>> {
+pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr]) -> Result<HashMap<Id, Vec<implicit::Expr>>> {
     let mut k_env = KEnv::new(env);
     let (_, constraint_list) = cons(&mut k_env, &Env::new(env), expr);
 
     let mut constraints: HashMap<Idx, Constraint> = HashMap::new();
     split(&mut constraints, &constraint_list);
 
-    let mut a = build_a(&constraints, env, q);
+    let a = build_a(&constraints, env, q);
 
+    // group subtyping constraints by supertype
     let mut by_id: HashMap<Id, Vec<(LinkedList<Expr>, Box<Type>)>> = HashMap::new();
     for (_, c) in constraints.iter() {
         if let &((_, ref path), C::Subtype(ref p, ref e)) = c {
@@ -567,7 +596,7 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
         all_constraints.push_back((v.clone(), id.clone()));
     }
 
-    let min_a = solve(env, &all_constraints, &mut a)?;
+    let min_a = solve(env, &all_constraints, &a)?;
 
     let mut res = HashMap::new();
     for (k, v) in min_a {
@@ -589,13 +618,13 @@ fn test_implication() {
     let p = [
         Op2(And,
             box Op2(LTE, box Var(String::from("x")), box Var(String::from("y"))),
-            box Op2(Eq, box Var(String::from("v")), box Var(String::from("y")))),
+            box Op2(Eq, box V, box Var(String::from("y")))),
     ];
 
     let q = [
         Op2(And,
-            box Op2(GTE, box Var(String::from("v")), box Var(String::from("x"))),
-            box Op2(GTE, box Var(String::from("v")), box Var(String::from("y")))),
+            box Op2(GTE, box V, box Var(String::from("x"))),
+            box Op2(GTE, box V, box Var(String::from("y")))),
     ];
 
     // expect this to hold
@@ -606,15 +635,15 @@ fn test_implication() {
     let p = [
         Op2(And,
             box Op2(LTE, box Var(String::from("x")), box Var(String::from("y"))),
-            box Op2(Eq, box Var(String::from("v")), box Var(String::from("y")))),
+            box Op2(Eq, box V, box Var(String::from("y")))),
     ];
 
     let q = [
         Op2(And,
-            box Op2(LT, box Var(String::from("v")), box Const(common::Const::Int(0))),
+            box Op2(LT, box V, box Const(common::Const::Int(0))),
             box Op2(And,
-                    box Op2(GTE, box Var(String::from("v")), box Var(String::from("x"))),
-                    box Op2(GTE, box Var(String::from("v")), box Var(String::from("y"))))),
+                    box Op2(GTE, box V, box Var(String::from("x"))),
+                    box Op2(GTE, box V, box Var(String::from("y"))))),
     ];
 
     // but this shouldn't
