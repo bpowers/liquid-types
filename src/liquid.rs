@@ -40,7 +40,9 @@ pub enum Liquid {
 }
 
 pub type Type = T<Liquid>;
-pub type Implication = (LinkedList<Expr>, Box<Type>, Box<Type>);
+// if we have a type T1 with two subtype constraints: T2 <: T1 and T3
+// <: T1, that would be a single STConstraint with 2 antedents.
+pub type STConstraints = (Vec<(LinkedList<Expr>, Box<Type>)>, Id);
 
 pub type Idx = i32; // constraint index
 
@@ -260,7 +262,7 @@ pub fn cons<'a>(k_env: &mut KEnv, env: &Env, expr: &Expr) -> (Type, LinkedList<C
             // Γ,x:fx ⊢ (fe <: f)
             c.push_back((env.snapshot(), C::Subtype(box fe.clone(), box f.clone())));
 
-            (f, c)
+            (T::Fun(x.clone(), box fx.clone(), box f), c)
         }
         Fix(ref x, ref e) => {
             // const w/ ∀α.(α→α)→α
@@ -315,7 +317,7 @@ pub fn cons<'a>(k_env: &mut KEnv, env: &Env, expr: &Expr) -> (Type, LinkedList<C
 }
 
 fn split(map: &mut HashMap<Idx, Constraint>, constraints: &LinkedList<Constraint>) {
-    let mut idx = 1;
+    let mut idx = (map.len() as i32)+1;
 
     for c in constraints.iter() {
         if let &((ref scope, ref pathc), C::Subtype(box T::Fun(_, ref tx1, ref t1), box T::Fun(ref x2, ref tx2, ref t2))) = c {
@@ -329,6 +331,7 @@ fn split(map: &mut HashMap<Idx, Constraint>, constraints: &LinkedList<Constraint
 
             // recurse
             split(map, &contra_cs);
+            idx = (map.len() as i32)+1;
         } else if let &((ref scope, ref pathc), C::WellFormed(box T::Fun(ref id, _, ref t))) = c {
             let mut wf_cs: LinkedList<Constraint> = LinkedList::new();
 
@@ -338,7 +341,12 @@ fn split(map: &mut HashMap<Idx, Constraint>, constraints: &LinkedList<Constraint
 
             // recurse
             split(map, &wf_cs);
+            idx = (map.len() as i32)+1;
         } else {
+            if map.contains_key(&idx) {
+                println!("UGH {:?}", idx);
+            }
+
             map.insert(idx, c.clone());
             idx += 1;
         }
@@ -451,6 +459,14 @@ fn expr_to_term(s: &mut SMTLib2<LIA>, vars: &HashMap<String, <SMTLib2<LIA> as SM
                 }
             }
         }
+        I::App(ref e1, ref e2)                => {
+            if *e1 == box I::Var(String::from("not")) {
+                let exprs = &[expr_to_term(s, vars, e2)];
+                s.assert(core::OpCodes::Not, exprs)
+            } else {
+                panic!("TODO: only supported app is not");
+            }
+        }
         I::V                                  => vars["!v"],
         I::Star                               => unreachable!(),
         _ => {
@@ -509,10 +525,14 @@ fn implication_holds(env: &HashMap<Id, explicit::Type>, p: &[implicit::Expr], q:
     }
 }
 
-fn solve(constraints: &LinkedList<Implication>, a: &mut HashMap<Id, KInfo>) -> Result<HashMap<Id, KInfo>> {
+fn solve(
+    env: &HashMap<Id, explicit::Type>,
+    constraints: &LinkedList<STConstraints>,
+    a: &mut HashMap<Id, KInfo>) -> Result<HashMap<Id, KInfo>> {
 
-    for &(ref path, ref a, ref p) in constraints.iter() {
-        println!("C\t{:?}\n\t\t{:?}\n\t\t\t{:?}", path, a, p);
+    for &(ref all_p, ref q) in constraints.iter() {
+
+        println!("C\n\t\t{:?}\n\t\t\t{:?}", all_p, q);
     };
 
     Ok(a.clone())
@@ -527,14 +547,27 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
 
     let mut a = build_a(&constraints, env, q);
 
-    let mut all_constraints: LinkedList<Implication> = LinkedList::new();
+    let mut by_id: HashMap<Id, Vec<(LinkedList<Expr>, Box<Type>)>> = HashMap::new();
     for (_, c) in constraints.iter() {
         if let &((_, ref path), C::Subtype(ref p, ref e)) = c {
-            all_constraints.push_back((path.clone(), p.clone(), e.clone()));
+            if let box T::Ref(_, _, box Liquid::K(ref id, _)) = *e {
+                let mut antecedent = vec![(path.clone(), p.clone())];
+                if by_id.contains_key(id) {
+                    let mut others = by_id[id].clone();
+                    others.append(&mut antecedent);
+                    by_id.insert(id.clone(), others);
+                } else {
+                    by_id.insert(id.clone(), antecedent);
+                }
+            }
         }
     }
+    let mut all_constraints: LinkedList<STConstraints> = LinkedList::new();
+    for (id, v) in by_id {
+        all_constraints.push_back((v.clone(), id.clone()));
+    }
 
-    let min_a = solve(&all_constraints, &mut a)?;
+    let min_a = solve(env, &all_constraints, &mut a)?;
 
     let mut res = HashMap::new();
     for (k, v) in min_a {
