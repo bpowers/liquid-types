@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use common::{Result, Id, Op2, Const};
 use explicit;
 use implicit;
+use env;
 use hindley_milner;
 
 #[derive(PartialEq, Eq, Clone, Debug)]
@@ -34,66 +35,73 @@ pub enum Expr {
     Op(Op),
 }
 
-struct Converter {
-    env: HashMap<Id, explicit::Type>,
+struct ConvEnv {
+    //env: HashMap<Id, explicit::Type>,
     next_id: i32,
 }
 
-impl Converter {
-    fn new() -> Converter {
-        Converter {
-            env: HashMap::new(),
+impl ConvEnv {
+    fn new() -> ConvEnv {
+        ConvEnv {
+            //env: HashMap::new(),
             next_id: 0,
         }
     }
 
-    fn op(&mut self, e: &explicit::Expr) -> Op {
-        use typed::Expr as E;
-        match *e {
-            E::Const(Const::Bool(c)) => Op::Imm(Imm::Bool(c)),
-            E::Const(Const::Int(c)) => Op::Imm(Imm::Int(c)),
-            _ => {
-                panic!("TODO: implement term for {:?}", e);
-            }
+    fn tmp(&self) -> (ConvEnv, Id) {
+        let id = self.next_id;
+        let c = ConvEnv{
+            //env: self.env.clone(),
+            next_id: self.next_id+1,
+        };
+
+        (c, format!("!tmp!{}", id))
+    }
+}
+
+fn op(cenv: ConvEnv, e: &explicit::Expr) -> (ConvEnv, Op) {
+    use typed::Expr as E;
+    match *e {
+        E::Const(Const::Bool(c)) => (cenv, Op::Imm(Imm::Bool(c))),
+        E::Const(Const::Int(c)) => (cenv, Op::Imm(Imm::Int(c))),
+        _ => {
+            panic!("TODO: implement term for {:?}", e);
         }
     }
-
-    fn tmp(&mut self) -> Id {
-        let id = self.next_id;
-        self.next_id += 1;
-
-        format!("!tmp!{}", id)
-    }
+}
 
     // 1:1 translation -- can't fail
-    fn expr<F>(&mut self, e: &explicit::Expr, k: F) -> Expr
-        where F: Fn(Expr) -> Expr {
+fn expr<F>(cenv: ConvEnv, e: &explicit::Expr, k: F) -> (ConvEnv, Expr)
+    where F: FnOnce(ConvEnv, Expr) -> (ConvEnv, Expr) {
 
-        use self::Imm as I;
-        use common::Op2 as O;
-        use typed::Expr as E;
-        use self::Op::*;
-        use self::Expr::*;
+    use self::Imm as I;
+    use common::Op2 as O;
+    use typed::Expr as E;
+    use self::Op::*;
+    use self::Expr::*;
 
-        match *e {
-            E::Const(_) => Op(self.op(e)),
-            // E::Op2(op, ref l, ref r) => {
-            //     self.expr(l, |ll| {
-            //         let tmp1 = self.tmp();
-            //         Let(tmp1.clone(), box ll,
-            //             box self.expr(r, |rr| {
-            //                 let tmp2 = self.tmp();
-            //                 k(Let(tmp2.clone(), box rr,
-            //                     box Op(Op2(op,
-            //                                box I::Var(tmp1.clone()),
-            //                                box I::Var(tmp2.clone())))))
-            //             }))
-            //     })
-            // }
-            _ => {
-                panic!("TODO: implement expr for {:?}", e);
-            }
+    match *e {
+        E::Const(_) => {
+            let (cenv, eop) = op(cenv, e);
+            (cenv, Op(eop))
         }
+        E::Op2(op, ref l, ref r) => {
+            expr(cenv, l, |cenv, ll| {
+                let (cenv, tmp1) = cenv.tmp();
+                let (cenv, outer_expr) = expr(cenv, r, |cenv, rr| {
+                    let (cenv, tmp2) = cenv.tmp();
+                    let (cenv, inner_expr) = k(cenv, Op(Op2(op,
+                                                             box I::Var(tmp1.clone()),
+                                                             box I::Var(tmp2.clone()))));
+                    (cenv, Let(tmp2, box rr, box inner_expr))
+                });
+                (cenv, Let(tmp1, box ll, box outer_expr))
+            })
+        }
+        _ => {
+            panic!("TODO: implement expr for {:?}", e);
+        }
+    }
         // E::Op2(op, ref e1, ref e2) => {
         //     let (n, e1, _) = convert(n, env, renamed, e1);
         //     let (n, e2, _) = convert(n, env, renamed, e2);
@@ -168,17 +176,19 @@ impl Converter {
         //     let (n, v, _) = convert(n, env, renamed, v);
         //     (n, I::SetArray(box id, box idx, box v), Type::TIntArray)
         // }
-    }
 }
 
 
 fn anf(implicit_expr: &implicit::Expr) -> Result<(Expr, HashMap<Id, explicit::Type>)> {
-    let mut env: HashMap<Id, explicit::Type> = HashMap::new();
 
     let explicit_expr = hindley_milner::infer(implicit_expr)?;
+    let (α_expr, env) = env::extract(&explicit_expr);
+    // println!("α-implicit: {:?}\n", α_expr);
+    // println!("Γ         : {:?}\n", env);
 
-    let mut conv = Converter::new();
-    let expr = conv.expr(&explicit_expr, |x| x);
+
+    let cenv = ConvEnv::new();
+    let (_, expr) = expr(cenv, &α_expr, |ce, x| (ce, x));
 
     Ok((expr, env))
     // step 1 -- arithmatic + let bindings
