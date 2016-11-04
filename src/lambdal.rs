@@ -1,12 +1,15 @@
+use std::collections::HashMap;
+
 pub use common::{Id, Op2, Const};
+use explicit;
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub enum Imm {
     Bool(bool),
     Int(i64),
     Var(Id),
-    Fun(Id, Box<Expr>),
-    Fix(Id, Box<Expr>),
+//    Fun(Id, Box<Expr>),
+//    Fix(Id, Box<Expr>),
     Star,
     V,
 }
@@ -14,22 +17,30 @@ pub enum Imm {
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub enum Op {
     Op2(Op2, Box<Imm>, Box<Imm>),
-    MkArray(Box<Imm>, Box<Imm>),
-    GetArray(Box<Imm>, Box<Imm>),
-    SetArray(Box<Imm>, Box<Imm>, Box<Imm>),
-    WellFormed(Imm), // Var-only
+//    MkArray(Box<Imm>, Box<Imm>),
+//    GetArray(Box<Imm>, Box<Imm>),
+//    SetArray(Box<Imm>, Box<Imm>, Box<Imm>),
     Imm(Imm),
 }
+//    WellFormed(Imm), // Var-only
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub enum Expr {
-    If(Box<Imm>, Box<Imm>, Box<Imm>),
-    App(Box<Imm>, Box<Imm>),
+//    If(Box<Imm>, Box<Imm>, Box<Imm>),
+//    App(Box<Imm>, Box<Imm>),
     Let(Id, Box<Op>, Box<Expr>),
     Op(Op),
 }
 
-fn anf() {
+fn anf(e: &explicit::Expr) -> (Expr, HashMap<Id, explicit::Type>) {
+    let env: HashMap<Id, explicit::Type> = HashMap::new();
+
+    (Expr::Op(Op::Imm(Imm::Int(-666))), env)
+    // step 1 -- arithmatic + let bindings
+    // step 2 -- conds + boolean vals
+    // step 3 -- arrays
+    // step 4 -- closures
+
 // (define (Value? M)
 //   (match M
 //     [`(quote ,_)         #t]
@@ -79,4 +90,41 @@ fn anf() {
 //        (normalize-name* (cdr M*) (λ (t*)
 //         (k `(,t . ,t*))))))))
 
+}
+
+
+macro_rules! test_anf(
+    ($s:expr, $ae:expr) => { {
+
+        use implicit;
+        use implicit_parse;
+        use tok::Tokenizer;
+        use hindley_milner;
+        use std;
+        let s = $s;
+        let tokenizer = Tokenizer::new(&s);
+        let iexpr = match implicit_parse::parse_Program(&s, tokenizer) {
+            Ok(iexpr) => iexpr,
+            Err(e) => {
+                die!("parse_Program({}): {:?}", $s, e);
+            }
+        };
+        let eexpr = match hindley_milner::infer(&iexpr) {
+            Ok(eexpr) => eexpr,
+            Err(e) => {
+                die!("infer failed: {:?}", e);
+            }
+        };
+        let (anf_expr, _) = anf(&eexpr);
+        if anf_expr != $ae {
+            die!("mismatch {:?} != {:?}", anf_expr, $ae);
+        }
+    } }
+);
+
+#[test]
+fn anf_transforms() {
+    test_anf!(
+        "-22",
+        Expr::Op(Op::Imm(Imm::Int(-22))));
 }

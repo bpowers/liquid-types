@@ -24,6 +24,7 @@ mod hindley_milner;
 mod env;
 mod liquid;
 mod eval;
+mod lambdal;
 
 use common::{LiquidError, Result};
 
@@ -100,15 +101,15 @@ fn main() {
         Err(e) => die!("implicit_open: {}", error::Error::description(&e)),
     };
 
-    let expr = match hindley_milner::infer(&i_expr) {
+    let e_expr = match hindley_milner::infer(&i_expr) {
         Ok(expr) => expr,
         Err(e) => die!("infer_types: {}", error::Error::description(&e)),
     };
 
-    println!("typed:\n\n{:?}\n", expr);
+    println!("typed:\n\n{:?}\n", e_expr);
 
-    let (αexpr, env) = env::extract(&expr);
-    println!("α-implicit: {:?}\n", αexpr);
+    let (α_expr, env) = env::extract(&e_expr);
+    println!("α-implicit: {:?}\n", α_expr);
     println!("Γ         : {:?}\n", env);
 
     // alternatively:
@@ -119,6 +120,7 @@ fn main() {
     // ν = X
     // ν >= X
     // ν > X
+
     let q = {
         use implicit::Expr::*;
         use common::Op2::*;
@@ -131,14 +133,14 @@ fn main() {
         ]
     };
 
-    let refined = match liquid::infer(&αexpr, &env, &q) {
+    let refined = match liquid::infer(&α_expr, &env, &q) {
         Ok(expr) => expr,
         Err(e) => die!("infer: {}", error::Error::description(&e)),
     };
 
     println!("refined:\n\n{:?}\n", refined);
 
-    let val = eval::interpret(&expr);
+    let val = eval::interpret(&e_expr);
 
     println!("result:\n\n{:?}\n", val);
 }
