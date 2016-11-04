@@ -1,4 +1,3 @@
-use implicit;
 use explicit;
 
 use common::Id;

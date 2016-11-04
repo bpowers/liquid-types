@@ -13,8 +13,8 @@ pub enum Imm {
     Var(Id),
 //    Fun(Id, Box<Expr>),
 //    Fix(Id, Box<Expr>),
-    Star,
-    V,
+//    Star,
+//    V,
 }
 
 #[derive(PartialEq, Eq, Clone, Debug)]
@@ -75,7 +75,6 @@ fn expr<F>(cenv: ConvEnv, e: &explicit::Expr, k: F) -> (ConvEnv, Expr)
     where F: FnOnce(ConvEnv, Expr) -> (ConvEnv, Expr) {
 
     use self::Imm as I;
-    use common::Op2 as O;
     use typed::Expr as E;
     use self::Op::*;
     use self::Expr::*;
@@ -90,9 +89,13 @@ fn expr<F>(cenv: ConvEnv, e: &explicit::Expr, k: F) -> (ConvEnv, Expr)
                 let (cenv, tmp1) = cenv.tmp();
                 let (cenv, outer_expr) = expr(cenv, r, |cenv, rr| {
                     let (cenv, tmp2) = cenv.tmp();
-                    let (cenv, inner_expr) = k(cenv, Op(Op2(op,
-                                                             box I::Var(tmp1.clone()),
-                                                             box I::Var(tmp2.clone()))));
+                    // value to pass to the continuation
+                    let val = Op(Op2(op,
+                                     box I::Var(tmp1.clone()),
+                                     box I::Var(tmp2.clone())));
+                    // our inner expression is whatever the
+                    // continuation says it is.
+                    let (cenv, inner_expr) = k(cenv, val);
                     (cenv, Let(tmp2, box rr, box inner_expr))
                 });
                 (cenv, Let(tmp1, box ll, box outer_expr))
