@@ -29,7 +29,7 @@ pub enum Op {
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub enum Expr {
-    //    If(Box<Imm>, Box<Imm>, Box<Imm>),
+    If(Box<Imm>, Box<Expr>, Box<Expr>),
     //    App(Box<Imm>, Box<Imm>),
     Let(Id, Box<Expr>, Box<Expr>),
     Op(Op),
@@ -82,6 +82,14 @@ fn imm(e: &Expr) -> Option<Imm> {
         None
     }
 }
+
+// fn getop(e: &Expr) -> Option<Op> {
+//     if let &Expr::Op(ref o) = e {
+//         Some(o.clone())
+//     } else {
+//         None
+//     }
+// }
 
 // 1:1 translation -- can't fail
 fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Expr) -> (ConvEnv, Expr)) -> (ConvEnv, Expr) {
@@ -148,32 +156,41 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Expr) -> (ConvEnv, Ex
         E::Var(ref x) => {
             k(cenv, Op(Imm(I::Var(x.clone()))))
         }
+        E::If(ref e1, ref e2, ref e3) => {
+            expr(cenv, e1, &|cenv: ConvEnv, e1l: Expr| -> (ConvEnv, Expr) {
+                let mut cenv = cenv;
+
+                // only allocate a let temporary for cond if necessary
+                let (cond_ref, cond_bound) = match imm(&e1l) {
+                    Some(op) => (op, None),
+                    None => {
+                        let (cond_cenv, cond_tmp) = cenv.tmp();
+                        cenv = cond_cenv;
+                        (I::Var(cond_tmp.clone()), Some(cond_tmp))
+                    }
+                };
+
+                let (cenv, l_true) = expr(cenv, e2, &identity);
+                let (cenv, l_false) = expr(cenv, e3, &identity);
+
+                // value to pass to the continuation
+                let val = If(box cond_ref, box l_true, box l_false);
+
+                // our inner expression is whatever the
+                // continuation says it is.
+                let (cenv, mut result) = k(cenv, val);
+
+                if let Some(cond_tmp) = cond_bound {
+                    result = Let(cond_tmp, box e1l, box result);
+                }
+
+                (cenv, result)
+            })
+        }
         _ => {
             panic!("TODO: implement expr for {:?}", e);
         }
     }
-    // E::If(ref e1, ref e2, ref e3) => {
-    //     let (n, e1, _) = convert(n, env, renamed, e1);
-    //     let (n, e2, t) = convert(n, env, renamed, e2);
-    //     let (n, e3, _) = convert(n, env, renamed, e3);
-    //     (n, I::If(box e1, box e2, box e3), t)
-    // }
-    // E::Var(ref x) => {
-    //     let αx = renamed.get(x).unwrap();
-    //     (n, I::Var(αx.clone()), env.get(αx).unwrap().clone())
-    // }
-    // E::Let(ref id, ref e1, ref e2) => {
-    //     let mut renamed = renamed.clone();
-    //     let (n, αid) = (n+1, format!("{}!a{}", id, n));
-
-    //     let (n, e1, t1) = convert(n, env, &renamed, e1);
-
-    //     renamed.insert(id.clone(), αid.clone());
-    //     env.insert(αid.clone(), t1);
-
-    //     let (n, e2, t2) = convert(n, env, &renamed, e2);
-    //     (n, I::Let(αid, box e1, box e2), t2)
-    // }
     // E::Fun(ref id, ref t1, ref e) => {
     //     let mut renamed = renamed.clone();
     //     let (n, αid) = (n+1, format!("{}!a{}", id, n));
@@ -341,7 +358,17 @@ fn anf_transforms() {
             box Op(Op2(O::Add, box I::Int(2), box I::Var(String::from("!tmp!0"))))));
 
     test_anf!(
+        "2 + 3 - 2",
+        Let(String::from("!tmp!0"), box Op(Op2(O::Add, box I::Int(2), box I::Int(3))),
+            box Op(Op2(O::Sub, box I::Var(String::from("!tmp!0")), box I::Int(2)))));
+
+    test_anf!(
         "let x = 1 in x",
         Let(String::from("x!a1"), box Op(Imm(I::Int(1))),
+            box Op(Imm(I::Var(String::from("x!a1"))))));
+
+    test_anf!(
+        "let x = (if true then 1 else 2) in x",
+        Let(String::from("x!a1"), box If(box I::Bool(true), box Op(Imm(I::Int(1))), box Op(Imm(I::Int(2)))),
             box Op(Imm(I::Var(String::from("x!a1"))))));
 }
