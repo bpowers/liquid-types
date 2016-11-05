@@ -75,11 +75,11 @@ fn identity(cenv: ConvEnv, e: Expr) -> (ConvEnv, Expr) {
     (cenv, e)
 }
 
-fn is_imm(e: &Expr) -> bool {
-    if let &Expr::Op(Op::Imm(_)) = e {
-        true
+fn imm(e: &Expr) -> Option<Imm> {
+    if let &Expr::Op(Op::Imm(ref i)) = e {
+        Some(i.clone())
     } else {
-        false
+        None
     }
 }
 
@@ -100,11 +100,25 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Expr) -> (ConvEnv, Ex
             expr(cenv, l, &|cenv: ConvEnv, ll: Expr| -> (ConvEnv, Expr) {
                 expr(cenv, r, &|cenv: ConvEnv, rr: Expr| -> (ConvEnv, Expr) {
                     // allocate vars
-                    let (cenv, l_tmp) = cenv.tmp();
-                    let (cenv, r_tmp) = cenv.tmp();
+                    let mut cenv = cenv;
 
-                    let (l_ref, l_bound) = (I::Var(l_tmp.clone()), true);
-                    let (r_ref, r_bound) = (I::Var(r_tmp.clone()), true);
+                    let (l_ref, l_bound) = match imm(&ll) {
+                        Some(i) => (i, None),
+                        None    => {
+                            let (l_cenv, l_tmp) = cenv.tmp();
+                            cenv = l_cenv;
+                            (I::Var(l_tmp.clone()), Some(l_tmp))
+                        }
+                    };
+
+                    let (r_ref, r_bound) = match imm(&rr) {
+                        Some(i) => (i, None),
+                        None    => {
+                            let (r_cenv, r_tmp) = cenv.tmp();
+                            cenv = r_cenv;
+                            (I::Var(r_tmp.clone()), Some(r_tmp))
+                        }
+                    };
 
                     // value to pass to the continuation
                     let val = Op(Op2(op, box l_ref, box r_ref));
@@ -113,11 +127,11 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Expr) -> (ConvEnv, Ex
                     // continuation says it is.
                     let (cenv, mut result) = k(cenv, val);
 
-                    if r_bound {
-                        result = Let(r_tmp.clone(), box rr, box result);
+                    if let Some(r_tmp) = r_bound {
+                        result = Let(r_tmp, box rr, box result);
                     }
-                    if l_bound {
-                        result = Let(l_tmp.clone(), box ll.clone(), box result);
+                    if let Some(l_tmp) = l_bound {
+                        result = Let(l_tmp, box ll.clone(), box result);
                     }
 
                     (cenv, result)
@@ -314,7 +328,10 @@ fn anf_transforms() {
 
     test_anf!(
         "2+3",
-        Let(String::from("!tmp!0"),
-            box Op(Op2(O::Add, box I::Int(2), box I::Int(3))),
-            box Op(Imm(I::Var(String::from("!tmp!0"))))));
+        Op(Op2(O::Add, box I::Int(2), box I::Int(3))));
+
+    test_anf!(
+        "2+(3 - 2)",
+        Let(String::from("!tmp!0"), box Op(Op2(O::Sub, box I::Int(3), box I::Int(2))),
+            box Op(Op2(O::Add, box I::Int(2), box I::Var(String::from("!tmp!0"))))));
 }
