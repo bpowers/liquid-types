@@ -75,16 +75,26 @@ fn identity(cenv: ConvEnv, e: Expr) -> (ConvEnv, Expr) {
     (cenv, e)
 }
 
+fn is_imm(e: &Expr) -> bool {
+    if let &Expr::Op(Op::Imm(_)) = e {
+        true
+    } else {
+        false
+    }
+}
+
 // 1:1 translation -- can't fail
 fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Expr) -> (ConvEnv, Expr)) -> (ConvEnv, Expr) {
 
     use self::Imm as I;
     use typed::Expr as E;
+    use self::Op::*;
+    use self::Expr::*;
 
     match *e {
         E::Const(_) => {
             let (cenv, eop) = op(cenv, e);
-            k(cenv, Expr::Op(eop))
+            k(cenv, Op(eop))
         }
         E::Op2(op, ref l, ref r) => {
             expr(cenv, l, &|cenv: ConvEnv, ll: Expr| -> (ConvEnv, Expr) {
@@ -93,18 +103,22 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Expr) -> (ConvEnv, Ex
                     let (cenv, l_tmp) = cenv.tmp();
                     let (cenv, r_tmp) = cenv.tmp();
 
+                    let (l_ref, l_bound) = (I::Var(l_tmp.clone()), true);
+                    let (r_ref, r_bound) = (I::Var(r_tmp.clone()), true);
+
                     // value to pass to the continuation
-                    let val = Expr::Op(Op::Op2(op,
-                                               box I::Var(l_tmp.clone()),
-                                               box I::Var(r_tmp.clone())));
+                    let val = Op(Op2(op, box l_ref, box r_ref));
 
                     // our inner expression is whatever the
                     // continuation says it is.
-                    let (cenv, inner_expr) = k(cenv, val);
+                    let (cenv, mut result) = k(cenv, val);
 
-                    let result = Expr::Let(l_tmp.clone(), box ll.clone(),
-                                           box Expr::Let(r_tmp.clone(), box rr,
-                                                         box inner_expr));
+                    if r_bound {
+                        result = Let(r_tmp.clone(), box rr, box result);
+                    }
+                    if l_bound {
+                        result = Let(l_tmp.clone(), box ll.clone(), box result);
+                    }
 
                     (cenv, result)
                 })
