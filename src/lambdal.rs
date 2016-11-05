@@ -76,8 +76,7 @@ fn identity(cenv: ConvEnv, e: Expr) -> (ConvEnv, Expr) {
 }
 
 // 1:1 translation -- can't fail
-fn expr<F>(cenv: ConvEnv, e: &explicit::Expr, k: F) -> (ConvEnv, Expr)
-    where F: FnOnce(ConvEnv, Expr) -> (ConvEnv, Expr) {
+fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Expr) -> (ConvEnv, Expr)) -> (ConvEnv, Expr) {
 
     use self::Imm as I;
     use typed::Expr as E;
@@ -85,11 +84,11 @@ fn expr<F>(cenv: ConvEnv, e: &explicit::Expr, k: F) -> (ConvEnv, Expr)
     match *e {
         E::Const(_) => {
             let (cenv, eop) = op(cenv, e);
-            (cenv, Expr::Op(eop))
+            k(cenv, Expr::Op(eop))
         }
         E::Op2(op, ref l, ref r) => {
-            expr(cenv, l, |cenv: ConvEnv, ll: Expr| -> (ConvEnv, Expr) {
-                expr(cenv, r, |cenv: ConvEnv, rr: Expr| -> (ConvEnv, Expr) {
+            expr(cenv, l, &|cenv: ConvEnv, ll: Expr| -> (ConvEnv, Expr) {
+                expr(cenv, r, &|cenv: ConvEnv, rr: Expr| -> (ConvEnv, Expr) {
                     // allocate vars
                     let (cenv, l_tmp) = cenv.tmp();
                     let (cenv, r_tmp) = cenv.tmp();
@@ -203,7 +202,7 @@ pub fn anf(implicit_expr: &implicit::Expr) -> Result<(Expr, HashMap<Id, explicit
 
 
     let cenv = ConvEnv::new();
-    let (_, expr) = expr(cenv, &alpha_expr, identity);
+    let (_, expr) = expr(cenv, &alpha_expr, &identity);
 
     Ok((expr, env))
     // step 1 -- arithmatic + let bindings
@@ -298,6 +297,7 @@ fn anf_transforms() {
     test_anf!(
         "-22",
         Op(Imm(I::Int(-22))));
+
     test_anf!(
         "2+3",
         Let(String::from("!tmp!0"),
