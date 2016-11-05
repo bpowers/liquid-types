@@ -23,42 +23,42 @@ fn convert(n: i32, env: &mut HashMap<Id, Type>, renamed: &HashMap<Id, Id>, expr:
             (n, E::If(box e1, box e2, box e3), t)
         }
         E::Var(ref x) => {
-            let αx = renamed.get(x).unwrap();
-            (n, E::Var(αx.clone()), env.get(αx).unwrap().clone())
+            let alpha_x = renamed.get(x).unwrap();
+            (n, E::Var(alpha_x.clone()), env.get(alpha_x).unwrap().clone())
         }
         E::Let(ref id, ref e1, ref e2) => {
             let mut renamed = renamed.clone();
-            let (n, αid) = (n+1, format!("{}!a{}", id, n));
+            let (n, alpha_id) = (n+1, format!("{}!a{}", id, n));
 
             let (n, e1, t1) = convert(n, env, &renamed, e1);
 
-            renamed.insert(id.clone(), αid.clone());
-            env.insert(αid.clone(), t1);
+            renamed.insert(id.clone(), alpha_id.clone());
+            env.insert(alpha_id.clone(), t1);
 
             let (n, e2, t2) = convert(n, env, &renamed, e2);
-            (n, E::Let(αid, box e1, box e2), t2)
+            (n, E::Let(alpha_id, box e1, box e2), t2)
         }
         E::Fun(ref id, ref t1, ref e) => {
             let mut renamed = renamed.clone();
-            let (n, αid) = (n+1, format!("{}!a{}", id, n));
+            let (n, alpha_id) = (n+1, format!("{}!a{}", id, n));
 
-            renamed.insert(id.clone(), αid.clone());
-            env.insert(αid.clone(), t1.clone());
+            renamed.insert(id.clone(), alpha_id.clone());
+            env.insert(alpha_id.clone(), t1.clone());
 
             let (n, e, t2) = convert(n, env, &renamed, e);
 
-            (n, E::Fun(αid, t1.clone(), box e), Type::TFun(box t1.clone(), box t2))
+            (n, E::Fun(alpha_id, t1.clone(), box e), Type::TFun(box t1.clone(), box t2))
         }
         E::Fix(ref id, ref t1, ref e) => {
             let mut renamed = renamed.clone();
-            let (n, αid) = (n+1, format!("{}!a{}", id, n));
+            let (n, alpha_id) = (n+1, format!("{}!a{}", id, n));
 
-            renamed.insert(id.clone(), αid.clone());
-            env.insert(αid.clone(), t1.clone());
+            renamed.insert(id.clone(), alpha_id.clone());
+            env.insert(alpha_id.clone(), t1.clone());
 
             let (n, e, t2) = convert(n, env, &renamed, e);
 
-            (n, E::Fix(αid, t1.clone(), box e), t2)
+            (n, E::Fix(alpha_id, t1.clone(), box e), t2)
         }
         E::App(ref e1, ref e2) => {
             let (n, e1, t1) = convert(n, env, renamed, e1);

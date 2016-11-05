@@ -11,30 +11,31 @@ pub enum Imm {
     Bool(bool),
     Int(i64),
     Var(Id),
-//    Fun(Id, Box<Expr>),
-//    Fix(Id, Box<Expr>),
-//    Star,
-//    V,
+    //    Fun(Id, Box<Expr>),
+    //    Fix(Id, Box<Expr>),
+    //    Star,
+    //    V,
 }
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub enum Op {
     Op2(Op2, Box<Imm>, Box<Imm>),
-//    MkArray(Box<Imm>, Box<Imm>),
-//    GetArray(Box<Imm>, Box<Imm>),
-//    SetArray(Box<Imm>, Box<Imm>, Box<Imm>),
+    //    MkArray(Box<Imm>, Box<Imm>),
+    //    GetArray(Box<Imm>, Box<Imm>),
+    //    SetArray(Box<Imm>, Box<Imm>, Box<Imm>),
     Imm(Imm),
 }
 //    WellFormed(Imm), // Var-only
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub enum Expr {
-//    If(Box<Imm>, Box<Imm>, Box<Imm>),
-//    App(Box<Imm>, Box<Imm>),
+    //    If(Box<Imm>, Box<Imm>, Box<Imm>),
+    //    App(Box<Imm>, Box<Imm>),
     Let(Id, Box<Expr>, Box<Expr>),
     Op(Op),
 }
 
+#[derive(PartialEq, Eq, Clone, Debug)]
 struct ConvEnv {
     //env: HashMap<Id, explicit::Type>,
     next_id: i32,
@@ -70,128 +71,139 @@ fn op(cenv: ConvEnv, e: &explicit::Expr) -> (ConvEnv, Op) {
     }
 }
 
-    // 1:1 translation -- can't fail
+fn identity(cenv: ConvEnv, e: Expr) -> (ConvEnv, Expr) {
+    (cenv, e)
+}
+
+// 1:1 translation -- can't fail
 fn expr<F>(cenv: ConvEnv, e: &explicit::Expr, k: F) -> (ConvEnv, Expr)
-    where F: FnOnce(ConvEnv, &Expr) -> (ConvEnv, Expr) {
+    where F: FnOnce(ConvEnv, Expr) -> (ConvEnv, Expr) {
 
     use self::Imm as I;
     use typed::Expr as E;
-    use self::Op::*;
-    use self::Expr::*;
 
     match *e {
         E::Const(_) => {
             let (cenv, eop) = op(cenv, e);
-            (cenv, Op(eop))
+            (cenv, Expr::Op(eop))
         }
         E::Op2(op, ref l, ref r) => {
-            expr(cenv, l, |cenv: ConvEnv, ll: &Expr| {
-                let (cenv, tmp1) = cenv.tmp();
-                let (cenv, outer_expr) = expr(cenv, r, |cenv: ConvEnv, rr: &Expr| {
-                    let (cenv, tmp2) = cenv.tmp();
+            let (cenv, l_tmp) = cenv.tmp();
+            let (cenv, r_tmp) = cenv.tmp();
+
+            expr(cenv, l, |cenv2: ConvEnv, ll: Expr| {
+                expr(cenv2, r, |cenv3: ConvEnv, rr: Expr| {
+
                     // value to pass to the continuation
-                    let val = Op(Op2(op,
-                                     box I::Var(tmp1.clone()),
-                                     box I::Var(tmp2.clone())));
+                    let val = Expr::Op(Op::Op2(op,
+                                     box I::Var(l_tmp.clone()),
+                                     box I::Var(r_tmp.clone())));
+
                     // our inner expression is whatever the
                     // continuation says it is.
-                    let (cenv, inner_expr) = k(cenv, &val);
-                    (cenv, Let(tmp2, box rr.clone(), box inner_expr))
-                });
-                (cenv, Let(tmp1, box ll.clone(), box outer_expr))
+                    let (cenv4, inner_expr) = k(cenv3, val);
+
+                    let result = Expr::Let(l_tmp.clone(), box ll,
+                                           box Expr::Let(r_tmp.clone(), box rr,
+                                                         box inner_expr));
+
+                    (cenv4, result)
+                })
             })
         }
         _ => {
             panic!("TODO: implement expr for {:?}", e);
         }
     }
-        // E::Op2(op, ref e1, ref e2) => {
-        //     let (n, e1, _) = convert(n, env, renamed, e1);
-        //     let (n, e2, _) = convert(n, env, renamed, e2);
-        //     (n, I::Op2(op, box e1, box e2), explicit::opty(op))
-        // }
-        // E::If(ref e1, ref e2, ref e3) => {
-        //     let (n, e1, _) = convert(n, env, renamed, e1);
-        //     let (n, e2, t) = convert(n, env, renamed, e2);
-        //     let (n, e3, _) = convert(n, env, renamed, e3);
-        //     (n, I::If(box e1, box e2, box e3), t)
-        // }
-        // E::Var(ref x) => {
-        //     let αx = renamed.get(x).unwrap();
-        //     (n, I::Var(αx.clone()), env.get(αx).unwrap().clone())
-        // }
-        // E::Let(ref id, ref e1, ref e2) => {
-        //     let mut renamed = renamed.clone();
-        //     let (n, αid) = (n+1, format!("{}!a{}", id, n));
+    // E::Op2(op, ref e1, ref e2) => {
+    //     let (n, e1, _) = convert(n, env, renamed, e1);
+    //     let (n, e2, _) = convert(n, env, renamed, e2);
+    //     (n, I::Op2(op, box e1, box e2), explicit::opty(op))
+    // }
+    // E::If(ref e1, ref e2, ref e3) => {
+    //     let (n, e1, _) = convert(n, env, renamed, e1);
+    //     let (n, e2, t) = convert(n, env, renamed, e2);
+    //     let (n, e3, _) = convert(n, env, renamed, e3);
+    //     (n, I::If(box e1, box e2, box e3), t)
+    // }
+    // E::Var(ref x) => {
+    //     let αx = renamed.get(x).unwrap();
+    //     (n, I::Var(αx.clone()), env.get(αx).unwrap().clone())
+    // }
+    // E::Let(ref id, ref e1, ref e2) => {
+    //     let mut renamed = renamed.clone();
+    //     let (n, αid) = (n+1, format!("{}!a{}", id, n));
 
-        //     let (n, e1, t1) = convert(n, env, &renamed, e1);
+    //     let (n, e1, t1) = convert(n, env, &renamed, e1);
 
-        //     renamed.insert(id.clone(), αid.clone());
-        //     env.insert(αid.clone(), t1);
+    //     renamed.insert(id.clone(), αid.clone());
+    //     env.insert(αid.clone(), t1);
 
-        //     let (n, e2, t2) = convert(n, env, &renamed, e2);
-        //     (n, I::Let(αid, box e1, box e2), t2)
-        // }
-        // E::Fun(ref id, ref t1, ref e) => {
-        //     let mut renamed = renamed.clone();
-        //     let (n, αid) = (n+1, format!("{}!a{}", id, n));
+    //     let (n, e2, t2) = convert(n, env, &renamed, e2);
+    //     (n, I::Let(αid, box e1, box e2), t2)
+    // }
+    // E::Fun(ref id, ref t1, ref e) => {
+    //     let mut renamed = renamed.clone();
+    //     let (n, αid) = (n+1, format!("{}!a{}", id, n));
 
-        //     renamed.insert(id.clone(), αid.clone());
-        //     env.insert(αid.clone(), t1.clone());
+    //     renamed.insert(id.clone(), αid.clone());
+    //     env.insert(αid.clone(), t1.clone());
 
-        //     let (n, e, t2) = convert(n, env, &renamed, e);
+    //     let (n, e, t2) = convert(n, env, &renamed, e);
 
-        //     (n, I::Fun(αid, box e), Type::TFun(box t1.clone(), box t2))
-        // }
-        // E::Fix(ref id, ref t1, ref e) => {
-        //     let mut renamed = renamed.clone();
-        //     let (n, αid) = (n+1, format!("{}!a{}", id, n));
+    //     (n, I::Fun(αid, box e), Type::TFun(box t1.clone(), box t2))
+    // }
+    // E::Fix(ref id, ref t1, ref e) => {
+    //     let mut renamed = renamed.clone();
+    //     let (n, αid) = (n+1, format!("{}!a{}", id, n));
 
-        //     renamed.insert(id.clone(), αid.clone());
-        //     env.insert(αid.clone(), t1.clone());
+    //     renamed.insert(id.clone(), αid.clone());
+    //     env.insert(αid.clone(), t1.clone());
 
-        //     let (n, e, t2) = convert(n, env, &renamed, e);
+    //     let (n, e, t2) = convert(n, env, &renamed, e);
 
-        //     (n, I::Fix(αid, box e), t2)
-        // }
-        // E::App(ref e1, ref e2) => {
-        //     let (n, e1, t1) = convert(n, env, renamed, e1);
-        //     let (n, e2, _) = convert(n, env, renamed, e2);
-        //     let t = match t1 {
-        //         Type::TFun(_, t2) => *t2,
-        //         _ => panic!("expected TFun, not {:?}", t1),
-        //     };
-        //     (n, I::App(box e1, box e2), t)
-        // }
-        // E::MkArray(ref sz, ref val) => {
-        //     let (n, sz, _) = convert(n, env, renamed, sz);
-        //     let (n, val, _) = convert(n, env, renamed, val);
-        //     (n, I::MkArray(box sz, box val), Type::TIntArray)
-        // }
-        // E::GetArray(ref id, ref idx) => {
-        //     let (n, id, _) = convert(n, env, renamed, id);
-        //     let (n, idx, _) = convert(n, env, renamed, idx);
-        //     (n, I::GetArray(box id, box idx), Type::TInt)
-        // }
-        // E::SetArray(ref id, ref idx, ref v) => {
-        //     let (n, id, _) = convert(n, env, renamed, id);
-        //     let (n, idx, _) = convert(n, env, renamed, idx);
-        //     let (n, v, _) = convert(n, env, renamed, v);
-        //     (n, I::SetArray(box id, box idx, box v), Type::TIntArray)
-        // }
+    //     (n, I::Fix(αid, box e), t2)
+    // }
+    // E::App(ref e1, ref e2) => {
+    //     let (n, e1, t1) = convert(n, env, renamed, e1);
+    //     let (n, e2, _) = convert(n, env, renamed, e2);
+    //     let t = match t1 {
+    //         Type::TFun(_, t2) => *t2,
+    //         _ => panic!("expected TFun, not {:?}", t1),
+    //     };
+    //     (n, I::App(box e1, box e2), t)
+    // }
+    // E::MkArray(ref sz, ref val) => {
+    //     let (n, sz, _) = convert(n, env, renamed, sz);
+    //     let (n, val, _) = convert(n, env, renamed, val);
+    //     (n, I::MkArray(box sz, box val), Type::TIntArray)
+    // }
+    // E::GetArray(ref id, ref idx) => {
+    //     let (n, id, _) = convert(n, env, renamed, id);
+    //     let (n, idx, _) = convert(n, env, renamed, idx);
+    //     (n, I::GetArray(box id, box idx), Type::TInt)
+    // }
+    // E::SetArray(ref id, ref idx, ref v) => {
+    //     let (n, id, _) = convert(n, env, renamed, id);
+    //     let (n, idx, _) = convert(n, env, renamed, idx);
+    //     let (n, v, _) = convert(n, env, renamed, v);
+    //     (n, I::SetArray(box id, box idx, box v), Type::TIntArray)
+    // }
 }
 
 
-fn anf(implicit_expr: &implicit::Expr) -> Result<(Expr, HashMap<Id, explicit::Type>)> {
+pub fn anf(implicit_expr: &implicit::Expr) -> Result<(Expr, HashMap<Id, explicit::Type>)> {
 
     let explicit_expr = hindley_milner::infer(implicit_expr)?;
-    let (α_expr, env) = env::extract(&explicit_expr);
+    // alpha-renaming
+    let (alpha_expr, env) = env::extract(&explicit_expr);
+
     // println!("α-implicit: {:?}\n", α_expr);
     // println!("Γ         : {:?}\n", env);
 
 
     let cenv = ConvEnv::new();
-    let (_, expr) = expr(cenv, &α_expr, |ce, x| (ce, x.clone()));
+    let (_, expr) = expr(cenv, &alpha_expr, identity);
 
     Ok((expr, env))
     // step 1 -- arithmatic + let bindings
@@ -199,54 +211,54 @@ fn anf(implicit_expr: &implicit::Expr) -> Result<(Expr, HashMap<Id, explicit::Ty
     // step 3 -- arrays
     // step 4 -- closures
 
-// (define (Value? M)
-//   (match M
-//     [`(quote ,_)         #t]
-//     [(? number?)         #t]
-//     [(? boolean?)        #t]
-//     [(? string?)         #t]
-//     [(? char?)           #t]
-//     [(? symbol?)         #t]
-//     [(or '+ '- '* '/ '=) #t]
-//     [else                #f]))
+    // (define (Value? M)
+    //   (match M
+    //     [`(quote ,_)         #t]
+    //     [(? number?)         #t]
+    //     [(? boolean?)        #t]
+    //     [(? string?)         #t]
+    //     [(? char?)           #t]
+    //     [(? symbol?)         #t]
+    //     [(or '+ '- '* '/ '=) #t]
+    //     [else                #f]))
 
 
-// (define (normalize-term M) (normalize M (λ (x) x)))
+    // (define (normalize-term M) (normalize M (λ (x) x)))
 
-// (define (normalize M k)
-//   (match M
-//     [`(λ ,params ,body)
-//       (k `(λ ,params ,(normalize-term body)))]
+    // (define (normalize M k)
+    //   (match M
+    //     [`(λ ,params ,body)
+    //       (k `(λ ,params ,(normalize-term body)))]
 
-//     [`(let ([,x ,M1]) ,M2)
-//       (normalize M1 (λ (N1)
-//        `(let ([,x ,N1])
-//          ,(normalize M2 k))))]
+    //     [`(let ([,x ,M1]) ,M2)
+    //       (normalize M1 (λ (N1)
+    //        `(let ([,x ,N1])
+    //          ,(normalize M2 k))))]
 
-//     [`(if ,M1 ,M2 ,M3)
-//       (normalize-name M1 (λ (t)
-//        (k `(if ,t ,(normalize-term M2)
-//                   ,(normalize-term M3)))))]
+    //     [`(if ,M1 ,M2 ,M3)
+    //       (normalize-name M1 (λ (t)
+    //        (k `(if ,t ,(normalize-term M2)
+    //                   ,(normalize-term M3)))))]
 
-//     [`(,Fn . ,M*)
-//       (normalize-name Fn (λ (t)
-//        (normalize-name* M* (λ (t*)
-//         (k `(,t . ,t*))))))]
+    //     [`(,Fn . ,M*)
+    //       (normalize-name Fn (λ (t)
+    //        (normalize-name* M* (λ (t*)
+    //         (k `(,t . ,t*))))))]
 
-//     [(? Value?)             (k M)]))
+    //     [(? Value?)             (k M)]))
 
-// (define (normalize-name M k)
-//   (normalize M (λ (N)
-//     (if (Value? N) (k N)
-//         (let ([t (gensym)])
-//          `(let ([,t ,N]) ,(k t)))))))
+    // (define (normalize-name M k)
+    //   (normalize M (λ (N)
+    //     (if (Value? N) (k N)
+    //         (let ([t (gensym)])
+    //          `(let ([,t ,N]) ,(k t)))))))
 
-// (define (normalize-name* M* k)
-//   (if (null? M*)
-//       (k '())
-//       (normalize-name (car M*) (λ (t)
-//        (normalize-name* (cdr M*) (λ (t*)
-//         (k `(,t . ,t*))))))))
+    // (define (normalize-name* M* k)
+    //   (if (null? M*)
+    //       (k '())
+    //       (normalize-name (car M*) (λ (t)
+    //        (normalize-name* (cdr M*) (λ (t*)
+    //         (k `(,t . ,t*))))))))
 
 }
 

@@ -1,5 +1,4 @@
 #![feature(box_syntax,box_patterns)]
-#![feature(non_ascii_idents)]
 
 #[macro_use]
 extern crate lazy_static;
@@ -101,16 +100,13 @@ fn main() {
         Err(e) => die!("implicit_open: {}", error::Error::description(&e)),
     };
 
-    let e_expr = match hindley_milner::infer(&i_expr) {
-        Ok(expr) => expr,
-        Err(e) => die!("infer_types: {}", error::Error::description(&e)),
+    let (anf_expr, type_env) = match lambdal::anf(&i_expr) {
+        Ok(tuple) => tuple,
+        Err(e) => die!("anf: {}", error::Error::description(&e)),
     };
 
-    println!("typed:\n\n{:?}\n", e_expr);
-
-    let (α_expr, env) = env::extract(&e_expr);
-    println!("α-implicit: {:?}\n", α_expr);
-    println!("Γ         : {:?}\n", env);
+    let _ = anf_expr;
+    let _ = type_env;
 
     // alternatively:
     // Qbc (bounds checking)
