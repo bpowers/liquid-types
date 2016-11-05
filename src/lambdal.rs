@@ -88,26 +88,26 @@ fn expr<F>(cenv: ConvEnv, e: &explicit::Expr, k: F) -> (ConvEnv, Expr)
             (cenv, Expr::Op(eop))
         }
         E::Op2(op, ref l, ref r) => {
-            let (cenv, l_tmp) = cenv.tmp();
-            let (cenv, r_tmp) = cenv.tmp();
-
-            expr(cenv, l, |cenv2: ConvEnv, ll: Expr| {
-                expr(cenv2, r, |cenv3: ConvEnv, rr: Expr| {
+            expr(cenv, l, |cenv: ConvEnv, ll: Expr| -> (ConvEnv, Expr) {
+                expr(cenv, r, |cenv: ConvEnv, rr: Expr| -> (ConvEnv, Expr) {
+                    // allocate vars
+                    let (cenv, l_tmp) = cenv.tmp();
+                    let (cenv, r_tmp) = cenv.tmp();
 
                     // value to pass to the continuation
                     let val = Expr::Op(Op::Op2(op,
-                                     box I::Var(l_tmp.clone()),
-                                     box I::Var(r_tmp.clone())));
+                                               box I::Var(l_tmp.clone()),
+                                               box I::Var(r_tmp.clone())));
 
                     // our inner expression is whatever the
                     // continuation says it is.
-                    let (cenv4, inner_expr) = k(cenv3, val);
+                    let (cenv, inner_expr) = k(cenv, val);
 
-                    let result = Expr::Let(l_tmp.clone(), box ll,
+                    let result = Expr::Let(l_tmp.clone(), box ll.clone(),
                                            box Expr::Let(r_tmp.clone(), box rr,
                                                          box inner_expr));
 
-                    (cenv4, result)
+                    (cenv, result)
                 })
             })
         }
