@@ -99,21 +99,20 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Expr) -> (ConvEnv, Ex
         E::Op2(op, ref l, ref r) => {
             expr(cenv, l, &|cenv: ConvEnv, ll: Expr| -> (ConvEnv, Expr) {
                 expr(cenv, r, &|cenv: ConvEnv, rr: Expr| -> (ConvEnv, Expr) {
-                    // allocate vars
                     let mut cenv = cenv;
 
+                    // only allocate a let temporary for l or r if necessary
                     let (l_ref, l_bound) = match imm(&ll) {
                         Some(i) => (i, None),
-                        None    => {
+                        None => {
                             let (l_cenv, l_tmp) = cenv.tmp();
                             cenv = l_cenv;
                             (I::Var(l_tmp.clone()), Some(l_tmp))
                         }
                     };
-
                     let (r_ref, r_bound) = match imm(&rr) {
                         Some(i) => (i, None),
-                        None    => {
+                        None => {
                             let (r_cenv, r_tmp) = cenv.tmp();
                             cenv = r_cenv;
                             (I::Var(r_tmp.clone()), Some(r_tmp))
@@ -142,11 +141,6 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Expr) -> (ConvEnv, Ex
             panic!("TODO: implement expr for {:?}", e);
         }
     }
-    // E::Op2(op, ref e1, ref e2) => {
-    //     let (n, e1, _) = convert(n, env, renamed, e1);
-    //     let (n, e2, _) = convert(n, env, renamed, e2);
-    //     (n, I::Op2(op, box e1, box e2), explicit::opty(op))
-    // }
     // E::If(ref e1, ref e2, ref e3) => {
     //     let (n, e1, _) = convert(n, env, renamed, e1);
     //     let (n, e2, t) = convert(n, env, renamed, e2);
