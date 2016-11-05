@@ -137,6 +137,17 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Expr) -> (ConvEnv, Ex
                 })
             })
         }
+        E::Let(ref id, ref e1, ref e2) => {
+            expr(cenv, e1, &|cenv: ConvEnv, e1l: Expr| -> (ConvEnv, Expr) {
+                expr(cenv, e2, &|cenv: ConvEnv, e2l: Expr| -> (ConvEnv, Expr) {
+                    let (cenv, inner) = k(cenv, e2l);
+                    (cenv, Let(id.clone(), box e1l.clone(), box inner))
+                })
+            })
+        }
+        E::Var(ref x) => {
+            k(cenv, Op(Imm(I::Var(x.clone()))))
+        }
         _ => {
             panic!("TODO: implement expr for {:?}", e);
         }
@@ -328,4 +339,9 @@ fn anf_transforms() {
         "2+(3 - 2)",
         Let(String::from("!tmp!0"), box Op(Op2(O::Sub, box I::Int(3), box I::Int(2))),
             box Op(Op2(O::Add, box I::Int(2), box I::Var(String::from("!tmp!0"))))));
+
+    test_anf!(
+        "let x = 1 in x",
+        Let(String::from("x!a1"), box Op(Imm(I::Int(1))),
+            box Op(Imm(I::Var(String::from("x!a1"))))));
 }
