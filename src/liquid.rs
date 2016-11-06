@@ -9,7 +9,7 @@ use common;
 
 use explicit;
 use lambdal;
-use lambdal::{Expr, Op,Imm};
+use lambdal::{Expr, Op, Imm};
 use common::{Id, Result, LiquidError};
 use refined::{Base, T};
 
@@ -502,7 +502,7 @@ fn weaken(
     all_p: &Vec<(LinkedList<Expr>, Box<Type>)>,
     qs: &HashSet<lambdal::Expr>) -> Option<Vec<lambdal::Expr>> {
 
-    let const_true = lambdal::Expr::Const(common::Const::Bool(true));
+    let const_true = Expr::Op(Op::Imm(Imm::Bool(true)));
 
     let mut curr_qs: Vec<lambdal::Expr> = Vec::new();
     for q in qs {
@@ -539,7 +539,7 @@ fn solve(
     constraints: &LinkedList<STConstraints>,
     a: &HashMap<Id, KInfo>) -> Result<HashMap<Id, KInfo>> {
 
-    let const_true = lambdal::Expr::Const(common::Const::Bool(true));
+    let const_true = Expr::Op(Op::Imm(Imm::Bool(true)));
 
     for &(ref all_p, ref id) in constraints.iter() {
 
@@ -639,6 +639,29 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[lambdal::Op]) 
     Ok(res)
 }
 
+macro_rules! expr(
+    ($s:expr) => { {
+        use lambdal;
+        use implicit_parse;
+        use tok::Tokenizer;
+        use std;
+        let s = $s;
+        let tokenizer = Tokenizer::new(&s);
+        let iexpr = match implicit_parse::parse_Program(&s, tokenizer) {
+            Ok(iexpr) => iexpr,
+            Err(e) => {
+                die!("parse_Program({}): {:?}", $s, e);
+            }
+        };
+        match lambdal::anf(&iexpr) {
+            Ok((anf_expr, _)) => anf_expr,
+            Err(e) => {
+                die!("anf: {:?}", e);
+            }
+        }
+    } }
+);
+
 #[test]
 fn test_implication() {
     use lambdal::Op::*;
@@ -667,11 +690,6 @@ fn test_implication() {
 
     let q = [
         expr!("ν < 0 ∧ ν >= x ∧ ν >= y"),
-        Op2(And,
-            box Op2(LT, box V, box Const(common::Const::Int(0))),
-            box Op2(And,
-                    box Op2(GTE, box V, box Var(String::from("x"))),
-                    box Op2(GTE, box V, box Var(String::from("y"))))),
     ];
 
     // but this shouldn't

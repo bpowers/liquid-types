@@ -21,7 +21,7 @@ mod explicit;
 mod refined;
 mod hindley_milner;
 mod env;
-//mod liquid;
+mod liquid;
 mod eval;
 mod lambdal;
 
@@ -127,12 +127,12 @@ fn main() {
         ]
     };
 
-    // let refined = match liquid::infer(&anf_expr, &type_env, &q) {
-    //     Ok(expr) => expr,
-    //     Err(e) => die!("infer: {}", error::Error::description(&e)),
-    // };
+    let refined = match liquid::infer(&anf_expr, &type_env, &q) {
+        Ok(expr) => expr,
+        Err(e) => die!("infer: {}", error::Error::description(&e)),
+    };
 
-    // println!("refined:\n\n{:?}\n", refined);
+    println!("refined:\n\n{:?}\n", refined);
 
     let val = eval::interpret(&anf_expr);
 
