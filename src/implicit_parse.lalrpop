@@ -1,6 +1,5 @@
 use common::Id;
-use common::LOp::*;
-use common::AOp::*;
+use common::Op2::*;
 use common::Const::*;
 use implicit::Expr;
 use implicit::Expr::*;
@@ -24,20 +23,20 @@ Expr: Box<Expr> = {
 };
 
 Cmp: Box<Expr> = {
-    <l:Add> "=" <r:Cmp> => Box::new(LOp2(Eq, l, r)),
-    <l:Add> "<" <r:Cmp> => Box::new(LOp2(LT, l, r)),
-    <l:Add> ">" <r:Cmp> => Box::new(LOp2(GT, l, r)),
+    <l:Add> "=" <r:Cmp> => Box::new(Op2(Eq, l, r)),
+    <l:Add> "<" <r:Cmp> => Box::new(Op2(LT, l, r)),
+    <l:Add> ">" <r:Cmp> => Box::new(Op2(GT, l, r)),
     Add,
 };
 
 Add: Box<Expr> = {
-    <l:Add> "-" <r:Mul> => Box::new(AOp2(Sub, l, r)),
-    <l:Add> "+" <r:Mul> => Box::new(AOp2(Add, l, r)),
+    <l:Add> "-" <r:Mul> => Box::new(Op2(Sub, l, r)),
+    <l:Add> "+" <r:Mul> => Box::new(Op2(Add, l, r)),
     Mul,
 };
 
 Mul: Box<Expr> = {
-    <l:Mul> "*" <r:Get> => Box::new(AOp2(Mul, l, r)),
+    <l:Mul> "*" <r:Get> => Box::new(Op2(Mul, l, r)),
     Get,
 };
 

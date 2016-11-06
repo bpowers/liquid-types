@@ -2,22 +2,16 @@ use std::{fmt, error, result};
 
 pub type Id = String;
 
-// arithmatic operators
 #[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
-pub enum AOp {
-    Add,
-    Sub,
-    Mul,
-}
-
-// logical operators
-#[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
-pub enum LOp {
+pub enum Op2 {
     LT,
     GT,
     LTE,
     GTE,
     Eq,
+    Add,
+    Sub,
+    Mul,
     And,
     Or,
     Impl,

@@ -1,6 +1,5 @@
 use common::Id;
-use common::LOp::*;
-use common::AOp::*;
+use common::Op2::*;
 use common::Const::*;
 use implicit::Expr;
 use implicit::Expr::*;
@@ -11,8 +10,7 @@ mod __parse__Program {
     #![allow(non_snake_case, non_camel_case_types, unused_mut, unused_variables, unused_imports)]
 
     use common::Id;
-    use common::LOp::*;
-    use common::AOp::*;
+    use common::Op2::*;
     use common::Const::*;
     use implicit::Expr;
     use implicit::Expr::*;
@@ -5930,7 +5928,7 @@ pub fn __action9<
     (_, r, _): (usize, Box<Expr>, usize),
 ) -> Box<Expr>
 {
-    Box::new(LOp2(Eq, l, r))
+    Box::new(Op2(Eq, l, r))
 }
 
 #[allow(unused_variables)]
@@ -5943,7 +5941,7 @@ pub fn __action10<
     (_, r, _): (usize, Box<Expr>, usize),
 ) -> Box<Expr>
 {
-    Box::new(LOp2(LT, l, r))
+    Box::new(Op2(LT, l, r))
 }
 
 #[allow(unused_variables)]
@@ -5956,7 +5954,7 @@ pub fn __action11<
     (_, r, _): (usize, Box<Expr>, usize),
 ) -> Box<Expr>
 {
-    Box::new(LOp2(GT, l, r))
+    Box::new(Op2(GT, l, r))
 }
 
 #[allow(unused_variables)]
@@ -5980,7 +5978,7 @@ pub fn __action13<
     (_, r, _): (usize, Box<Expr>, usize),
 ) -> Box<Expr>
 {
-    Box::new(AOp2(Sub, l, r))
+    Box::new(Op2(Sub, l, r))
 }
 
 #[allow(unused_variables)]
@@ -5993,7 +5991,7 @@ pub fn __action14<
     (_, r, _): (usize, Box<Expr>, usize),
 ) -> Box<Expr>
 {
-    Box::new(AOp2(Add, l, r))
+    Box::new(Op2(Add, l, r))
 }
 
 #[allow(unused_variables)]
@@ -6017,7 +6015,7 @@ pub fn __action16<
     (_, r, _): (usize, Box<Expr>, usize),
 ) -> Box<Expr>
 {
-    Box::new(AOp2(Mul, l, r))
+    Box::new(Op2(Mul, l, r))
 }
 
 #[allow(unused_variables)]

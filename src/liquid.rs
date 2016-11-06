@@ -641,7 +641,6 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[lambdal::Op]) 
 
 #[test]
 fn test_implication() {
-    use lambdal::Imm as I;
     use lambdal::Op::*;
     use lambdal::Expr::*;
     use common::Op2::*;

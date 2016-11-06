@@ -20,8 +20,7 @@ pub enum Imm {
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub enum Op {
-    LOp2(LOp, Box<Imm>, Box<Imm>),
-    AOp2(AOp, Box<Imm>, Box<Imm>),
+    Op2(Op2, Box<Imm>, Box<Imm>),
     MkArray(Box<Imm>, Box<Imm>),
     GetArray(Box<Imm>, Box<Imm>),
     SetArray(Box<Imm>, Box<Imm>, Box<Imm>),
