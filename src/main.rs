@@ -22,7 +22,7 @@ mod explicit;
 mod hindley_milner;
 mod env;
 //mod liquid;
-//mod eval;
+mod eval;
 mod lambdal;
 
 use common::{LiquidError, Result};
@@ -105,7 +105,6 @@ fn main() {
         Err(e) => die!("anf: {}", error::Error::description(&e)),
     };
 
-    let _ = anf_expr;
     let _ = type_env;
 
     // alternatively:
@@ -136,7 +135,7 @@ fn main() {
 
     // println!("refined:\n\n{:?}\n", refined);
 
-    //let val = eval::interpret(&e_expr);
+    let val = eval::interpret(&anf_expr);
 
-    //println!("result:\n\n{:?}\n", val);
+    println!("result:\n\n{:?}\n", val);
 }
