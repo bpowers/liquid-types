@@ -7,7 +7,7 @@ use implicit;
 use env;
 use hindley_milner;
 
-#[derive(PartialEq, Eq, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub enum Imm {
     Bool(bool),
     Int(i64),
@@ -18,7 +18,7 @@ pub enum Imm {
     //    V,
 }
 
-#[derive(PartialEq, Eq, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub enum Op {
     Op2(Op2, Box<Imm>, Box<Imm>),
     MkArray(Box<Imm>, Box<Imm>),
@@ -28,7 +28,7 @@ pub enum Op {
 }
 //    WellFormed(Imm), // Var-only
 
-#[derive(PartialEq, Eq, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub enum Expr {
     If(Box<Imm>, Box<Expr>, Box<Expr>),
     App(Box<Imm>, Box<Imm>),

@@ -18,10 +18,10 @@ mod typed;
 mod tok;
 mod implicit;
 mod explicit;
-//mod refined;
+mod refined;
 mod hindley_milner;
 mod env;
-//mod liquid;
+mod liquid;
 mod eval;
 mod lambdal;
 
@@ -105,8 +105,6 @@ fn main() {
         Err(e) => die!("anf: {}", error::Error::description(&e)),
     };
 
-    let _ = type_env;
-
     // alternatively:
     // Qbc (bounds checking)
     // X: 0, *, len *
@@ -116,24 +114,24 @@ fn main() {
     // ν >= X
     // ν > X
 
-    // let q = {
-    //     use implicit::Expr::*;
-    //     use common::Op2::*;
-    //     use common::Const::*;
-    //     [
-    //         Op2(LTE, box Const(Int(0)), box V),
-    //         Op2(LTE, box Star, box V),
-    //         Op2(LT, box V, box Star),
-    //         //Op2(LT, box V, box App(box Var(String::from("len")), box Star)),
-    //     ]
-    // };
+    let q = {
+        use lambdal::Op::*;
+        use common::Op2::*;
+        use common::Const::*;
+        [
+            Op2(LTE, box Const(Int(0)), box V),
+            Op2(LTE, box Star, box V),
+            Op2(LT, box V, box Star),
+            //Op2(LT, box V, box App(box Var(String::from("len")), box Star)),
+        ]
+    };
 
-    // let refined = match liquid::infer(&α_expr, &env, &q) {
-    //     Ok(expr) => expr,
-    //     Err(e) => die!("infer: {}", error::Error::description(&e)),
-    // };
+    let refined = match liquid::infer(&anf_expr, &type_env, &q) {
+        Ok(expr) => expr,
+        Err(e) => die!("infer: {}", error::Error::description(&e)),
+    };
 
-    // println!("refined:\n\n{:?}\n", refined);
+    println!("refined:\n\n{:?}\n", refined);
 
     let val = eval::interpret(&anf_expr);
 

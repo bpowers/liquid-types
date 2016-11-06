@@ -6,10 +6,10 @@ use std::collections::HashSet;
 use std::collections::LinkedList;
 
 use common;
-use implicit;
-use explicit;
 
-use implicit::Expr;
+use explicit;
+use lambdal;
+use lambdal::{Expr, Op,Imm};
 use common::{Id, Result, LiquidError};
 use refined::{Base, T};
 
@@ -35,7 +35,7 @@ pub enum C {
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum Liquid {
-    E(implicit::Expr),
+    E(Expr),
     K(Id, Box<LinkedList<Expr>>), // list of pending substitutions
 }
 
@@ -50,8 +50,8 @@ pub type Constraint = ((HashSet<Id>, LinkedList<Expr>), C); // Boolean valued ex
 
 #[derive(Debug, Clone)]
 pub struct KInfo {
-    all_qs: HashSet<implicit::Expr>,
-    curr_qs: Vec<implicit::Expr>,
+    all_qs: HashSet<lambdal::Expr>,
+    curr_qs: Vec<lambdal::Expr>,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -100,34 +100,6 @@ pub struct KEnv {
     shape: HashMap<Id, explicit::Type>,
     env_id: String,
     next_id: i32,
-}
-
-fn hm_shape(env: &HashMap<Id, explicit::Type>, expr: &Expr) -> explicit::Type {
-    use implicit::Expr::*;
-    use explicit::Type::*;
-
-    match *expr {
-        Var(ref id) => env.get(id).unwrap().clone(),
-        Const(common::Const::Int(_)) => TInt,
-        Const(common::Const::Bool(_)) => TBool,
-        Op2(op, _, _) => explicit::opty(op),
-        Fun(ref id, ref e) => TFun(box env.get(id).unwrap().clone(), box hm_shape(env, e)),
-        App(ref e1, _) => {
-            if let TFun(_, e2) = hm_shape(env, e1) {
-                *e2
-            } else {
-                panic!("expected TFun, not {:?}", expr);
-            }
-        }
-        If(_, ref e2, _) => hm_shape(env, e2),
-        Let(_, _, ref e2) => hm_shape(env, e2),
-        Fix(_, ref e) => hm_shape(env, e),
-        MkArray(_, _) => TIntArray,
-        GetArray(_, _) => TInt,
-        SetArray(_, _, _) => TIntArray,
-        Star => panic!("star found when it shouldn't be"),
-        V => panic!("v found when it shouldn't be"),
-    }
 }
 
 impl KEnv {
@@ -195,7 +167,7 @@ fn subst(_: &Id, _: &Expr, ty: &Type) -> Type {
 }
 
 pub fn cons<'a>(k_env: &mut KEnv, env: &Env, expr: &Expr) -> (Type, LinkedList<Constraint>) {
-    use implicit::Expr::*;
+    use lambdal::Expr::*;
     use common::Op2::Eq;
 
     match *expr {
@@ -350,8 +322,8 @@ fn split(map: &mut HashMap<Idx, Constraint>, constraints: &LinkedList<Constraint
     }
 }
 
-fn replace(v: &Id, q: &implicit::Expr) -> Option<implicit::Expr> {
-    use implicit::Expr as I;
+fn replace(v: &Id, q: &lambdal::Expr) -> Option<lambdal::Expr> {
+    use lambdal::Expr as I;
 
     let r = match *q {
         I::Var(ref id)                        => I::Var(id.clone()),
@@ -375,8 +347,8 @@ fn replace(v: &Id, q: &implicit::Expr) -> Option<implicit::Expr> {
 // instantiate Q for k w/ alpha-renamed variables that are in-scope
 // and of the right shape at the location of the well-formedness
 // constraint
-fn qstar(_: &Id, in_scope: &HashSet<Id>, _: &HashMap<Id, explicit::Type>, qset: &[implicit::Expr]) -> HashSet<implicit::Expr> {
-    let mut qstar: HashSet<implicit::Expr> = HashSet::new();
+fn qstar(_: &Id, in_scope: &HashSet<Id>, _: &HashMap<Id, explicit::Type>, qset: &[lambdal::Expr]) -> HashSet<lambdal::Expr> {
+    let mut qstar: HashSet<lambdal::Expr> = HashSet::new();
 
     for tmpl in qset {
         for v in in_scope.iter() {
@@ -394,7 +366,7 @@ fn qstar(_: &Id, in_scope: &HashSet<Id>, _: &HashMap<Id, explicit::Type>, qset: 
     qstar
 }
 
-fn build_a(constraints: &HashMap<Idx, Constraint>, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr]) -> HashMap<Id, KInfo> {
+fn build_a(constraints: &HashMap<Idx, Constraint>, env: &HashMap<Id, explicit::Type>, q: &[Op]) -> HashMap<Id, KInfo> {
     let mut a: HashMap<Id, KInfo> = HashMap::new();
 
     for (_, c) in constraints.iter() {
@@ -417,8 +389,8 @@ fn build_a(constraints: &HashMap<Idx, Constraint>, env: &HashMap<Id, explicit::T
     a
 }
 
-fn expr_to_term(s: &mut SMTLib2<LIA>, vars: &HashMap<String, <SMTLib2<LIA> as SMTBackend>::Idx>, q: &implicit::Expr) -> <SMTLib2<LIA> as SMTBackend>::Idx {
-    use implicit::Expr as I;
+fn expr_to_term(s: &mut SMTLib2<LIA>, vars: &HashMap<String, <SMTLib2<LIA> as SMTBackend>::Idx>, q: &lambdal::Expr) -> <SMTLib2<LIA> as SMTBackend>::Idx {
+    use lambdal::Expr as I;
     use common::Const::*;
     use common::Op2;
 
@@ -482,7 +454,7 @@ fn expr_to_term(s: &mut SMTLib2<LIA>, vars: &HashMap<String, <SMTLib2<LIA> as SM
 }
 
 // whether the conjunction of all p implies the conjunction of all q
-fn implication_holds(env: &HashMap<Id, explicit::Type>, p: &[implicit::Expr], q: &[implicit::Expr]) -> bool {
+fn implication_holds(env: &HashMap<Id, explicit::Type>, p: &[lambdal::Expr], q: &[lambdal::Expr]) -> bool {
     let mut z3 = Z3::new_with_binary("./z3");
     let mut solver = SMTLib2::new(Some(LIA));
     solver.set_logic(&mut z3);
@@ -528,11 +500,11 @@ fn weaken(
     env: &HashMap<Id, explicit::Type>,
     a: &HashMap<Id, KInfo>,
     all_p: &Vec<(LinkedList<Expr>, Box<Type>)>,
-    qs: &HashSet<implicit::Expr>) -> Option<Vec<implicit::Expr>> {
+    qs: &HashSet<lambdal::Expr>) -> Option<Vec<lambdal::Expr>> {
 
-    let const_true = implicit::Expr::Const(common::Const::Bool(true));
+    let const_true = lambdal::Expr::Const(common::Const::Bool(true));
 
-    let mut curr_qs: Vec<implicit::Expr> = Vec::new();
+    let mut curr_qs: Vec<lambdal::Expr> = Vec::new();
     for q in qs {
         curr_qs.push(q.clone());
 
@@ -567,7 +539,7 @@ fn solve(
     constraints: &LinkedList<STConstraints>,
     a: &HashMap<Id, KInfo>) -> Result<HashMap<Id, KInfo>> {
 
-    let const_true = implicit::Expr::Const(common::Const::Bool(true));
+    let const_true = lambdal::Expr::Const(common::Const::Bool(true));
 
     for &(ref all_p, ref id) in constraints.iter() {
 
@@ -627,7 +599,7 @@ fn solve(
     Ok(a.clone())
 }
 
-pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr]) -> Result<HashMap<Id, Vec<implicit::Expr>>> {
+pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[lambdal::Op]) -> Result<HashMap<Id, Vec<lambdal::Expr>>> {
     let mut k_env = KEnv::new(env);
     let (_, constraint_list) = cons(&mut k_env, &Env::new(env), expr);
 
@@ -669,7 +641,7 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
 
 #[test]
 fn test_implication() {
-    use implicit::Expr::*;
+    use lambdal::Expr::*;
     use common::Op2::*;
 
     let mut env: HashMap<Id, explicit::Type> = HashMap::new();
