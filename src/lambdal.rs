@@ -20,9 +20,9 @@ pub enum Imm {
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub enum Op {
     Op2(Op2, Box<Imm>, Box<Imm>),
-    //    MkArray(Box<Imm>, Box<Imm>),
-    //    GetArray(Box<Imm>, Box<Imm>),
-    //    SetArray(Box<Imm>, Box<Imm>, Box<Imm>),
+    MkArray(Box<Imm>, Box<Imm>),
+    GetArray(Box<Imm>, Box<Imm>),
+    SetArray(Box<Imm>, Box<Imm>, Box<Imm>),
     Imm(Imm),
 }
 //    WellFormed(Imm), // Var-only
@@ -92,20 +92,16 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Imm) -> (ConvEnv, Exp
 
                     // our inner expression is whatever the
                     // continuation says it is.
-                    let (cenv, mut result) = k(cenv, op_ref);
+                    let (cenv, result) = k(cenv, op_ref);
 
-                    result = Let(op_tmp, box op_val, box result);
-
-                    (cenv, result)
+                    (cenv, Let(op_tmp, box op_val, box result))
                 })
             })
         }
         E::Let(ref id, ref e1, ref e2) => {
             expr(cenv, e1, &|cenv: ConvEnv, e1l: I| -> (ConvEnv, Expr) {
-                expr(cenv, e2, &|cenv: ConvEnv, e2l: I| -> (ConvEnv, Expr) {
-                    let (cenv, inner) = k(cenv, e2l);
-                    (cenv, Let(id.clone(), box Op(Imm(e1l.clone())), box inner))
-                })
+                let (cenv, inner) = expr(cenv, e2, k);
+                (cenv, Let(id.clone(), box Op(Imm(e1l.clone())), box inner))
             })
         }
         E::Var(ref x) => {
@@ -128,6 +124,42 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Imm) -> (ConvEnv, Exp
                 result = Let(val_tmp, box val, box result);
 
                 (cenv, result)
+            })
+        }
+        E::MkArray(ref sz, ref val) => {
+            println!("O mkarray");
+            expr(cenv, sz, &|cenv: ConvEnv, isz: I| -> (ConvEnv, Expr) {
+                expr(cenv, val, &|cenv: ConvEnv, ival: I| -> (ConvEnv, Expr) {
+                    println!("I mkarray");
+                    let val = Op(MkArray(box isz.clone(), box ival));
+                    let (cenv, val_ref) = cenv.tmp();
+                    let (cenv, result) = k(cenv, I::Var(val_ref.clone()));
+                    (cenv, Let(val_ref, box val, box result))
+                })
+            })
+        }
+        E::GetArray(ref id, ref idx) => {
+            println!("O getarray");
+            expr(cenv, id, &|cenv: ConvEnv, iid: I| -> (ConvEnv, Expr) {
+                expr(cenv, idx, &|cenv: ConvEnv, iidx: I| -> (ConvEnv, Expr) {
+                    println!("I getarray");
+                    let val = Op(GetArray(box iid.clone(), box iidx));
+                    let (cenv, val_ref) = cenv.tmp();
+                    let (cenv, result) = k(cenv, I::Var(val_ref.clone()));
+                    (cenv, Let(val_ref, box val, box result))
+                })
+            })
+        }
+        E::SetArray(ref id, ref idx, ref v) => {
+            expr(cenv, id, &|cenv: ConvEnv, iid: I| -> (ConvEnv, Expr) {
+                expr(cenv, idx, &|cenv: ConvEnv, iidx: I| -> (ConvEnv, Expr) {
+                    expr(cenv, v, &|cenv: ConvEnv, iv: I| -> (ConvEnv, Expr) {
+                        let val = Op(SetArray(box iid.clone(), box iidx.clone(), box iv));
+                        let (cenv, val_ref) = cenv.tmp();
+                        let (cenv, result) = k(cenv, I::Var(val_ref.clone()));
+                        (cenv, Let(val_ref, box val, box result))
+                    })
+                })
             })
         }
         _ => {
@@ -165,22 +197,6 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Imm) -> (ConvEnv, Exp
     //     };
     //     (n, I::App(box e1, box e2), t)
     // }
-    // E::MkArray(ref sz, ref val) => {
-    //     let (n, sz, _) = convert(n, env, renamed, sz);
-    //     let (n, val, _) = convert(n, env, renamed, val);
-    //     (n, I::MkArray(box sz, box val), Type::TIntArray)
-    // }
-    // E::GetArray(ref id, ref idx) => {
-    //     let (n, id, _) = convert(n, env, renamed, id);
-    //     let (n, idx, _) = convert(n, env, renamed, idx);
-    //     (n, I::GetArray(box id, box idx), Type::TInt)
-    // }
-    // E::SetArray(ref id, ref idx, ref v) => {
-    //     let (n, id, _) = convert(n, env, renamed, id);
-    //     let (n, idx, _) = convert(n, env, renamed, idx);
-    //     let (n, v, _) = convert(n, env, renamed, v);
-    //     (n, I::SetArray(box id, box idx, box v), Type::TIntArray)
-    // }
 }
 
 
@@ -190,68 +206,10 @@ pub fn anf(implicit_expr: &implicit::Expr) -> Result<(Expr, HashMap<Id, explicit
     // alpha-renaming
     let (alpha_expr, env) = env::extract(&explicit_expr);
 
-    // println!("α-implicit: {:?}\n", α_expr);
-    // println!("Γ         : {:?}\n", env);
-
-
     let cenv = ConvEnv::new();
     let (_, expr) = expr(cenv, &alpha_expr, &identity);
 
     Ok((expr, env))
-    // step 1 -- arithmatic + let bindings
-    // step 2 -- conds + boolean vals
-    // step 3 -- arrays
-    // step 4 -- closures
-
-    // (define (Value? M)
-    //   (match M
-    //     [`(quote ,_)         #t]
-    //     [(? number?)         #t]
-    //     [(? boolean?)        #t]
-    //     [(? string?)         #t]
-    //     [(? char?)           #t]
-    //     [(? symbol?)         #t]
-    //     [(or '+ '- '* '/ '=) #t]
-    //     [else                #f]))
-
-
-    // (define (normalize-term M) (normalize M (λ (x) x)))
-
-    // (define (normalize M k)
-    //   (match M
-    //     [`(λ ,params ,body)
-    //       (k `(λ ,params ,(normalize-term body)))]
-
-    //     [`(let ([,x ,M1]) ,M2)
-    //       (normalize M1 (λ (N1)
-    //        `(let ([,x ,N1])
-    //          ,(normalize M2 k))))]
-
-    //     [`(if ,M1 ,M2 ,M3)
-    //       (normalize-name M1 (λ (t)
-    //        (k `(if ,t ,(normalize-term M2)
-    //                   ,(normalize-term M3)))))]
-
-    //     [`(,Fn . ,M*)
-    //       (normalize-name Fn (λ (t)
-    //        (normalize-name* M* (λ (t*)
-    //         (k `(,t . ,t*))))))]
-
-    //     [(? Value?)             (k M)]))
-
-    // (define (normalize-name M k)
-    //   (normalize M (λ (N)
-    //     (if (Value? N) (k N)
-    //         (let ([t (gensym)])
-    //          `(let ([,t ,N]) ,(k t)))))))
-
-    // (define (normalize-name* M* k)
-    //   (if (null? M*)
-    //       (k '())
-    //       (normalize-name (car M*) (λ (t)
-    //        (normalize-name* (cdr M*) (λ (t*)
-    //         (k `(,t . ,t*))))))))
-
 }
 
 
@@ -318,4 +276,11 @@ fn anf_transforms() {
         Let(String::from("!tmp!0"), box If(box I::Bool(true), box Op(Imm(I::Int(1))), box Op(Imm(I::Int(2)))),
             box Let(String::from("x!a1"), box Op(Imm(I::Var(String::from("!tmp!0")))),
                     box Op(Imm(I::Var(String::from("x!a1")))))));
+
+    test_anf!(
+        "let a = array(3, 5) in a[0]",
+        Let(String::from("!tmp!0"), box Op(MkArray(box I::Int(3), box I::Int(5))),
+            box Let(String::from("a!a1"), box Op(Imm(I::Var(String::from("!tmp!0")))),
+                    box Let(String::from("!tmp!1"), box Op(GetArray(box I::Var(String::from("a!a1")), box I::Int(0))),
+                            box Op(Imm(I::Var(String::from("!tmp!1"))))))));
 }
