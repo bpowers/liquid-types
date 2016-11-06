@@ -82,9 +82,8 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Imm) -> (ConvEnv, Exp
     match *e {
         E::Const(ref c) => k(cenv, constant(c)),
         E::Op2(op, ref l, ref r) => {
-            expr(cenv, l, &|cenv: ConvEnv, ll: I| -> (ConvEnv, Expr) {
-                expr(cenv, r, &|cenv: ConvEnv, rr: I| -> (ConvEnv, Expr) {
-
+            expr(cenv, l, &|cenv, ll| {
+                expr(cenv, r, &|cenv, rr| {
                     let (cenv, op_tmp) = cenv.tmp();
                     let op_val = Op(Op2(op, box ll.clone(), box rr));
                     // value to pass to the continuation
@@ -99,7 +98,7 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Imm) -> (ConvEnv, Exp
             })
         }
         E::Let(ref id, ref e1, ref e2) => {
-            expr(cenv, e1, &|cenv: ConvEnv, e1l: I| -> (ConvEnv, Expr) {
+            expr(cenv, e1, &|cenv, e1l| {
                 let (cenv, inner) = expr(cenv, e2, k);
                 (cenv, Let(id.clone(), box Op(Imm(e1l.clone())), box inner))
             })
@@ -108,7 +107,7 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Imm) -> (ConvEnv, Exp
             k(cenv, I::Var(x.clone()))
         }
         E::If(ref e1, ref e2, ref e3) => {
-            expr(cenv, e1, &|cenv: ConvEnv, cond_ref: I| -> (ConvEnv, Expr) {
+            expr(cenv, e1, &|cenv, cond_ref| {
 
                 let (cenv, l_true) = expr(cenv, e2, &identity);
                 let (cenv, l_false) = expr(cenv, e3, &identity);
@@ -127,7 +126,6 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Imm) -> (ConvEnv, Exp
             })
         }
         E::Fun(ref id, _, ref e) => {
-
             let (cenv, fun) = expr(cenv, e, &identity);
             let (cenv, fun_ref) = cenv.tmp();
             let (cenv, result) = k(cenv, I::Var(fun_ref.clone()));
@@ -135,7 +133,6 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Imm) -> (ConvEnv, Exp
             (cenv, Let(fun_ref, box Op(Imm(I::Fun(id.clone(), box fun))), box result))
         }
         E::Fix(ref id, _, ref e) => {
-
             let (cenv, fix) = expr(cenv, e, &identity);
             let (cenv, fix_ref) = cenv.tmp();
             let (cenv, result) = k(cenv, I::Var(fix_ref.clone()));
@@ -143,8 +140,8 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Imm) -> (ConvEnv, Exp
             (cenv, Let(fix_ref, box Op(Imm(I::Fix(id.clone(), box fix))), box result))
         }
         E::App(ref e1, ref e2) => {
-            expr(cenv, e1, &|cenv: ConvEnv, ie1: I| -> (ConvEnv, Expr) {
-                expr(cenv, e2, &|cenv: ConvEnv, ie2: I| -> (ConvEnv, Expr) {
+            expr(cenv, e1, &|cenv, ie1| {
+                expr(cenv, e2, &|cenv, ie2| {
 
                     let (cenv, app_tmp) = cenv.tmp();
                     let app_val = App(box ie1.clone(), box ie2.clone());
@@ -160,10 +157,8 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Imm) -> (ConvEnv, Exp
             })
         }
         E::MkArray(ref sz, ref val) => {
-            println!("O mkarray");
-            expr(cenv, sz, &|cenv: ConvEnv, isz: I| -> (ConvEnv, Expr) {
-                expr(cenv, val, &|cenv: ConvEnv, ival: I| -> (ConvEnv, Expr) {
-                    println!("I mkarray");
+            expr(cenv, sz, &|cenv, isz| {
+                expr(cenv, val, &|cenv, ival| {
                     let val = Op(MkArray(box isz.clone(), box ival));
                     let (cenv, val_ref) = cenv.tmp();
                     let (cenv, result) = k(cenv, I::Var(val_ref.clone()));
@@ -172,10 +167,8 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Imm) -> (ConvEnv, Exp
             })
         }
         E::GetArray(ref id, ref idx) => {
-            println!("O getarray");
-            expr(cenv, id, &|cenv: ConvEnv, iid: I| -> (ConvEnv, Expr) {
-                expr(cenv, idx, &|cenv: ConvEnv, iidx: I| -> (ConvEnv, Expr) {
-                    println!("I getarray");
+            expr(cenv, id, &|cenv, iid| {
+                expr(cenv, idx, &|cenv, iidx| {
                     let val = Op(GetArray(box iid.clone(), box iidx));
                     let (cenv, val_ref) = cenv.tmp();
                     let (cenv, result) = k(cenv, I::Var(val_ref.clone()));
@@ -184,9 +177,9 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Imm) -> (ConvEnv, Exp
             })
         }
         E::SetArray(ref id, ref idx, ref v) => {
-            expr(cenv, id, &|cenv: ConvEnv, iid: I| -> (ConvEnv, Expr) {
-                expr(cenv, idx, &|cenv: ConvEnv, iidx: I| -> (ConvEnv, Expr) {
-                    expr(cenv, v, &|cenv: ConvEnv, iv: I| -> (ConvEnv, Expr) {
+            expr(cenv, id, &|cenv, iid| {
+                expr(cenv, idx, &|cenv, iidx| {
+                    expr(cenv, v, &|cenv, iv| {
                         let val = Op(SetArray(box iid.clone(), box iidx.clone(), box iv));
                         let (cenv, val_ref) = cenv.tmp();
                         let (cenv, result) = k(cenv, I::Var(val_ref.clone()));
@@ -198,6 +191,9 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Imm) -> (ConvEnv, Exp
     }
 }
 
+fn build_env(env: HashMap<Id, explicit::Type>, e: &Expr) -> HashMap<Id, explicit::Type> {
+    env
+}
 
 pub fn anf(implicit_expr: &implicit::Expr) -> Result<(Expr, HashMap<Id, explicit::Type>)> {
 
@@ -207,6 +203,8 @@ pub fn anf(implicit_expr: &implicit::Expr) -> Result<(Expr, HashMap<Id, explicit
 
     let cenv = ConvEnv::new();
     let (_, expr) = expr(cenv, &alpha_expr, &identity);
+
+    let env = build_env(env, &expr);
 
     Ok((expr, env))
 }

@@ -15,6 +15,8 @@ Subtraction: - make sure there are spaces around `-` like in `k - 1`. `k-1` does
 TODO
 ----
 
+- [ ] Generate Shape(Γ) from lambdal::Expr in lambdal::anf()
+- [ ] Update eval to use lambdal::Expr
 - [ ] Generate liquid type constraints from lambdal + Shape(Γ)
 - [ ] Replace liquid type variables w/ precise refinements
 - [ ] Builtin functions - in the builtin type environment and evaluation context
