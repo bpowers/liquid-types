@@ -14,8 +14,8 @@ pub enum Imm {
     Var(Id),
     Fun(Id, Box<Expr>),
     Fix(Id, Box<Expr>),
-    //    Star,
-    //    V,
+    Star,
+    V,
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
@@ -208,6 +208,7 @@ fn build_env_imm(env: HashMap<Id, Type>, i: &Imm) -> (HashMap<Id, Type>, Type) {
             (env, Type::TFun(box arg_type, box return_type))
         }
         Fix(_, ref e) => build_env_expr(env, e),
+        V | Star => unreachable!("ν or ★ encountered during build_env"),
     }
 }
 

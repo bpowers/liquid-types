@@ -97,6 +97,7 @@ fn subst_imm(ctx: &Closure, id: &String, fix: &Imm, i: &Imm) -> Imm {
             let e = box subst_expr(ctx, id, fix, e);
             Fix(vid.clone(), e)
         }
+        V | Star => unreachable!("ν or ★ encountered during subst"),
     }
 }
 
@@ -171,6 +172,7 @@ fn eval_imm(ctx: &Closure, i: &Imm) -> Value {
             let substituted_exp = box subst_expr(ctx, id, i, &ie);
             VClosure(box ctx.clone(), iid, substituted_exp)
         }
+        V | Star => unreachable!("ν or ★ encountered during subst"),
     }
 }
 

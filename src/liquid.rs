@@ -641,6 +641,7 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[lambdal::Op]) 
 
 #[test]
 fn test_implication() {
+    use lambdal::Op::*;
     use lambdal::Expr::*;
     use common::Op2::*;
 
@@ -649,7 +650,7 @@ fn test_implication() {
     env.insert(String::from("y"), explicit::Type::TInt);
 
     let p = [
-        Op2(And,
+        Op(Op2(And,
             box Op2(LTE, box Var(String::from("x")), box Var(String::from("y"))),
             box Op2(Eq, box V, box Var(String::from("y")))),
     ];

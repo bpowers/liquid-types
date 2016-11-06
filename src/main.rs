@@ -21,7 +21,7 @@ mod explicit;
 mod refined;
 mod hindley_milner;
 mod env;
-mod liquid;
+//mod liquid;
 mod eval;
 mod lambdal;
 
@@ -107,7 +107,7 @@ fn main() {
 
     // alternatively:
     // Qbc (bounds checking)
-    // X: 0, *, len *
+    // X: 0, ★, len ★
     // ν < X
     // ν <= X
     // ν = X
@@ -115,23 +115,24 @@ fn main() {
     // ν > X
 
     let q = {
+        use lambdal::Imm as I;
         use lambdal::Op::*;
         use common::Op2::*;
         use common::Const::*;
         [
-            Op2(LTE, box Const(Int(0)), box V),
-            Op2(LTE, box Star, box V),
-            Op2(LT, box V, box Star),
+            Op2(LTE, box I::Int(0), box I::V),
+            Op2(LTE, box I::Star, box I::V),
+            Op2(LT, box I::V, box I::Star),
             //Op2(LT, box V, box App(box Var(String::from("len")), box Star)),
         ]
     };
 
-    let refined = match liquid::infer(&anf_expr, &type_env, &q) {
-        Ok(expr) => expr,
-        Err(e) => die!("infer: {}", error::Error::description(&e)),
-    };
+    // let refined = match liquid::infer(&anf_expr, &type_env, &q) {
+    //     Ok(expr) => expr,
+    //     Err(e) => die!("infer: {}", error::Error::description(&e)),
+    // };
 
-    println!("refined:\n\n{:?}\n", refined);
+    //println!("refined:\n\n{:?}\n", refined);
 
     let val = eval::interpret(&anf_expr);
 
