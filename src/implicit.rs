@@ -4,7 +4,8 @@ pub use common::{Id, Op2, Const};
 pub enum Expr {
     Var(Id),
     Const(Const),
-    Op2(Op2, Box<Expr>, Box<Expr>),
+    LOp2(LOp, Box<Expr>, Box<Expr>),
+    AOp2(AOp, Box<Expr>, Box<Expr>),
     Fun(Id, Box<Expr>),
     App(Box<Expr>, Box<Expr>),
     If(Box<Expr>, Box<Expr>, Box<Expr>),

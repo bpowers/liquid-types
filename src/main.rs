@@ -132,7 +132,7 @@ fn main() {
     //     Err(e) => die!("infer: {}", error::Error::description(&e)),
     // };
 
-    //println!("refined:\n\n{:?}\n", refined);
+    // println!("refined:\n\n{:?}\n", refined);
 
     let val = eval::interpret(&anf_expr);
 

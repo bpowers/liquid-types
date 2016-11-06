@@ -1,10 +1,11 @@
-pub use common::{Id, Op2, Const};
+pub use common::{Id, LOp, AOp, Const};
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum Expr<Ty> {
     Var(Id),
     Const(Const),
-    Op2(Op2, Box<Expr<Ty>>, Box<Expr<Ty>>),
+    AOp2(AOp, Box<Expr<Ty>>, Box<Expr<Ty>>),
+    LOp2(LOp, Box<Expr<Ty>>, Box<Expr<Ty>>),
     Fun(Id, Ty, Box<Expr<Ty>>),
     App(Box<Expr<Ty>>, Box<Expr<Ty>>),
     If(Box<Expr<Ty>>, Box<Expr<Ty>>, Box<Expr<Ty>>),
