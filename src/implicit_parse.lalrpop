@@ -19,13 +19,19 @@ Expr: Box<Expr> = {
     "fun" <id:Ident> "->" <e:Expr>                   => Box::new(Fun(id, e)),
     "fix" <id:Ident> "->" <e:Expr>                   => Box::new(Fix(id, e)),
     "begin" <e:Expr> "end"                           => e,
-    Cmp,
+    LCmp,
 };
 
-Cmp: Box<Expr> = {
-    <l:Add> "=" <r:Cmp> => Box::new(Op2(Eq, l, r)),
-    <l:Add> "<" <r:Cmp> => Box::new(Op2(LT, l, r)),
-    <l:Add> ">" <r:Cmp> => Box::new(Op2(GT, l, r)),
+LCmp: Box<Expr> = {
+    <l:ACmp> "∧" <r:LCmp> => Box::new(Op2(And, l, r)),
+    <l:ACmp> "∨" <r:LCmp> => Box::new(Op2(Or, l, r)),
+    ACmp,
+};
+
+ACmp: Box<Expr> = {
+    <l:Add> "=" <r:ACmp> => Box::new(Op2(Eq, l, r)),
+    <l:Add> "<" <r:ACmp> => Box::new(Op2(LT, l, r)),
+    <l:Add> ">" <r:ACmp> => Box::new(Op2(GT, l, r)),
     Add,
 };
 
@@ -55,6 +61,8 @@ App: Box<Expr> = {
 
 Atom: Box<Expr> = {
     <id:Ident>    => Box::new(Var(id)),
+    "ν"           => Box::new(V),
+    "★"           => Box::new(Star),
     "true"        => Box::new(Const(Bool(true))),
     "false"       => Box::new(Const(Bool(true))),
     "(" <Exprs> ")",
@@ -114,6 +122,10 @@ extern {
         "array" => Tok::Array,
         "set" => Tok::Set,
         "rec" => Tok::Rec,
+        "ν" => Tok::V,
+        "★" => Tok::Star,
+        "∧" => Tok::And,
+        "∨" => Tok::Or,
 
         "Iden" => Tok::Ident(<&'input str>),
         "Num" => Tok::Num(<i64>),

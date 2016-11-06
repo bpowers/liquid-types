@@ -94,10 +94,12 @@ fn idents() {
 
 #[test]
 fn block() {
-    test("begin 3 end", vec![
-        ("~~~~~      ", Begin),
-        ("      ~    ", Num(3)),
-        ("        ~~~", End),
+    test("begin 3 ∧ 1 end", vec![
+        ("~~~~~          ", Begin),
+        ("      ~        ", Num(3)),
+        ("        ~      ", And),
+        ("            ~    ", Num(1)),
+        ("              ~~~", End),
     ]);
 }
 

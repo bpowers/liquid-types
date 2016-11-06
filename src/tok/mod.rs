@@ -32,6 +32,8 @@ pub enum Tok<'input> {
     LArrow,
     Lt,
     Gt,
+    And,
+    Or,
     Plus,
     Minus,
     Mul,
@@ -52,6 +54,8 @@ pub enum Tok<'input> {
     Comma,
     Set,
     Rec,
+    V,
+    Star,
     Ident(&'input str),
     Num(i64),
 }
@@ -193,6 +197,10 @@ impl<'input> Iterator for Tokenizer<'input> {
             return match self.lookahead {
                 Some((i, '!')) => consume!(self, i, Exclaim, 1),
                 Some((i, '=')) => consume!(self, i, Eq, 1),
+                Some((i, '∧')) => consume!(self, i, And, 1),
+                Some((i, '∨')) => consume!(self, i, Or, 1),
+                Some((i, 'ν')) => consume!(self, i, V, 1),
+                Some((i, '★')) => consume!(self, i, Star, 1),
                 Some((i, '<')) => {
                     match self.bump() {
                         Some((_, '-')) => consume!(self, i, LArrow, 2),

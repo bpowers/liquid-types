@@ -114,12 +114,12 @@ fn main() {
     // ν >= X
     // ν > X
 
-    let q = {
+    let q: &[lambdal::Op] = {
         use lambdal::Imm as I;
         use lambdal::Op::*;
         use common::Op2::*;
         use common::Const::*;
-        [
+        &[
             Op2(LTE, box I::Int(0), box I::V),
             Op2(LTE, box I::Star, box I::V),
             Op2(LT, box I::V, box I::Star),
@@ -132,7 +132,7 @@ fn main() {
     //     Err(e) => die!("infer: {}", error::Error::description(&e)),
     // };
 
-    //println!("refined:\n\n{:?}\n", refined);
+    // println!("refined:\n\n{:?}\n", refined);
 
     let val = eval::interpret(&anf_expr);
 

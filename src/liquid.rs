@@ -642,7 +642,6 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[lambdal::Op]) 
 #[test]
 fn test_implication() {
     use lambdal::Op::*;
-    use lambdal::Expr::*;
     use common::Op2::*;
 
     let mut env: HashMap<Id, explicit::Type> = HashMap::new();
@@ -650,15 +649,11 @@ fn test_implication() {
     env.insert(String::from("y"), explicit::Type::TInt);
 
     let p = [
-        Op(Op2(And,
-            box Op2(LTE, box Var(String::from("x")), box Var(String::from("y"))),
-            box Op2(Eq, box V, box Var(String::from("y")))),
+        expr!("x > y ∧ ν = y"),
     ];
 
     let q = [
-        Op2(And,
-            box Op2(GTE, box V, box Var(String::from("x"))),
-            box Op2(GTE, box V, box Var(String::from("y")))),
+        expr!("ν >= x ∧ ν >= y"),
     ];
 
     // expect this to hold
@@ -667,12 +662,11 @@ fn test_implication() {
     }
 
     let p = [
-        Op2(And,
-            box Op2(LTE, box Var(String::from("x")), box Var(String::from("y"))),
-            box Op2(Eq, box V, box Var(String::from("y")))),
+        expr!("x <= y ∧ ν = y"),
     ];
 
     let q = [
+        expr!("ν < 0 ∧ ν >= x ∧ ν >= y"),
         Op2(And,
             box Op2(LT, box V, box Const(common::Const::Int(0))),
             box Op2(And,
