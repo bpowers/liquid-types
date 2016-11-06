@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use common::{Result, Id, Op2, Const};
 use explicit;
+use explicit::{Type};
 use implicit;
 use env;
 use hindley_milner;
@@ -37,14 +38,12 @@ pub enum Expr {
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 struct ConvEnv {
-    //env: HashMap<Id, explicit::Type>,
     next_id: i32,
 }
 
 impl ConvEnv {
     fn new() -> ConvEnv {
         ConvEnv {
-            //env: HashMap::new(),
             next_id: 0,
         }
     }
@@ -191,11 +190,84 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Imm) -> (ConvEnv, Exp
     }
 }
 
-fn build_env(env: HashMap<Id, explicit::Type>, e: &Expr) -> HashMap<Id, explicit::Type> {
-    env
+fn build_env_imm(env: HashMap<Id, Type>, i: &Imm) -> (HashMap<Id, Type>, Type) {
+    use self::Imm::*;
+    match *i {
+        Bool(_) => (env, Type::TBool),
+        Int(_) => (env, Type::TInt),
+        Var(ref id) => {
+            let ty = match env.get(id) {
+                Some(ty) => ty.clone(),
+                None => panic!("no key '{}' in {:?}", id, env),
+            };
+            (env, ty)
+        }
+        Fun(ref id, ref e) => {
+            let (env, return_type) = build_env_expr(env, e);
+            let arg_type = env[id].clone();
+            (env, Type::TFun(box arg_type, box return_type))
+        }
+        Fix(_, ref e) => build_env_expr(env, e),
+    }
 }
 
-pub fn anf(implicit_expr: &implicit::Expr) -> Result<(Expr, HashMap<Id, explicit::Type>)> {
+fn build_env_op(env: HashMap<Id, Type>, o: &Op) -> (HashMap<Id, Type>, Type) {
+    use self::Op::*;
+    match *o {
+        Op2(op, ref e1, ref e2) => {
+            let (env, _) = build_env_imm(env, e1);
+            let (env, _) = build_env_imm(env, e2);
+            (env, explicit::opty(op))
+        }
+        MkArray(ref e1, ref e2) => {
+            let (env, _) = build_env_imm(env, e1);
+            let (env, _) = build_env_imm(env, e2);
+            (env, Type::TIntArray)
+        }
+        GetArray(ref e1, ref e2) => {
+            let (env, _) = build_env_imm(env, e1);
+            let (env, _) = build_env_imm(env, e2);
+            (env, Type::TInt)
+        }
+        SetArray(ref e1, ref e2, ref e3) => {
+            let (env, _) = build_env_imm(env, e1);
+            let (env, _) = build_env_imm(env, e2);
+            let (env, _) = build_env_imm(env, e3);
+            (env, Type::TIntArray)
+        }
+        Imm(ref i) => build_env_imm(env, i),
+    }
+}
+
+fn build_env_expr(env: HashMap<Id, Type>, e: &Expr) -> (HashMap<Id, Type>, Type) {
+    use self::Expr::*;
+    match *e {
+        If(ref cond, ref e1, ref e2) => {
+            let (env, _) = build_env_imm(env, cond);
+            let (env, ty) = build_env_expr(env, e1);
+            let (env, _) = build_env_expr(env, e2);
+            (env, ty)
+        }
+        App(ref e1, _) => {
+            let (env, e1_type) = build_env_imm(env, e1);
+            if let Type::TFun(_, ret_type) = e1_type {
+                (env, *ret_type)
+            } else {
+                unreachable!("app of non-fun should have been caught by HM")
+            }
+        }
+        Let(ref id, ref e1, ref e2) => {
+            let (env, id_ty) = build_env_expr(env, e1);
+            let mut env = env.clone();
+            env.insert(id.clone(), id_ty);
+
+            build_env_expr(env, e2)
+        }
+        Op(ref op) => build_env_op(env, op),
+    }
+}
+
+pub fn anf(implicit_expr: &implicit::Expr) -> Result<(Expr, HashMap<Id, Type>)> {
 
     let explicit_expr = hindley_milner::infer(implicit_expr)?;
     // alpha-renaming
@@ -204,7 +276,7 @@ pub fn anf(implicit_expr: &implicit::Expr) -> Result<(Expr, HashMap<Id, explicit
     let cenv = ConvEnv::new();
     let (_, expr) = expr(cenv, &alpha_expr, &identity);
 
-    let env = build_env(env, &expr);
+    let (env, _) = build_env_expr(env, &expr);
 
     Ok((expr, env))
 }
