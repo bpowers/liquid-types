@@ -85,6 +85,8 @@ fn convert(n: i32, env: &mut HashMap<Id, Type>, renamed: &HashMap<Id, Id>, expr:
             let (n, v, _) = convert(n, env, renamed, v);
             (n, E::SetArray(box id, box idx, box v), Type::TIntArray)
         }
+        E::V => (n, E::V, Type::TInt), // TODO: not quite right
+        E::Star => (n, E::Star, Type::TInt), // TODO: not quite right
     }
 }
 

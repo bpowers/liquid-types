@@ -96,14 +96,14 @@ fn add_metavars_in(env: &mut MVEnv, expr: &implicit::Expr) -> explicit::Expr {
             let v = box add_metavars_in(env, v);
             E::SetArray(id, idx, v)
         }
-        I::Star => panic!("star found when it shouldn't be"),
-        I::V => panic!("v found when it shouldn't be"),
+        I::Star => E::Star,
+        I::V => E::V,
     }
 }
 
-fn add_metavars(expr: &implicit::Expr) -> Box<explicit::Expr> {
+pub fn add_metavars(expr: &implicit::Expr) -> explicit::Expr {
     let mut env = MVEnv::new("α");
-    box add_metavars_in(&mut env, expr)
+    add_metavars_in(&mut env, expr)
 }
 
 fn gen_constraints<'a>(m: &mut MVEnv,
@@ -203,6 +203,8 @@ fn gen_constraints<'a>(m: &mut MVEnv,
             c1.push((t3, Type::TInt));
             (c1, Type::TIntArray)
         }
+        E::V => (Vec::new(), Type::TInt), // TODO: not quite right
+        E::Star => (Vec::new(), Type::TInt), // TODO: not quite right
     };
 
     Ok(result)
@@ -361,6 +363,8 @@ fn remove_metavars(env: &HashMap<Metavar, Type>, expr: &explicit::Expr) -> Resul
             let v = remove_metavars(env, v)?;
             E::SetArray(id, idx, v)
         }
+        E::V => E::V,
+        E::Star => E::Star,
     };
 
     Ok(box result)

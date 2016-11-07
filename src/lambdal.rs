@@ -187,6 +187,8 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Imm) -> (ConvEnv, Exp
                 })
             })
         }
+        E::V => k(cenv, I::V),
+        E::Star => k(cenv, I::Star),
     }
 }
 
@@ -282,6 +284,29 @@ pub fn anf(implicit_expr: &implicit::Expr) -> Result<(Expr, HashMap<Id, Type>)> 
     Ok((expr, env))
 }
 
+pub fn q(implicit_expr: &implicit::Expr) -> Result<Expr> {
+    let explicit_expr = hindley_milner::add_metavars(implicit_expr);
+    let cenv = ConvEnv::new();
+    let (_, expr) = expr(cenv, &explicit_expr, &identity);
+    Ok(expr)
+}
+
+#[test]
+fn test_q() {
+    use std;
+    use common::Op2::*;
+
+    let q1 = implicit::Expr::Op2(LT, box implicit::Expr::V, box implicit::Expr::Star);
+    let ql = match q(&q1) {
+        Ok(expr) => expr,
+        Err(e) => die!("q: {:?}", e),
+    };
+
+    if ql != Expr::Let(String::from("!tmp!0"), box Expr::Op(Op::Op2(LT, box Imm::V, box Imm::Star)),
+                       box Expr::Op(Op::Imm(Imm::Var(String::from("!tmp!0"))))) {
+        die!("conversion of q failed: {:?}", ql)
+    };
+}
 
 macro_rules! test_anf(
     ($s:expr, $ae:expr) => { {

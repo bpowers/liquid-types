@@ -29,9 +29,11 @@ LCmp: Box<Expr> = {
 };
 
 ACmp: Box<Expr> = {
-    <l:Add> "=" <r:ACmp> => Box::new(Op2(Eq, l, r)),
-    <l:Add> "<" <r:ACmp> => Box::new(Op2(LT, l, r)),
-    <l:Add> ">" <r:ACmp> => Box::new(Op2(GT, l, r)),
+    <l:Add> "=" <r:ACmp>  => Box::new(Op2(Eq, l, r)),
+    <l:Add> "<" <r:ACmp>  => Box::new(Op2(LT, l, r)),
+    <l:Add> "<=" <r:ACmp> => Box::new(Op2(LTE, l, r)),
+    <l:Add> ">" <r:ACmp>  => Box::new(Op2(GT, l, r)),
+    <l:Add> ">=" <r:ACmp> => Box::new(Op2(GTE, l, r)),
     Add,
 };
 
@@ -101,7 +103,9 @@ extern {
         "->" => Tok::RArrow,
         "<-" => Tok::LArrow,
         "<" => Tok::Lt,
+        "<=" => Tok::Lte,
         ">" => Tok::Gt,
+        ">=" => Tok::Gte,
         "+" => Tok::Plus,
         "-" => Tok::Minus,
         "*" => Tok::Mul,

@@ -13,4 +13,6 @@ pub enum Expr<Ty> {
     MkArray(Box<Expr<Ty>>, Box<Expr<Ty>>),
     GetArray(Box<Expr<Ty>>, Box<Expr<Ty>>),
     SetArray(Box<Expr<Ty>>, Box<Expr<Ty>>, Box<Expr<Ty>>),
+    V,
+    Star,
 }

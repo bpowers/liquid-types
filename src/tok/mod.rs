@@ -31,7 +31,9 @@ pub enum Tok<'input> {
     RArrow,
     LArrow,
     Lt,
+    Lte,
     Gt,
+    Gte,
     And,
     Or,
     Plus,
@@ -204,13 +206,22 @@ impl<'input> Iterator for Tokenizer<'input> {
                 Some((i, '<')) => {
                     match self.bump() {
                         Some((_, '-')) => consume!(self, i, LArrow, 2),
+                        Some((_, '=')) => consume!(self, i, Lte, 2),
                         _ => {
                             // we've already bumped, don't consume
                             Some(Ok((i, Lt, 1)))
                         }
                     }
                 }
-                Some((i, '>')) => consume!(self, i, Gt, 1),
+                Some((i, '>')) =>  {
+                    match self.bump() {
+                        Some((_, '=')) => consume!(self, i, Gte, 2),
+                        _ => {
+                            // we've already bumped, don't consume
+                            Some(Ok((i, Gt, 1)))
+                        }
+                    }
+                }
                 Some((i, '-')) => {
                     match self.bump() {
                         Some((_, '>')) => consume!(self, i, RArrow, 2),

@@ -118,7 +118,6 @@ fn main() {
         use lambdal::Imm as I;
         use lambdal::Op::*;
         use common::Op2::*;
-        use common::Const::*;
         &[
             Op2(LTE, box I::Int(0), box I::V),
             Op2(LTE, box I::Star, box I::V),

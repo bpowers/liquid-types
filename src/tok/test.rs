@@ -44,6 +44,20 @@ fn ifstmt() {
 }
 
 #[test]
+fn lte() {
+    test("<=", vec![
+        ("~~", Lte),
+    ]);
+}
+
+#[test]
+fn gte() {
+    test(">=", vec![
+        ("~~", Gte),
+    ]);
+}
+
+#[test]
 fn negative_num() {
     test("-3", vec![
         ("~~", Num(-3)),
