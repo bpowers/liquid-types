@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
 use common::{Result, Id, Op2, Const};
 use explicit;
@@ -36,14 +37,18 @@ pub enum Expr {
     Op(Op),
 }
 
+static ENV_ID: AtomicUsize = ATOMIC_USIZE_INIT;
+
 #[derive(PartialEq, Eq, Clone, Debug)]
 struct ConvEnv {
+    env_id: usize,
     next_id: i32,
 }
 
 impl ConvEnv {
     fn new() -> ConvEnv {
         ConvEnv {
+            env_id: ENV_ID.fetch_add(1, Ordering::SeqCst),
             next_id: 0,
         }
     }
@@ -51,11 +56,11 @@ impl ConvEnv {
     fn tmp(&self) -> (ConvEnv, Id) {
         let id = self.next_id;
         let c = ConvEnv{
-            //env: self.env.clone(),
+            env_id: self.env_id,
             next_id: self.next_id+1,
         };
 
-        (c, format!("!tmp!{}", id))
+        (c, format!("!tmp-{}!{}", self.env_id, id))
     }
 }
 

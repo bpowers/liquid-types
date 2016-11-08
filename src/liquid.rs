@@ -471,9 +471,8 @@ fn smt_from_expr(
                 None => panic!("key {} not found in {:?}", id, vars),
             };
             let eq_exprs = &[id_idx, smt_from_expr(s, vars, e1)];
-            let eq_id = s.assert(integer::OpCodes::Cmp, eq_exprs);
-            let rest_id = smt_from_expr(s, vars, e2);
-            s.assert(integer::OpCodes::Cmp, &[eq_id, rest_id])
+            let _ = s.assert(integer::OpCodes::Cmp, eq_exprs);
+            smt_from_expr(s, vars, e2)
         }
         E::App(ref e1, ref e2)         => {
             if *e1 == box Imm::Var(String::from("not")) {
@@ -498,8 +497,6 @@ fn implication_holds(env: &HashMap<Id, explicit::Type>, p: &[lambdal::Expr], q: 
 
     let mut senv: HashMap<Id, _> = HashMap::new();
 
-    println!("defining: {:?}", env);
-
     // Defining the symbolic vars x & y
     for (var, ty) in env {
         let sty: LIA_Sorts = match *ty {
@@ -513,18 +510,32 @@ fn implication_holds(env: &HashMap<Id, explicit::Type>, p: &[lambdal::Expr], q: 
     // TODO: is v always an int?
     senv.insert(String::from("!v"), solver.new_var(Some("!v"), integer::Sorts::Int));
 
+    let strue = solver.new_const(core::OpCodes::Const(true));
+
     let mut ps: Vec<_> = Vec::new();
     for t in p {
-        ps.push(smt_from_expr(&mut solver, &senv, t));
+        let pred = smt_from_expr(&mut solver, &senv, t);
+        //let _ = solver.assert(integer::OpCodes::Cmp, &[pred, strue]);
+        ps.push(pred);
     }
 
     let mut qs: Vec<_> = Vec::new();
     for t in q {
-        qs.push(smt_from_expr(&mut solver, &senv, t));
+        let pred = smt_from_expr(&mut solver, &senv, t);
+        //let _ = solver.assert(integer::OpCodes::Cmp, &[pred, strue]);
+        qs.push(pred);
     }
 
-    let p_all = solver.assert(core::OpCodes::And, &ps);
-    let q_all = solver.assert(core::OpCodes::And, &qs);
+    let p_all = if ps.len() > 1 {
+        solver.assert(core::OpCodes::And, &ps)
+    } else {
+        ps[0]
+    };
+    let q_all = if qs.len() > 1 {
+        solver.assert(core::OpCodes::And, &qs)
+    } else {
+        qs[0]
+    };
     let imply = solver.assert(core::OpCodes::Imply, &[p_all, q_all]);
     let _ = solver.assert(core::OpCodes::Not, &[imply]);
 
@@ -709,12 +720,23 @@ fn test_implication() {
     let mut env: HashMap<Id, explicit::Type> = HashMap::new();
     env.insert(String::from("x"), explicit::Type::TInt);
     env.insert(String::from("y"), explicit::Type::TInt);
-    env.insert(String::from("!tmp!0"), explicit::Type::TBool);
-    env.insert(String::from("!tmp!1"), explicit::Type::TBool);
-    env.insert(String::from("!tmp!2"), explicit::Type::TBool);
+    env.insert(String::from("!tmp-0!0"), explicit::Type::TBool);
+    env.insert(String::from("!tmp-0!1"), explicit::Type::TBool);
+    env.insert(String::from("!tmp-0!2"), explicit::Type::TBool);
+    env.insert(String::from("!tmp-1!0"), explicit::Type::TBool);
+    env.insert(String::from("!tmp-1!1"), explicit::Type::TBool);
+    env.insert(String::from("!tmp-1!2"), explicit::Type::TBool);
+    env.insert(String::from("!tmp-2!0"), explicit::Type::TBool);
+    env.insert(String::from("!tmp-2!1"), explicit::Type::TBool);
+    env.insert(String::from("!tmp-2!2"), explicit::Type::TBool);
+    env.insert(String::from("!tmp-3!0"), explicit::Type::TBool);
+    env.insert(String::from("!tmp-3!1"), explicit::Type::TBool);
+    env.insert(String::from("!tmp-3!2"), explicit::Type::TBool);
+    env.insert(String::from("!tmp-3!3"), explicit::Type::TBool);
+    env.insert(String::from("!tmp-3!4"), explicit::Type::TBool);
 
     let p = [
-        expr!("x > y ∧ ν = y"),
+        expr!("x <= y ∧ ν = y"),
     ];
 
     let q = [
@@ -723,7 +745,7 @@ fn test_implication() {
 
     // expect this to hold
     if !implication_holds(&env, &p, &q) {
-        die!("expected {:?} => {:?}", p, q);
+        die!("1 expected {:?} => {:?}", p, q);
     }
 
     let p = [
@@ -736,7 +758,7 @@ fn test_implication() {
 
     // but this shouldn't
     if implication_holds(&env, &p, &q) {
-        die!("expected {:?} => {:?}", p, q);
+        die!("2 expected {:?} => {:?}", p, q);
     }
 }
 
