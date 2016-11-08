@@ -15,7 +15,6 @@ Subtraction: - make sure there are spaces around `-` like in `k - 1`. `k-1` does
 TODO
 ----
 
-- [ ] get test implication working (comment out everything else)
 - [ ] Update cons
 - [ ] Update split
 - [ ] Update build_a
