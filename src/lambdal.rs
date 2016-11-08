@@ -307,10 +307,91 @@ fn test_q() {
         Err(e) => die!("q: {:?}", e),
     };
 
-    if ql != Expr::Let(String::from("!tmp!0"), box Expr::Op(Op::Op2(LT, box Imm::V, box Imm::Star)),
-                       box Expr::Op(Op::Imm(Imm::Var(String::from("!tmp!0"))))) {
+    let expected = Expr::Let(String::from("!tmp!0"), box Expr::Op(Op::Op2(LT, box Imm::V, box Imm::Star)),
+                             box Expr::Op(Op::Imm(Imm::Var(String::from("!tmp!0")))));
+
+    if !cmp(&ql, &expected) {
         die!("conversion of q failed: {:?}", ql)
     };
+}
+
+fn cmp_imm(vmap: HashMap<Id, Id>, imm1: &Imm, imm2: &Imm) -> bool {
+    let mut vmap = vmap;
+    use self::Imm::*;
+
+    match (imm1, imm2) {
+        (&Bool(b1), &Bool(b2)) => b1 == b2,
+        (&Int(n1), &Int(n2)) => n1 == n2,
+        (&Var(ref v1), &Var(ref v2)) => {
+            let expected_v2 = match vmap.get(v1) {
+                Some(v) => v,
+                None => {
+                    return false;
+                }
+            };
+            expected_v2 == v2
+        }
+        (&Fun(ref id1, ref e1), &Fun(ref id2, ref e2)) => {
+            vmap.insert(id1.clone(), id2.clone());
+            cmp_expr(vmap, e1, e2)
+        }
+        (&Fix(ref id1, ref e1), &Fun(ref id2, ref e2)) => {
+            vmap.insert(id1.clone(), id2.clone());
+            cmp_expr(vmap, e1, e2)
+        }
+        (&Star, &Star) => true,
+        (&V, &V) => true,
+        _ => false,
+    }
+}
+
+fn cmp_op(vmap: HashMap<Id, Id>, e1: &Op, e2: &Op) -> bool {
+    use self::Op::*;
+
+    match (e1, e2) {
+        (&Op2(ref op1, ref l1, ref r1), &Op2(ref op2, ref l2, ref r2)) => {
+            op1 == op2 && cmp_imm(vmap.clone(), l1, l2) && cmp_imm(vmap, r1, r2)
+        }
+        (&MkArray(ref sz1, ref n1), &MkArray(ref sz2, ref n2)) => {
+            cmp_imm(vmap.clone(), sz1, sz2) && cmp_imm(vmap, n1, n2)
+        }
+        (&GetArray(ref a1, ref n1), &GetArray(ref a2, ref n2)) => {
+            cmp_imm(vmap.clone(), a1, a2) && cmp_imm(vmap, n1, n2)
+        }
+        (&SetArray(ref a1, ref n1, ref v1), &SetArray(ref a2, ref n2, ref v2)) => {
+            cmp_imm(vmap.clone(), a1, a2) && cmp_imm(vmap.clone(), n1, n2) && cmp_imm(vmap, v1, v2)
+        }
+        (&Imm(ref i1), &Imm(ref i2)) => cmp_imm(vmap, i1, i2),
+        _ => false,
+    }
+}
+
+fn cmp_expr(vmap: HashMap<Id, Id>, e1: &Expr, e2: &Expr) -> bool {
+    let mut vmap = vmap;
+    use self::Expr::*;
+
+    match (e1, e2) {
+        (&If(ref cond1, ref l1, ref r1), &If(ref cond2, ref l2, ref r2)) => {
+            cmp_imm(vmap.clone(), cond1, cond2) && cmp_expr(vmap.clone(), l1, l2) && cmp_expr(vmap, r1, r2)
+        }
+        (&App(ref l1, ref r1), &App(ref l2, ref r2)) => {
+            cmp_imm(vmap.clone(), l1, l2) && cmp_imm(vmap, r1, r2)
+        }
+        (&Let(ref v1, ref l1, ref r1), &Let(ref v2, ref l2, ref r2)) => {
+            if !cmp_expr(vmap.clone(), l1, l2) {
+                return false;
+            }
+            vmap.insert(v1.clone(), v2.clone());
+            cmp_expr(vmap, r1, r2)
+        }
+        (&Op(ref op1), &Op(ref op2)) => cmp_op(vmap, op1, op2),
+        _ => false,
+    }
+}
+
+pub fn cmp(e1: &Expr, e2: &Expr) -> bool {
+    let vmap = HashMap::new();
+    cmp_expr(vmap, e1, e2)
 }
 
 macro_rules! test_anf(
@@ -332,8 +413,9 @@ macro_rules! test_anf(
                 die!("anf: {:?}", e);
             }
         };
-        if anf_expr != $ae {
-            die!("mismatch {:?} != {:?}", anf_expr, $ae);
+        let expected = $ae;
+        if !cmp(&anf_expr, &expected) {
+            die!("cmp mismatch {:?} != {:?}", anf_expr, expected);
         }
     } }
 );
