@@ -638,108 +638,108 @@ fn implication_holds(env: &HashMap<Id, explicit::Type>, p: &[lambdal::Expr], q: 
 }
 
 // whether the conjunction of all p implies the conjunction of all q
-// fn weaken(
-//     env: &HashMap<Id, explicit::Type>,
-//     a: &HashMap<Id, KInfo>,
-//     all_p: &Vec<(LinkedList<Expr>, Box<Type>)>,
-//     qs: &HashSet<lambdal::Expr>) -> Option<Vec<lambdal::Expr>> {
+fn weaken(
+    env: &HashMap<Id, explicit::Type>,
+    a: &HashMap<Id, KInfo>,
+    all_p: &Vec<(LinkedList<Expr>, Box<Type>)>,
+    qs: &HashSet<lambdal::Expr>) -> Option<Vec<lambdal::Expr>> {
 
-//     let const_true = Expr::Op(Op::Imm(Imm::Bool(true)));
+    let const_true = Expr::Op(Op::Imm(Imm::Bool(true)));
 
-//     let mut curr_qs: Vec<lambdal::Expr> = Vec::new();
-//     for q in qs {
-//         curr_qs.push(q.clone());
+    let mut curr_qs: Vec<lambdal::Expr> = Vec::new();
+    for q in qs {
+        curr_qs.push(q.clone());
 
-//         for &(ref path_constraints, ref p) in all_p {
-//             let mut p = match *p {
-//                 box T::Ref(_, _, box Liquid::E(ref expr)) => vec![expr.clone()],
-//                 box T::Ref(_, _, box Liquid::K(ref p_id, _)) => match a.get(p_id) {
-//                     Some(ps) => ps.clone().curr_qs,
-//                     None => vec![const_true.clone()],
-//                 },
-//                 box T::Fun(_, _, _) => {
-//                     panic!("unexpected {:?} -- should all be split() by now", p)
-//                 }
-//             };
-//             for pc in path_constraints {
-//                 p.push(pc.clone());
-//             }
+        for &(ref path_constraints, ref p) in all_p {
+            let mut p = match *p {
+                box T::Ref(_, _, box Liquid::E(ref expr)) => vec![expr.clone()],
+                box T::Ref(_, _, box Liquid::K(ref p_id, _)) => match a.get(p_id) {
+                    Some(ps) => ps.clone().curr_qs,
+                    None => vec![const_true.clone()],
+                },
+                box T::Fun(_, _, _) => {
+                    panic!("unexpected {:?} -- should all be split() by now", p)
+                }
+            };
+            for pc in path_constraints {
+                p.push(pc.clone());
+            }
 
-//             println!("check: {:?}", curr_qs);
-//             if !implication_holds(env, &p, &curr_qs) {
-//                 let _ = curr_qs.pop();
-//                 break;
-//             }
-//         };
-//     };
+            println!("check: {:?}", curr_qs);
+            if !implication_holds(env, &p, &curr_qs) {
+                let _ = curr_qs.pop();
+                break;
+            }
+        };
+    };
 
-//     Some(curr_qs)
-// }
+    Some(curr_qs)
+}
 
-// fn solve(
-//     env: &HashMap<Id, explicit::Type>,
-//     constraints: &LinkedList<STConstraints>,
-//     a: &HashMap<Id, KInfo>) -> Result<HashMap<Id, KInfo>> {
+fn solve(
+    env: &HashMap<Id, explicit::Type>,
+    constraints: &LinkedList<STConstraints>,
+    a: &HashMap<Id, KInfo>) -> Result<HashMap<Id, KInfo>> {
 
-//     let const_true = Expr::Op(Op::Imm(Imm::Bool(true)));
+    let const_true = Expr::Op(Op::Imm(Imm::Bool(true)));
 
-//     for &(ref all_p, ref id) in constraints.iter() {
+    for &(ref all_p, ref id) in constraints.iter() {
 
-//         //println!("C\n\t\t{:?}\n\t\t\t{:?}", all_p, id);
-//         // if we don't find the ID in our environment, it means we are
-//         // looking at unbound function parameters -- which means we can just look
-//         let ref qs = match a.get(id) {
-//             Some(q) => q.clone(),
-//             None => {
-//                 let mut all_qs = HashSet::new();
-//                 all_qs.insert(const_true.clone());
-//                 KInfo{
-//                     all_qs: all_qs,
-//                     curr_qs: vec![const_true.clone()],
-//                 }
-//             }
-//         };
+        //println!("C\n\t\t{:?}\n\t\t\t{:?}", all_p, id);
+        // if we don't find the ID in our environment, it means we are
+        // looking at unbound function parameters -- which means we can just look
+        let ref qs = match a.get(id) {
+            Some(q) => q.clone(),
+            None => {
+                let mut all_qs = HashSet::new();
+                all_qs.insert(const_true.clone());
+                KInfo{
+                    all_qs: all_qs,
+                    curr_qs: vec![const_true.clone()],
+                }
+            }
+        };
 
-//         for &(ref path_constraints, ref p) in all_p {
-//             let mut p = match *p {
-//                 box T::Ref(_, _, box Liquid::E(ref expr)) => vec![expr.clone()],
-//                 box T::Ref(_, _, box Liquid::K(ref p_id, _)) => match a.get(p_id) {
-//                     Some(ps) => ps.clone().curr_qs,
-//                     None => vec![const_true.clone()],
-//                 },
-//                 box T::Fun(_, _, _) => {
-//                     panic!("unexpected {:?} -- should all be split() by now", p)
-//                 }
-//             };
-//             for pc in path_constraints {
-//                 p.push(pc.clone());
-//             }
-//             if !implication_holds(env, &p, &qs.curr_qs) {
-//                 if qs.curr_qs[0] == const_true {
-//                     return err!("implication failure for -> true");
-//                 }
-//                 match weaken(env, a, all_p, &qs.all_qs) {
-//                     Some(new_qs) => {
-//                         let mut new_a = a.clone();
-//                         new_a.insert(id.clone(), KInfo{
-//                             all_qs: qs.all_qs.clone(),
-//                             curr_qs: new_qs,
-//                         });
-//                         println!("RECURSOIN");
-//                         return solve(env, constraints, &new_a);
-//                     }
-//                     None => {
-//                         return err!("Weaken failed for {:?}", p);
-//                     }
-//                 }
-//             } else {
-//                 println!("{} is ok", id);
-//             }
-//         };
-//     };
+        for &(ref path_constraints, ref p) in all_p {
+            let mut p = match *p {
+                box T::Ref(_, _, box Liquid::E(ref expr)) => vec![expr.clone()],
+                box T::Ref(_, _, box Liquid::K(ref p_id, _)) => match a.get(p_id) {
+                    Some(ps) => ps.clone().curr_qs,
+                    None => vec![const_true.clone()],
+                },
+                box T::Fun(_, _, _) => {
+                    panic!("unexpected {:?} -- should all be split() by now", p)
+                }
+            };
+            for pc in path_constraints {
+                p.push(pc.clone());
+            }
+            if !implication_holds(env, &p, &qs.curr_qs) {
+                if qs.curr_qs[0] == const_true {
+                    return err!("implication failure for -> true");
+                }
+                match weaken(env, a, all_p, &qs.all_qs) {
+                    Some(new_qs) => {
+                        let mut new_a = a.clone();
+                        new_a.insert(id.clone(), KInfo{
+                            all_qs: qs.all_qs.clone(),
+                            curr_qs: new_qs,
+                        });
+                        println!("RECURSOIN");
+                        return solve(env, constraints, &new_a);
+                    }
+                    None => {
+                        return err!("Weaken failed for {:?}", p);
+                    }
+                }
+            } else {
+                println!("{} is ok", id);
+            }
+        };
+    };
 
-//     Ok(a.clone())
-// }
+    Ok(a.clone())
+}
 
 pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[lambdal::Expr]) -> Result<HashMap<Id, Vec<lambdal::Expr>>> {
     let mut k_env = KEnv::new(env);
@@ -750,33 +750,33 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[lambdal::Expr]
 
     let a = build_a(&constraints, env, q);
 
-    // // group subtyping constraints by supertype
-    // let mut by_id: HashMap<Id, Vec<(LinkedList<Expr>, Box<Type>)>> = HashMap::new();
-    // for (_, c) in constraints.iter() {
-    //     if let &((_, ref path), C::Subtype(ref p, ref e)) = c {
-    //         if let box T::Ref(_, _, box Liquid::K(ref id, _)) = *e {
-    //             let mut antecedent = vec![(path.clone(), p.clone())];
-    //             if by_id.contains_key(id) {
-    //                 let mut others = by_id[id].clone();
-    //                 others.append(&mut antecedent);
-    //                 by_id.insert(id.clone(), others);
-    //             } else {
-    //                 by_id.insert(id.clone(), antecedent);
-    //             }
-    //         }
-    //     }
-    // }
-    // let mut all_constraints: LinkedList<STConstraints> = LinkedList::new();
-    // for (id, v) in by_id {
-    //     all_constraints.push_back((v.clone(), id.clone()));
-    // }
+    // group subtyping constraints by supertype
+    let mut by_id: HashMap<Id, Vec<(LinkedList<Expr>, Box<Type>)>> = HashMap::new();
+    for (_, c) in constraints.iter() {
+        if let &((_, ref path), C::Subtype(ref p, ref e)) = c {
+            if let box T::Ref(_, _, box Liquid::K(ref id, _)) = *e {
+                let mut antecedent = vec![(path.clone(), p.clone())];
+                if by_id.contains_key(id) {
+                    let mut others = by_id[id].clone();
+                    others.append(&mut antecedent);
+                    by_id.insert(id.clone(), others);
+                } else {
+                    by_id.insert(id.clone(), antecedent);
+                }
+            }
+        }
+    }
+    let mut all_constraints: LinkedList<STConstraints> = LinkedList::new();
+    for (id, v) in by_id {
+        all_constraints.push_back((v.clone(), id.clone()));
+    }
 
-    // let min_a = solve(env, &all_constraints, &a)?;
+    let min_a = solve(env, &all_constraints, &a)?;
 
     let mut res = HashMap::new();
-    // for (k, v) in min_a {
-    //     res.insert(k, v.curr_qs.clone());
-    // }
+    for (k, v) in min_a {
+        res.insert(k, v.curr_qs.clone());
+    }
 
     Ok(res)
 }
