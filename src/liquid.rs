@@ -267,23 +267,22 @@ pub fn cons_op<'a>(k_env: &mut KEnv, env: &Env, e: &Op) -> (Type, LinkedList<Con
 
     match *e {
         Op::Imm(ref imm) => cons_imm(k_env, env, imm),
-        Op::Op2(/* ref op, ref l, ref r */_, _, _) => {
-            panic!("expected Op::Op2 to be handled in Expr::Let");
-            // let (_, mut c1) = cons_imm(k_env, env, l);
-            // let (_, mut c2) = cons_imm(k_env, env, r);
-            // c1.append(&mut c2);
+        Op::Op2(ref op, ref l, ref r) => {
+            let (_, mut c1) = cons_op(k_env, env, l);
+            let (_, mut c2) = cons_op(k_env, env, r);
+            c1.append(&mut c2);
 
-            // let ty = explicit::opty(*op);
-            // let base = match ty {
-            //     explicit::Type::TInt => Base::Int,
-            //     explicit::Type::TBool => Base::Bool,
-            //     _ => panic!("FIXME: handle {:?}", ty),
-            // };
+            let ty = explicit::opty(*op);
+            let base = match ty {
+                explicit::Type::TInt => Base::Int,
+                explicit::Type::TBool => Base::Bool,
+                _ => panic!("FIXME: handle {:?}", ty),
+            };
 
-            // let eq = Expr::Op(Op::Op2(Eq, box Imm::V, box Expr::Op(e.clone())));
-            // let f = T::Ref(env.in_scope(), base, box Liquid::E(eq));
+            let eq = Expr::Op(Op::Op2(Eq, box Op::Imm(Imm::V), box e.clone()));
+            let f = T::Ref(env.in_scope(), base, box Liquid::E(eq));
 
-            // (f, c1)
+            (f, c1)
         }
         _ => {
             panic!("TODO: cons_op for {:?}", e);
@@ -581,12 +580,17 @@ fn implication_holds(env: &HashMap<Id, explicit::Type>, p: &[lambdal::Expr], q: 
 
     let mut senv: HashMap<Id, _> = HashMap::new();
 
+    println!("implication called w/ q: {:?}", q);
+
     // Defining the symbolic vars x & y
     for (var, ty) in env {
         let sty: LIA_Sorts = match *ty {
             explicit::Type::TInt => integer::Sorts::Int.into(),
             explicit::Type::TBool => core::Sorts::Bool.into(),
-            _ => panic!("TODO: more sorts than int"),
+            _ => {
+                //println!("TODO: v'{}' more sorts than int ({:?})", var, ty);
+                continue;
+            }
         };
         let idx = solver.new_var(Some(&var), sty);
         senv.insert(var.clone(), idx);
@@ -598,6 +602,7 @@ fn implication_holds(env: &HashMap<Id, explicit::Type>, p: &[lambdal::Expr], q: 
 
     let mut ps: Vec<_> = Vec::new();
     for t in p {
+        println!("p smt:\t{:?}", t);
         let pred = smt_from_expr(&mut solver, &senv, t);
         //let _ = solver.assert(integer::OpCodes::Cmp, &[pred, strue]);
         ps.push(pred);
@@ -605,6 +610,7 @@ fn implication_holds(env: &HashMap<Id, explicit::Type>, p: &[lambdal::Expr], q: 
 
     let mut qs: Vec<_> = Vec::new();
     for t in q {
+        println!("q smt:\t{:?}", t);
         let pred = smt_from_expr(&mut solver, &senv, t);
         //let _ = solver.assert(integer::OpCodes::Cmp, &[pred, strue]);
         qs.push(pred);
@@ -712,14 +718,15 @@ fn solve(
                 if qs.curr_qs[0] == const_true {
                     return err!("implication failure for -> true");
                 }
+                panic!("check");
                 match weaken(env, a, all_p, &qs.all_qs) {
                     Some(new_qs) => {
                         let mut new_a = a.clone();
                         new_a.insert(id.clone(), KInfo{
                             all_qs: qs.all_qs.clone(),
-                            curr_qs: new_qs,
+                            curr_qs: new_qs.clone(),
                         });
-                        println!("RECURSOIN");
+                        println!("RECURSION ({:?})", new_qs);
                         return solve(env, constraints, &new_a);
                     }
                     None => {
@@ -753,6 +760,7 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[lambdal::Expr]
                 if by_id.contains_key(id) {
                     let mut others = by_id[id].clone();
                     others.append(&mut antecedent);
+                    println!("@@ multi'{}:\t{:?}", id, others);
                     by_id.insert(id.clone(), others);
                 } else {
                     by_id.insert(id.clone(), antecedent);
@@ -762,8 +770,14 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[lambdal::Expr]
     }
     let mut all_constraints: LinkedList<STConstraints> = LinkedList::new();
     for (id, v) in by_id {
+        println!("->{}:\t{:?}", id, v);
         all_constraints.push_back((v.clone(), id.clone()));
     }
+
+    println!("\nΓ:");
+    for (id, ty) in env {
+        println!(" {}:\t{:?}", id, ty);
+    };
 
     let min_a = solve(env, &all_constraints, &a)?;
 

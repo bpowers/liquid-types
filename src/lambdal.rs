@@ -1,14 +1,16 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
+use std::fmt::{Debug, Formatter, Error};
 
-use common::{Result, Id, Op2, Const};
+use common;
+use common::{Id, Op2, Const};
 use explicit;
 use explicit::{Type};
 use implicit;
 use env;
 use hindley_milner;
 
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone)]
 pub enum Imm {
     Bool(bool),
     Int(i64),
@@ -19,7 +21,7 @@ pub enum Imm {
     V,
 }
 
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone)]
 pub enum Op {
     // should only be used with Imms, but Ops to make liquid type
     // constraints expressable without creating new temporaries
@@ -31,12 +33,52 @@ pub enum Op {
 }
 //    WellFormed(Imm), // Var-only
 
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone)]
 pub enum Expr {
     If(Box<Imm>, Box<Expr>, Box<Expr>),
     App(Box<Imm>, Box<Imm>),
     Let(Id, Box<Expr>, Box<Expr>),
     Op(Op),
+}
+
+impl Debug for Imm {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        use self::Imm::*;
+        match *self {
+            Bool(b) => write!(fmt, "{}", b),
+            Int(n) => write!(fmt, "{}", n),
+            Var(ref id) => write!(fmt, "{}", id),
+            Fun(ref id, ref e) => write!(fmt, "(fun {} -> {:?})", id, e),
+            Fix(ref id, ref e) => write!(fmt, "(fix {} -> {:?})", id, e),
+            Star => write!(fmt, "★"),
+            V => write!(fmt, "ν"),
+        }
+    }
+}
+
+impl Debug for Op {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        use self::Op::*;
+        match *self {
+            Op2(op, ref l, ref r) => write!(fmt, "({:?} {:?} {:?})", op, l, r),
+            MkArray(ref sz, ref n) => write!(fmt, "array({:?}, {:?})", sz, n),
+            GetArray(ref a, ref idx) => write!(fmt, "{:?}[{:?}]", a, idx),
+            SetArray(ref a, ref idx, ref n) => write!(fmt, "{:?}[{:?}] = {:?}", a, idx, n),
+            Imm(ref imm) => write!(fmt, "{:?}", imm),
+        }
+    }
+}
+
+impl Debug for Expr {
+    fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        use self::Expr::*;
+        match *self {
+            If(ref cond, ref l, ref r) => write!(fmt, "if ({:?}) then ({:?}) else ({:?})", cond, l, r),
+            App(ref e1, ref e2) => write!(fmt, "{:?} {:?}", e1, e2),
+            Let(ref id, ref e1, ref e2) => write!(fmt, "let {} = ({:?}) in ({:?})", id, e1, e2),
+            Op(ref op) => write!(fmt, "{:?}", op),
+        }
+    }
 }
 
 static ENV_ID: AtomicUsize = ATOMIC_USIZE_INIT;
@@ -278,7 +320,7 @@ fn build_env_expr(env: HashMap<Id, Type>, e: &Expr) -> (HashMap<Id, Type>, Type)
     }
 }
 
-pub fn anf(implicit_expr: &implicit::Expr) -> Result<(Expr, HashMap<Id, Type>)> {
+pub fn anf(implicit_expr: &implicit::Expr) -> common::Result<(Expr, HashMap<Id, Type>)> {
 
     let explicit_expr = hindley_milner::infer(implicit_expr)?;
     // alpha-renaming
@@ -293,7 +335,7 @@ pub fn anf(implicit_expr: &implicit::Expr) -> Result<(Expr, HashMap<Id, Type>)> 
 }
 
 #[allow(dead_code)]
-pub fn q(implicit_expr: &implicit::Expr) -> Result<Expr> {
+pub fn q(implicit_expr: &implicit::Expr) -> common::Result<Expr> {
     let explicit_expr = hindley_milner::add_metavars(implicit_expr);
     let cenv = ConvEnv::new();
     let (_, expr) = expr(cenv, &explicit_expr, &identity);
