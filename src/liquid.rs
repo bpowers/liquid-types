@@ -196,7 +196,7 @@ fn ty<'a>(_: &mut KEnv, _: &Env, c: &Imm) -> Type {
     println!("ty({:?})", base);
 
     // {ν : int | ν = 3 }
-    let eq = E(Expr::Op(Op::Op2(Op2::Eq, box Imm::V, box c.clone())));
+    let eq = E(Expr::Op(Op::Op2(Op2::Eq, box Op::Imm(Imm::V), box Op::Imm(c.clone()))));
     T::Ref(HashSet::new(), base, box eq)
 }
 
@@ -213,13 +213,14 @@ fn subst(_: &Id, _: &Imm, ty: &Type) -> Type {
 }
 
 pub fn cons_imm<'a>(k_env: &mut KEnv, env: &Env, imm: &Imm) -> (Type, LinkedList<Constraint>) {
+    use lambdal::Op::Imm as I;
     use lambdal::Imm::*;
     use common::Op2::Eq;
 
     match *imm {
         Var(ref id) => {
             let ty: Type = if let Some(b) = base(&env.get(id)) {
-                let eq = Expr::Op(Op::Op2(Eq, box Imm::V, box Imm::Var(id.clone())));
+                let eq = Expr::Op(Op::Op2(Eq, box I(V), box I(Var(id.clone()))));
                 T::Ref(env.in_scope(), b, box Liquid::E(eq))
             } else {
                 println!("{} not base -- using just env ({:?})", id, env.get(id));
@@ -262,15 +263,17 @@ pub fn cons_imm<'a>(k_env: &mut KEnv, env: &Env, imm: &Imm) -> (Type, LinkedList
 }
 
 pub fn cons_op<'a>(k_env: &mut KEnv, env: &Env, e: &Op) -> (Type, LinkedList<Constraint>) {
+    use common::Op2::Eq;
+
     match *e {
         Op::Imm(ref imm) => cons_imm(k_env, env, imm),
-        Op::Op2(_, _, _) => {
-            panic!("ugh");
-            // let (_, mut c1) = cons_imm(k_env, env, e1);
-            // let (_, mut c2) = cons_imm(k_env, env, e2);
+        Op::Op2(/* ref op, ref l, ref r */_, _, _) => {
+            panic!("expected Op::Op2 to be handled in Expr::Let");
+            // let (_, mut c1) = cons_imm(k_env, env, l);
+            // let (_, mut c2) = cons_imm(k_env, env, r);
             // c1.append(&mut c2);
 
-            // let ty = explicit::opty(op);
+            // let ty = explicit::opty(*op);
             // let base = match ty {
             //     explicit::Type::TInt => Base::Int,
             //     explicit::Type::TBool => Base::Bool,
@@ -405,7 +408,7 @@ fn replace_op(v: &Id, q: &lambdal::Op) -> Option<lambdal::Op> {
     use lambdal::Op::*;
 
     let r = match *q {
-        Op2(ref op, ref l, ref r)          => Op2(*op, box otry!(replace_imm(v, l)), box otry!(replace_imm(v, r))),
+        Op2(ref op, ref l, ref r)          => Op2(*op, box otry!(replace_op(v, l)), box otry!(replace_op(v, r))),
         MkArray(ref sz, ref n)             => MkArray(box otry!(replace_imm(v, sz)), box otry!(replace_imm(v, n))),
         GetArray(ref id, ref idx)          => GetArray(box otry!(replace_imm(v, id)), box otry!(replace_imm(v, idx))),
         SetArray(ref id, ref idx, ref var) => SetArray(box otry!(replace_imm(v, id)), box otry!(replace_imm(v, idx)), box otry!(replace_imm(v, var))),
@@ -502,8 +505,8 @@ fn smt_from_op(
     match *q {
         O::Imm(ref imm)          => smt_from_imm(s, vars, imm),
         O::Op2(op, ref l, ref r) => {
-            let il = smt_from_imm(s, vars, l);
-            let ir = smt_from_imm(s, vars, r);
+            let il = smt_from_op(s, vars, l);
+            let ir = smt_from_op(s, vars, r);
             match op {
                 Op2::And | Op2::Or | Op2::Impl | Op2::Iff => {
                     let opcode = match op {

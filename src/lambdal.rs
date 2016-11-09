@@ -21,7 +21,9 @@ pub enum Imm {
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub enum Op {
-    Op2(Op2, Box<Imm>, Box<Imm>),
+    // should only be used with Imms, but Ops to make liquid type
+    // constraints expressable without creating new temporaries
+    Op2(Op2, Box<Op>, Box<Op>),
     MkArray(Box<Imm>, Box<Imm>),
     GetArray(Box<Imm>, Box<Imm>),
     SetArray(Box<Imm>, Box<Imm>, Box<Imm>),
@@ -89,7 +91,7 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Imm) -> (ConvEnv, Exp
             expr(cenv, l, &|cenv, ll| {
                 expr(cenv, r, &|cenv, rr| {
                     let (cenv, op_tmp) = cenv.tmp();
-                    let op_val = Op(Op2(op, box ll.clone(), box rr));
+                    let op_val = Op(Op2(op, box Imm(ll.clone()), box Imm(rr)));
                     // value to pass to the continuation
                     let op_ref = I::Var(op_tmp.clone());
 
@@ -223,8 +225,8 @@ fn build_env_op(env: HashMap<Id, Type>, o: &Op) -> (HashMap<Id, Type>, Type) {
     use self::Op::*;
     match *o {
         Op2(op, ref e1, ref e2) => {
-            let (env, _) = build_env_imm(env, e1);
-            let (env, _) = build_env_imm(env, e2);
+            let (env, _) = build_env_op(env, e1);
+            let (env, _) = build_env_op(env, e2);
             (env, explicit::opty(op))
         }
         MkArray(ref e1, ref e2) => {
@@ -258,7 +260,8 @@ fn build_env_expr(env: HashMap<Id, Type>, e: &Expr) -> (HashMap<Id, Type>, Type)
         }
         App(ref e1, _) => {
             let (env, e1_type) = build_env_imm(env, e1);
-            if let Type::TFun(_, _, ret_type) = e1_type {
+            if let Type::TFun(_,
+                              _, ret_type) = e1_type {
                 (env, *ret_type)
             } else {
                 unreachable!("app of non-fun should have been caught by HM")
@@ -308,7 +311,7 @@ fn test_q() {
         Err(e) => die!("q: {:?}", e),
     };
 
-    let expected = Expr::Let(String::from("!tmp!0"), box Expr::Op(Op::Op2(LT, box Imm::V, box Imm::Star)),
+    let expected = Expr::Let(String::from("!tmp!0"), box Expr::Op(Op::Op2(LT, box Op::Imm(Imm::V), box Op::Imm(Imm::Star))),
                              box Expr::Op(Op::Imm(Imm::Var(String::from("!tmp!0")))));
 
     if !cmp(&ql, &expected) {
@@ -351,7 +354,7 @@ fn cmp_op(vmap: HashMap<Id, Id>, e1: &Op, e2: &Op) -> bool {
 
     match (e1, e2) {
         (&Op2(ref op1, ref l1, ref r1), &Op2(ref op2, ref l2, ref r2)) => {
-            op1 == op2 && cmp_imm(vmap.clone(), l1, l2) && cmp_imm(vmap, r1, r2)
+            op1 == op2 && cmp_op(vmap.clone(), l1, l2) && cmp_op(vmap, r1, r2)
         }
         (&MkArray(ref sz1, ref n1), &MkArray(ref sz2, ref n2)) => {
             cmp_imm(vmap.clone(), sz1, sz2) && cmp_imm(vmap, n1, n2)
@@ -435,19 +438,19 @@ fn anf_transforms() {
 
     test_anf!(
         "2+3",
-        Let(String::from("!tmp!0"), box Op(Op2(O::Add, box I::Int(2), box I::Int(3))),
+        Let(String::from("!tmp!0"), box Op(Op2(O::Add, box Imm(I::Int(2)), box Imm(I::Int(3)))),
             box Op(Imm(I::Var(String::from("!tmp!0"))))));
 
     test_anf!(
         "2+(3 - 2)",
-        Let(String::from("!tmp!0"), box Op(Op2(O::Sub, box I::Int(3), box I::Int(2))),
-            box Let(String::from("!tmp!1"), box Op(Op2(O::Add, box I::Int(2), box I::Var(String::from("!tmp!0")))),
+        Let(String::from("!tmp!0"), box Op(Op2(O::Sub, box Imm(I::Int(3)), box Imm(I::Int(2)))),
+            box Let(String::from("!tmp!1"), box Op(Op2(O::Add, box Imm(I::Int(2)), box Imm(I::Var(String::from("!tmp!0"))))),
                     box Op(Imm(I::Var(String::from("!tmp!1")))))));
 
     test_anf!(
         "2 + 3 - 2",
-        Let(String::from("!tmp!0"), box Op(Op2(O::Add, box I::Int(2), box I::Int(3))),
-            box Let(String::from("!tmp!1"), box Op(Op2(O::Sub, box I::Var(String::from("!tmp!0")), box I::Int(2))),
+        Let(String::from("!tmp!0"), box Op(Op2(O::Add, box Imm(I::Int(2)), box Imm(I::Int(3)))),
+            box Let(String::from("!tmp!1"), box Op(Op2(O::Sub, box Imm(I::Var(String::from("!tmp!0"))), box Imm(I::Int(2)))),
                     box Op(Imm(I::Var(String::from("!tmp!1")))))));
 
     test_anf!(
@@ -471,10 +474,10 @@ fn anf_transforms() {
     test_anf!(
         "let f = (fun n -> n + 1) in f (2+3)",
         Let(String::from("!tmp!1"), box Op(Imm(I::Fun(String::from("n!a2"),
-                                                      box Let(String::from("!tmp!0"), box Op(Op2(O::Add, box I::Var(String::from("n!a2")), box I::Int(1))),
+                                                      box Let(String::from("!tmp!0"), box Op(Op2(O::Add, box Imm(I::Var(String::from("n!a2"))), box Imm(I::Int(1)))),
                                                               box Op(Imm(I::Var(String::from("!tmp!0")))))))),
             box Let(String::from("f!a1"), box Op(Imm(I::Var(String::from("!tmp!1")))),
-                    box Let(String::from("!tmp!2"), box Op(Op2(O::Add, box I::Int(2), box I::Int(3))),
+                    box Let(String::from("!tmp!2"), box Op(Op2(O::Add, box Imm(I::Int(2)), box Imm(I::Int(3)))),
                             box Let(String::from("!tmp!3"), box App(box I::Var(String::from("f!a1")), box I::Var(String::from("!tmp!2"))),
                                     box Op(Imm(I::Var(String::from("!tmp!3")))))))));
 }

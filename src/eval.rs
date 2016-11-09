@@ -40,7 +40,7 @@ fn vintarray(v: Value) -> Box<Vec<i64>> {
     }
 }
 
-fn eval_op2(ctx: &Closure, op: Op2, l: &Imm, r: &Imm) -> Value {
+fn eval_op2(ctx: &Closure, op: Op2, l: &Op, r: &Op) -> Value {
     use common::Op2::*;
     use self::Value::*;
 
@@ -48,8 +48,8 @@ fn eval_op2(ctx: &Closure, op: Op2, l: &Imm, r: &Imm) -> Value {
     // typechecking
     match op {
         LT | LTE | GT | GTE | Eq | Add | Sub | Mul => {
-            let vl = vint(eval_imm(ctx, l));
-            let vr = vint(eval_imm(ctx, r));
+            let vl = vint(eval_op(ctx, l));
+            let vr = vint(eval_op(ctx, r));
 
             match op {
                 LT  => VBool(vl < vr),
@@ -64,8 +64,8 @@ fn eval_op2(ctx: &Closure, op: Op2, l: &Imm, r: &Imm) -> Value {
             }
         }
         And | Or | Impl | Iff => {
-            let vl = vbool(eval_imm(ctx, l));
-            let vr = vbool(eval_imm(ctx, r));
+            let vl = vbool(eval_op(ctx, l));
+            let vr = vbool(eval_op(ctx, r));
 
             match op {
                 And => VBool(vl < vr),
@@ -105,8 +105,8 @@ fn subst_op(ctx: &Closure, id: &String, fix: &Imm, o: &Op) -> Op {
     use lambdal::Op::*;
     match *o {
         Op2(op, ref e1, ref e2) => {
-            let e1 = box subst_imm(ctx, id, fix, e1);
-            let e2 = box subst_imm(ctx, id, fix, e2);
+            let e1 = box subst_op(ctx, id, fix, e1);
+            let e2 = box subst_op(ctx, id, fix, e2);
             Op2(op.clone(), e1, e2)
         }
         MkArray(ref sz, ref n) => {

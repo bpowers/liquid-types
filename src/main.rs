@@ -120,9 +120,9 @@ fn main() {
         use lambdal::Expr::Op;
         use common::Op2::*;
         &[
-            Op(Op2(LTE, box I::Int(0), box I::V)),
-            Op(Op2(LTE, box I::Star, box I::V)),
-            Op(Op2(LT, box I::V, box I::Star)),
+            Op(Op2(LTE, box Imm(I::Int(0)), box Imm(I::V))),
+            Op(Op2(LTE, box Imm(I::Star), box Imm(I::V))),
+            Op(Op2(LT, box Imm(I::V), box Imm(I::Star))),
             //Op2(LT, box V, box App(box Var(String::from("len")), box Star)),
         ]
     };
