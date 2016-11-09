@@ -212,7 +212,7 @@ fn build_env_imm(env: HashMap<Id, Type>, i: &Imm) -> (HashMap<Id, Type>, Type) {
         Fun(ref id, ref e) => {
             let (env, return_type) = build_env_expr(env, e);
             let arg_type = env[id].clone();
-            (env, Type::TFun(box arg_type, box return_type))
+            (env, Type::TFun(id.clone(), box arg_type, box return_type))
         }
         Fix(_, ref e) => build_env_expr(env, e),
         V | Star => unreachable!("ν or ★ encountered during build_env"),
@@ -258,7 +258,7 @@ fn build_env_expr(env: HashMap<Id, Type>, e: &Expr) -> (HashMap<Id, Type>, Type)
         }
         App(ref e1, _) => {
             let (env, e1_type) = build_env_imm(env, e1);
-            if let Type::TFun(_, ret_type) = e1_type {
+            if let Type::TFun(_, _, ret_type) = e1_type {
                 (env, *ret_type)
             } else {
                 unreachable!("app of non-fun should have been caught by HM")

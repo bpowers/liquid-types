@@ -159,7 +159,7 @@ fn gen_constraints<'a>(m: &mut MVEnv,
             let mut new_env = env.clone();
             new_env.insert(&id, t1.clone());
             let (c, t2) = gen_constraints(m, &new_env, e)?;
-            (c, Type::TFun(box t1.clone(), box t2))
+            (c, Type::TFun(id.clone(), box t1.clone(), box t2))
         }
         E::Fix(ref id, ref t1, ref e) => {
             let mut new_env = env.clone();
@@ -172,8 +172,12 @@ fn gen_constraints<'a>(m: &mut MVEnv,
             let mv = m.alloc_empty();
             let (mut c1, t1) = gen_constraints(m, env, e1)?;
             let (mut c2, t2) = gen_constraints(m, env, e2)?;
+            let id = match *e1 {
+                box E::Fun(ref id, _, _) => id.clone(),
+                _ => String::from("gonna-fail"),
+            };
             c1.append(&mut c2);
-            c1.push((t1.clone(), Type::TFun(box t2.clone(), box mv.clone())));
+            c1.push((t1.clone(), Type::TFun(id, box t2.clone(), box mv.clone())));
             (c1, mv)
         }
         E::MkArray(ref sz, ref n) => {
@@ -223,7 +227,7 @@ fn apply(env: &HashMap<Metavar, Type>, typ_in: &Type) -> Type {
                 typ_in.clone()
             }
         }
-        TFun(ref a, ref b) => TFun(box apply(env, a), box apply(env, b)),
+        TFun(ref id, ref a, ref b) => TFun(id.clone(), box apply(env, a), box apply(env, b)),
         TIntArray | TInt | TBool => typ_in.clone(),
     }
 }
@@ -257,7 +261,7 @@ fn occurs(mv: &Metavar, t: &Type) -> bool {
 
     match t {
         &TMetavar(ref mv2) => mv == mv2,
-        &TFun(ref a, ref b) => occurs(mv, a) || occurs(mv, b),
+        &TFun(_, ref a, ref b) => occurs(mv, a) || occurs(mv, b),
         &TIntArray | &TInt | &TBool => false,
     }
 }
@@ -287,7 +291,7 @@ fn unify(t1: &Type, t2: &Type) -> Result<HashMap<Metavar, Type>> {
         (_, &TMetavar(ref mv2)) => {
             return err!("occurs check failed for mv2 '{:?}' in '{:?}'", mv2, t1)
         }
-        (&TFun(ref s1, ref s2), &TFun(ref t1, ref t2)) => {
+        (&TFun(_, ref s1, ref s2), &TFun(_, ref t1, ref t2)) => {
             let pi = unify(s1, t1)?;
             let s2 = apply(&pi, s2);
             let t2 = apply(&pi, t2);
@@ -469,8 +473,8 @@ fn unification() {
         _ => die!("apply should replace x with TInt"),
     }
 
-    match apply(&s, &TFun(box TMetavar(x.clone()), box TBool)) {
-        TFun(box TInt, box TBool) => {}
+    match apply(&s, &TFun(String::from("_"), box TMetavar(x.clone()), box TBool)) {
+        TFun(_, box TInt, box TBool) => {}
         _ => die!("apply should recur into type constructors"),
     }
 
@@ -480,9 +484,9 @@ fn unification() {
     s1.insert(x.clone(), TInt);
     s2.insert(y.clone(), TBool);
     let app1 = apply(&compose(&s1, &s2),
-                     &TFun(box TMetavar(x.clone()), box TMetavar(y.clone())));
+                     &TFun(String::from("_"), box TMetavar(x.clone()), box TMetavar(y.clone())));
     let app2 = apply(&s1,
-                     &apply(&s2, &TFun(box TMetavar(x.clone()), box TMetavar(y.clone()))));
+                     &apply(&s2, &TFun(String::from("_"), box TMetavar(x.clone()), box TMetavar(y.clone()))));
     if app1 != app2 {
         die!("expected equal: {:?} == {:?}", app1, app2)
     }
@@ -491,9 +495,9 @@ fn unification() {
     s1.insert(x.clone(), TBool);
     s2.insert(y.clone(), TMetavar(x.clone()));
     let app1 = apply(&compose(&s1, &s2),
-                     &TFun(box TMetavar(x.clone()), box TMetavar(y.clone())));
+                     &TFun(String::from("___"), box TMetavar(x.clone()), box TMetavar(y.clone())));
     let app2 = apply(&s1,
-                     &apply(&s2, &TFun(box TMetavar(x.clone()), box TMetavar(y.clone()))));
+                     &apply(&s2, &TFun(String::from("___"), box TMetavar(x.clone()), box TMetavar(y.clone()))));
     if app1 != app2 {
         die!("expected equal2: {:?} == {:?}", app1, app2)
     }

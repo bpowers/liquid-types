@@ -1,4 +1,4 @@
-use common::Op2;
+use common::{Id, Op2};
 use typed;
 
 pub type Metavar = (i32, String);
@@ -9,7 +9,7 @@ pub enum Type {
     TInt,
     TBool,
     TIntArray,
-    TFun(Box<Type>, Box<Type>),
+    TFun(Id, Box<Type>, Box<Type>),
 }
 
 pub fn opty(op: Op2) -> Type {

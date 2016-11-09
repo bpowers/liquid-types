@@ -104,7 +104,7 @@ fn hm_shape_imm(env: &HashMap<Id, explicit::Type>, imm: &Imm) -> explicit::Type 
         Var(ref id) => env[id].clone(),
         Fun(ref id, ref e) => {
             let argty = env[id].clone();
-            TFun(box argty, box hm_shape_expr(env, e))
+            TFun(id.clone(), box argty, box hm_shape_expr(env, e))
         }
         Fix(ref id, _) => env[id].clone(),
         V => env["!v"].clone(),
@@ -133,7 +133,7 @@ fn hm_shape_expr(env: &HashMap<Id, explicit::Type>, expr: &Expr) -> explicit::Ty
         If(_, ref e2, _) => hm_shape_expr(env, e2),
         Let(_, _, ref e2) => hm_shape_expr(env, e2),
         App(ref e1, _) => {
-            if let TFun(_, rtype) = hm_shape_imm(env, e1) {
+            if let TFun(_, _, rtype) = hm_shape_imm(env, e1) {
                 *rtype
             } else {
                 panic!("app for non-fun: {:?}", e1);
@@ -166,10 +166,10 @@ impl KEnv {
         let base = match ty {
             explicit::Type::TInt => Base::Int,
             explicit::Type::TBool => Base::Bool,
-            explicit::Type::TFun(a, b) => {
+            explicit::Type::TFun(id, a, b) => {
                 let fx = self.fresh_ty(env, *a);
                 let f = self.fresh_ty(env, *b);
-                return T::Fun(String::from("killme"), box fx, box f);
+                return T::Fun(id, box fx, box f);
             }
             _ => panic!("FIXME: handle {:?}", ty),
         };

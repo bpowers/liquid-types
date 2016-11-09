@@ -47,7 +47,7 @@ fn convert(n: i32, env: &mut HashMap<Id, Type>, renamed: &HashMap<Id, Id>, expr:
 
             let (n, e, t2) = convert(n, env, &renamed, e);
 
-            (n, E::Fun(alpha_id, t1.clone(), box e), Type::TFun(box t1.clone(), box t2))
+            (n, E::Fun(alpha_id.clone(), t1.clone(), box e), Type::TFun(alpha_id, box t1.clone(), box t2))
         }
         E::Fix(ref id, ref t1, ref e) => {
             let mut renamed = renamed.clone();
@@ -64,7 +64,7 @@ fn convert(n: i32, env: &mut HashMap<Id, Type>, renamed: &HashMap<Id, Id>, expr:
             let (n, e1, t1) = convert(n, env, renamed, e1);
             let (n, e2, _) = convert(n, env, renamed, e2);
             let t = match t1 {
-                Type::TFun(_, t2) => *t2,
+                Type::TFun(_, _, t2) => *t2,
                 _ => panic!("expected TFun, not {:?}", t1),
             };
             (n, E::App(box e1, box e2), t)
