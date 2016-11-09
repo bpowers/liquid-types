@@ -114,14 +114,15 @@ fn main() {
     // ν >= X
     // ν > X
 
-    let q: &[lambdal::Op] = {
+    let q: &[lambdal::Expr] = {
         use lambdal::Imm as I;
         use lambdal::Op::*;
+        use lambdal::Expr::Op;
         use common::Op2::*;
         &[
-            Op2(LTE, box I::Int(0), box I::V),
-            Op2(LTE, box I::Star, box I::V),
-            Op2(LT, box I::V, box I::Star),
+            Op(Op2(LTE, box I::Int(0), box I::V)),
+            Op(Op2(LTE, box I::Star, box I::V)),
+            Op(Op2(LT, box I::V, box I::Star)),
             //Op2(LT, box V, box App(box Var(String::from("len")), box Star)),
         ]
     };
