@@ -5,8 +5,6 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::LinkedList;
 
-use common;
-
 use explicit;
 use lambdal;
 use lambdal::{Expr, Op, Imm};
@@ -108,7 +106,7 @@ fn hm_shape_imm(env: &HashMap<Id, explicit::Type>, imm: &Imm) -> explicit::Type 
             let argty = env[id].clone();
             TFun(box argty, box hm_shape_expr(env, e))
         }
-        Fix(ref id, ref e) => env[id].clone(),
+        Fix(ref id, _) => env[id].clone(),
         V => env["!v"].clone(),
         Star => unreachable!("shape of star"),
     }
@@ -161,7 +159,7 @@ impl KEnv {
         }
     }
 
-    fn fresh_ty(&mut self, env: &Env, ty: explicit::Type, x: Option<String>) -> Type {
+    fn fresh_ty(&mut self, env: &Env, ty: explicit::Type) -> Type {
         let id = self.next_id;
         self.next_id += 1;
 
@@ -169,13 +167,9 @@ impl KEnv {
             explicit::Type::TInt => Base::Int,
             explicit::Type::TBool => Base::Bool,
             explicit::Type::TFun(a, b) => {
-                let x: String = match x {
-                    Some(x) => x,
-                    None => unreachable!("fresh_ty called for TFun({:?}, {:?}) w/o passing in x name", a, b),
-                };
-                let fx = self.fresh_ty(env, *a, None);
-                let f = self.fresh_ty(env, *b, None);
-                return T::Fun(x, box fx, box f);
+                let fx = self.fresh_ty(env, *a);
+                let f = self.fresh_ty(env, *b);
+                return T::Fun(String::from("killme"), box fx, box f);
             }
             _ => panic!("FIXME: handle {:?}", ty),
         };
@@ -185,7 +179,7 @@ impl KEnv {
 
     fn fresh(&mut self, env: &Env, e: &Expr) -> Type {
         let hm_type = hm_shape_expr(&env.shape, e);
-        self.fresh_ty(env, hm_type, None)
+        self.fresh_ty(env, hm_type)
     }
 }
 
@@ -268,11 +262,9 @@ pub fn cons_imm<'a>(k_env: &mut KEnv, env: &Env, imm: &Imm) -> (Type, LinkedList
 }
 
 pub fn cons_op<'a>(k_env: &mut KEnv, env: &Env, e: &Op) -> (Type, LinkedList<Constraint>) {
-    use common::Op2::Eq;
-
     match *e {
         Op::Imm(ref imm) => cons_imm(k_env, env, imm),
-        Op::Op2(op, ref e1, ref e2) => {
+        Op::Op2(_, _, _) => {
             panic!("ugh");
             // let (_, mut c1) = cons_imm(k_env, env, e1);
             // let (_, mut c2) = cons_imm(k_env, env, e2);
@@ -299,7 +291,6 @@ pub fn cons_op<'a>(k_env: &mut KEnv, env: &Env, e: &Op) -> (Type, LinkedList<Con
 pub fn cons_expr<'a>(k_env: &mut KEnv, env: &Env, expr: &Expr) -> (Type, LinkedList<Constraint>) {
     use lambdal::Op as LOp;
     use lambdal::Expr::*;
-    use common::Op2::Eq;
 
     match *expr {
         If(ref e1, ref e2, ref e3) => {
@@ -494,8 +485,8 @@ fn smt_from_imm(
         I::Int(n)             => s.new_const(integer::OpCodes::Const(n as u64)),
         I::V                  => vars["!v"],
         I::Star               => unreachable!(),
-        I::Fun(ref id, ref e) => unreachable!("fun in smt?"),
-        I::Fix(ref id, ref e) => unreachable!("fix in smt?"),
+        I::Fun(_, _) => unreachable!("fun in smt?"),
+        I::Fix(_, _) => unreachable!("fix in smt?"),
     }
 }
 
@@ -600,7 +591,7 @@ fn implication_holds(env: &HashMap<Id, explicit::Type>, p: &[lambdal::Expr], q: 
     // TODO: is v always an int?
     senv.insert(String::from("!v"), solver.new_var(Some("!v"), integer::Sorts::Int));
 
-    let strue = solver.new_const(core::OpCodes::Const(true));
+    //let strue = solver.new_const(core::OpCodes::Const(true));
 
     let mut ps: Vec<_> = Vec::new();
     for t in p {

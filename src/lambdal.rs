@@ -289,6 +289,7 @@ pub fn anf(implicit_expr: &implicit::Expr) -> Result<(Expr, HashMap<Id, Type>)> 
     Ok((expr, env))
 }
 
+#[allow(dead_code)]
 pub fn q(implicit_expr: &implicit::Expr) -> Result<Expr> {
     let explicit_expr = hindley_milner::add_metavars(implicit_expr);
     let cenv = ConvEnv::new();
@@ -389,6 +390,7 @@ fn cmp_expr(vmap: HashMap<Id, Id>, e1: &Expr, e2: &Expr) -> bool {
     }
 }
 
+#[allow(dead_code)]
 pub fn cmp(e1: &Expr, e2: &Expr) -> bool {
     let vmap = HashMap::new();
     cmp_expr(vmap, e1, e2)
