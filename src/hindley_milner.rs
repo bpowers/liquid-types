@@ -1,6 +1,4 @@
-use std;
 use std::collections::HashMap;
-use std::error;
 
 use implicit;
 use explicit;
@@ -14,7 +12,7 @@ use implicit_parse;
 #[cfg(test)]
 use tok::Tokenizer;
 
-use common::{LiquidError, Result};
+use common::{Id, LiquidError, Result};
 
 struct MVEnv<'a> {
     env_id: &'a str,
@@ -107,7 +105,7 @@ pub fn add_metavars(expr: &implicit::Expr) -> explicit::Expr {
 }
 
 fn gen_constraints<'a>(m: &mut MVEnv,
-                       env: &HashMap<&'a str, Type>,
+                       env: &HashMap<Id, Type>,
                        expr: &'a explicit::Expr)
                        -> Result<(Vec<(Type, Type)>, Type)> {
     use common::{Const, Op2};
@@ -140,7 +138,7 @@ fn gen_constraints<'a>(m: &mut MVEnv,
             (c1, t3)
         }
         E::Var(ref x) => {
-            match env.get::<str>(&x) {
+            match env.get(x) {
                 Some(ty) => (Vec::new(), ty.clone()),
                 None => {
                     return err!("unbound identifier: {} in {:?}", x, env);
@@ -150,20 +148,20 @@ fn gen_constraints<'a>(m: &mut MVEnv,
         E::Let(ref id, ref e1, ref e2) => {
             let (mut c1, t1) = gen_constraints(m, env, e1)?;
             let mut new_env = env.clone();
-            new_env.insert(&id, t1.clone());
+            new_env.insert(id.clone(), t1.clone());
             let (mut c2, t2) = gen_constraints(m, &new_env, e2)?;
             c1.append(&mut c2);
             (c1, t2)
         }
         E::Fun(ref id, ref t1, ref e) => {
             let mut new_env = env.clone();
-            new_env.insert(&id, t1.clone());
+            new_env.insert(id.clone(), t1.clone());
             let (c, t2) = gen_constraints(m, &new_env, e)?;
             (c, Type::TFun(id.clone(), box t1.clone(), box t2))
         }
         E::Fix(ref id, ref t1, ref e) => {
             let mut new_env = env.clone();
-            new_env.insert(&id, t1.clone());
+            new_env.insert(id.clone(), t1.clone());
             let (mut c, t2) = gen_constraints(m, &new_env, e)?;
             c.push((t1.clone(), t2));
             (c, t1.clone())
@@ -374,28 +372,41 @@ fn remove_metavars(env: &HashMap<Metavar, Type>, expr: &explicit::Expr) -> Resul
     Ok(box result)
 }
 
-pub fn infer(expr: &implicit::Expr) -> Result<explicit::Expr> {
+pub fn infer_in(id_env: HashMap<Id, Type>, expr: &implicit::Expr) -> Result<explicit::Expr> {
     let typed_w_metavars = add_metavars(&expr);
     let mut cg_env = MVEnv::new("β");
-    let id_env = HashMap::new();
+
     let constraints = match gen_constraints(&mut cg_env, &id_env, &typed_w_metavars) {
         Ok((c, _)) => c,
-        Err(e) => die!("gen_constraints: {}", error::Error::description(&e)),
+        Err(e) => {
+            return Err(e);
+            //die!("gen_constraints: {}", error::Error::description(&e)),
+        }
     };
 
     let mv_env = match unify_all(&constraints) {
         Ok(e) => e,
-        Err(e) => die!("unification failed: {}", error::Error::description(&e)),
+        Err(e) => {
+            return Err(e);
+            //die!("unification failed: {}", error::Error::description(&e)),
+        }
     };
 
     let typed = match remove_metavars(&mv_env, &typed_w_metavars) {
         Ok(expr) => expr,
-        Err(e) => die!("remove_metavars failed: {}", error::Error::description(&e)),
+        Err(e) => {
+            return Err(e);
+            //die!("remove_metavars failed: {}", error::Error::description(&e)),
+        }
     };
 
     Ok(*typed)
 }
 
+pub fn infer(expr: &implicit::Expr) -> Result<explicit::Expr> {
+    let id_env = HashMap::new();
+    infer_in(id_env, expr)
+}
 
 macro_rules! test_parse(
     ($s:expr) => { {

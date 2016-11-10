@@ -114,18 +114,29 @@ fn main() {
     // ν >= X
     // ν > X
 
-    let q: &[lambdal::Expr] = {
-        use lambdal::Imm as I;
-        use lambdal::Op::*;
-        use lambdal::Expr::Op;
+    let q: &[implicit::Expr] = {
+        use implicit::Expr::*;
         use common::Op2::*;
+        use common::Const::*;
         &[
-            Op(Op2(LTE, box Imm(I::Int(0)), box Imm(I::V))),
-            Op(Op2(LTE, box Imm(I::Star), box Imm(I::V))),
-            Op(Op2(LT, box Imm(I::V), box Imm(I::Star))),
-            //Op2(LT, box V, box App(box Var(String::from("len")), box Star)),
+            Op2(LTE, box Const(Int(0)), box V),
+            Op2(LTE, box Star, box V),
+            Op2(LT, box V, box Star),
+            Op2(LT, box V, box App(box Var(String::from("len")), box Star)),
         ]
     };
+    // let q: &[lambdal::Expr] = {
+    //     use lambdal::Imm as I;
+    //     use lambdal::Op::*;
+    //     use lambdal::Expr::Op;
+    //     use common::Op2::*;
+    //     &[
+    //         // Op(Op2(LTE, box Imm(I::Int(0)), box Imm(I::V))),
+    //         // Op(Op2(LTE, box Imm(I::Star), box Imm(I::V))),
+    //         // Op(Op2(LT, box Imm(I::V), box Imm(I::Star))),
+    //         //Op2(LT, box V, box App(box Var(String::from("len")), box Star)),
+    //     ]
+    // };
 
     let refined = match liquid::infer(&anf_expr, &type_env, &q) {
         Ok(expr) => expr,

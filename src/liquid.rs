@@ -5,7 +5,9 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::LinkedList;
 
+use hindley_milner;
 use explicit;
+use implicit;
 use lambdal;
 use lambdal::{Expr, Op, Imm};
 use common::{Id, Result, LiquidError};
@@ -391,39 +393,23 @@ fn split(map: &mut HashMap<Idx, Constraint>, constraints: &LinkedList<Constraint
     }
 }
 
-fn replace_imm(v: &Id, q: &Imm) -> Option<Imm> {
-    use lambdal::Imm::*;
+fn replace(v: &Id, q: &implicit::Expr) -> Option<implicit::Expr> {
+    use implicit::Expr as I;
 
     let r = match *q {
-        Bool(_) | Int(_) | Var(_) | V => q.clone(),
-        Fun(ref id, ref e)            => Fun(id.clone(), box otry!(replace_expr(v, e))),
-        Fix(ref id, ref e)            => Fix(id.clone(), box otry!(replace_expr(v, e))),
-        Star                          => Var(v.clone()),
-    };
-
-    Some(r)
-}
-fn replace_op(v: &Id, q: &lambdal::Op) -> Option<lambdal::Op> {
-    use lambdal::Op::*;
-
-    let r = match *q {
-        Op2(ref op, ref l, ref r)          => Op2(*op, box otry!(replace_op(v, l)), box otry!(replace_op(v, r))),
-        MkArray(ref sz, ref n)             => MkArray(box otry!(replace_imm(v, sz)), box otry!(replace_imm(v, n))),
-        GetArray(ref id, ref idx)          => GetArray(box otry!(replace_imm(v, id)), box otry!(replace_imm(v, idx))),
-        SetArray(ref id, ref idx, ref var) => SetArray(box otry!(replace_imm(v, id)), box otry!(replace_imm(v, idx)), box otry!(replace_imm(v, var))),
-        Imm(ref imm)                       => Imm(otry!(replace_imm(v, imm))),
-    };
-
-    Some(r)
-}
-fn replace_expr(v: &Id, q: &lambdal::Expr) -> Option<lambdal::Expr> {
-    use lambdal::Expr::*;
-
-    let r = match *q {
-        If(ref e1, ref e2, ref e3)  => If(box otry!(replace_imm(v, e1)), box otry!(replace_expr(v, e2)), box otry!(replace_expr(v, e3))),
-        App(ref e1, ref e2)         => App(box otry!(replace_imm(v, e1)), box otry!(replace_imm(v, e2))),
-        Let(ref id, ref e1, ref e2) => Let(id.clone(), box otry!(replace_expr(v, e1)), box otry!(replace_expr(v, e2))),
-        Op(ref op)                  => Op(otry!(replace_op(v, op))),
+        I::Var(ref id)                        => I::Var(id.clone()),
+        I::Const(ref c)                       => I::Const(*c),
+        I::Op2(ref op, ref l, ref r)          => I::Op2(*op, box otry!(replace(v, l)), box otry!(replace(v, r))),
+        I::Fun(ref id, ref e)                 => I::Fun(id.clone(), box otry!(replace(v, e))),
+        I::App(ref e1, ref e2)                => I::App(box otry!(replace(v, e1)), box otry!(replace(v, e2))),
+        I::If(ref e1, ref e2, ref e3)         => I::If(box otry!(replace(v, e1)), box otry!(replace(v, e2)), box otry!(replace(v, e3))),
+        I::Let(ref id, ref e1, ref e2)        => I::Let(id.clone(), box otry!(replace(v, e1)), box otry!(replace(v, e2))),
+        I::Fix(ref id, ref e)                 => I::Fix(id.clone(), box otry!(replace(v, e))),
+        I::MkArray(ref sz, ref n)             => I::MkArray(box otry!(replace(v, sz)), box otry!(replace(v, n))),
+        I::GetArray(ref id, ref idx)          => I::GetArray(box otry!(replace(v, id)), box otry!(replace(v, idx))),
+        I::SetArray(ref id, ref idx, ref var) => I::SetArray(box otry!(replace(v, id)), box otry!(replace(v, idx)), box otry!(replace(v, var))),
+        I::V                                  => I::V,
+        I::Star                               => I::Var(v.clone()),
     };
 
     Some(r)
@@ -432,18 +418,25 @@ fn replace_expr(v: &Id, q: &lambdal::Expr) -> Option<lambdal::Expr> {
 // instantiate Q for k w/ alpha-renamed variables that are in-scope
 // and of the right shape at the location of the well-formedness
 // constraint
-fn qstar(_: &Id, in_scope: &HashSet<Id>, _: &HashMap<Id, explicit::Type>, qset: &[lambdal::Expr]) -> HashSet<lambdal::Expr> {
-    let mut qstar: HashSet<lambdal::Expr> = HashSet::new();
+fn qstar(
+    _: &Id,
+    in_scope: &HashSet<Id>,
+    env: &HashMap<Id, explicit::Type>,
+    qset: &[implicit::Expr]) -> HashSet<lambdal::Expr> {
 
+    use explicit::Type::TBool;
+
+    let mut qstar: HashSet<lambdal::Expr> = HashSet::new();
     for tmpl in qset {
         for v in in_scope.iter() {
-            match replace_expr(v, tmpl) {
-                Some(e) => {
-                    qstar.insert(e);
-                },
-                None => {
-                    println!("not used:\t{:?}", tmpl);
-                },
+            if let Some(e) = replace(v, tmpl) {
+                if let Ok(_) = hindley_milner::infer(&e) {
+                    if let Ok(ee) = lambdal::q(&e) {
+                        if let TBool = hm_shape_expr(env, &ee) {
+                            qstar.insert(ee);
+                        }
+                    }
+                }
             };
         }
     }
@@ -451,7 +444,7 @@ fn qstar(_: &Id, in_scope: &HashSet<Id>, _: &HashMap<Id, explicit::Type>, qset: 
     qstar
 }
 
-fn build_a(constraints: &HashMap<Idx, Constraint>, env: &HashMap<Id, explicit::Type>, q: &[Expr]) -> HashMap<Id, KInfo> {
+fn build_a(constraints: &HashMap<Idx, Constraint>, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr]) -> HashMap<Id, KInfo> {
     let mut a: HashMap<Id, KInfo> = HashMap::new();
 
     for (_, c) in constraints.iter() {
@@ -598,8 +591,6 @@ fn implication_holds(env: &HashMap<Id, explicit::Type>, p: &[lambdal::Expr], q: 
     // TODO: is v always an int?
     senv.insert(String::from("!v"), solver.new_var(Some("!v"), integer::Sorts::Int));
 
-    //let strue = solver.new_const(core::OpCodes::Const(true));
-
     let mut ps: Vec<_> = Vec::new();
     for t in p {
         println!("p smt:\t{:?}", t);
@@ -616,15 +607,15 @@ fn implication_holds(env: &HashMap<Id, explicit::Type>, p: &[lambdal::Expr], q: 
         qs.push(pred);
     }
 
-    let p_all = if ps.len() > 1 {
-        solver.assert(core::OpCodes::And, &ps)
-    } else {
-        ps[0]
+    let p_all = match ps.len() {
+        0 => solver.new_const(core::OpCodes::Const(true)),
+        1 => ps[0],
+        _ => solver.assert(core::OpCodes::And, &ps),
     };
-    let q_all = if qs.len() > 1 {
-        solver.assert(core::OpCodes::And, &qs)
-    } else {
-        qs[0]
+    let q_all = match qs.len() {
+        0 => solver.new_const(core::OpCodes::Const(true)),
+        1 => qs[0],
+        _ => solver.assert(core::OpCodes::And, &qs),
     };
     let imply = solver.assert(core::OpCodes::Imply, &[p_all, q_all]);
     let _ = solver.assert(core::OpCodes::Not, &[imply]);
@@ -711,14 +702,15 @@ fn solve(
                     panic!("unexpected {:?} -- should all be split() by now", p)
                 }
             };
+            println!("check: {:?} /\\ {:?} => {:?}", path_constraints, p, qs.curr_qs);
             for pc in path_constraints {
                 p.push(pc.clone());
             }
+
             if !implication_holds(env, &p, &qs.curr_qs) {
                 if qs.curr_qs[0] == const_true {
                     return err!("implication failure for -> true");
                 }
-                panic!("check");
                 match weaken(env, a, all_p, &qs.all_qs) {
                     Some(new_qs) => {
                         let mut new_a = a.clone();
@@ -742,7 +734,7 @@ fn solve(
     Ok(a.clone())
 }
 
-pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[lambdal::Expr]) -> Result<HashMap<Id, Vec<lambdal::Expr>>> {
+pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr]) -> Result<HashMap<Id, Vec<lambdal::Expr>>> {
     let mut k_env = KEnv::new(env);
     let (_, constraint_list) = cons_expr(&mut k_env, &Env::new(env), expr);
 

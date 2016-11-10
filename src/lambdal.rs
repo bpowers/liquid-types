@@ -334,12 +334,37 @@ pub fn anf(implicit_expr: &implicit::Expr) -> common::Result<(Expr, HashMap<Id, 
     Ok((expr, env))
 }
 
+pub fn q_op(e: &implicit::Expr) -> common::Result<Op> {
+    use implicit::Expr as I;
+    use self::Imm::*;
+    use common::Const;
+
+    let imm = match *e {
+        I::Op2(op, ref l, ref r) => {
+            let l = q_op(l)?;
+            let r = q_op(r)?;
+            return Ok(Op::Op2(op, box l, box r));
+        }
+        I::Var(ref id) => Var(id.clone()),
+        I::Const(Const::Int(b)) => Int(b),
+        I::Const(Const::Bool(b)) => Bool(b),
+        I::Star => Star,
+        I::V => V,
+        _ => {
+            panic!("unexpected imm in q: {:?}", e);
+        }
+    };
+    Ok(Op::Imm(imm))
+}
+
 #[allow(dead_code)]
 pub fn q(implicit_expr: &implicit::Expr) -> common::Result<Expr> {
-    let explicit_expr = hindley_milner::add_metavars(implicit_expr);
-    let cenv = ConvEnv::new();
-    let (_, expr) = expr(cenv, &explicit_expr, &identity);
-    Ok(expr)
+    use common::LiquidError;
+    if let Ok(op) = q_op(implicit_expr) {
+        return Ok(Expr::Op(op));
+    }
+
+    err!("expected simple Q")
 }
 
 #[test]
@@ -353,8 +378,7 @@ fn test_q() {
         Err(e) => die!("q: {:?}", e),
     };
 
-    let expected = Expr::Let(String::from("!tmp!0"), box Expr::Op(Op::Op2(LT, box Op::Imm(Imm::V), box Op::Imm(Imm::Star))),
-                             box Expr::Op(Op::Imm(Imm::Var(String::from("!tmp!0")))));
+    let expected = Expr::Op(Op::Op2(LT, box Op::Imm(Imm::V), box Op::Imm(Imm::Star)));
 
     if !cmp(&ql, &expected) {
         die!("conversion of q failed: {:?}", ql)

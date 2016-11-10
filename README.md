@@ -15,11 +15,6 @@ Subtraction: - make sure there are spaces around `-` like in `k - 1`. `k-1` does
 TODO
 ----
 
-- [ ] Update cons
-- [ ] Update split
-- [ ] Update build_a
-- [ ] Update solve
-- [ ] Update weaken
 - [ ] Generate liquid type constraints from lambdal + Shape(Γ)
 - [ ] Replace liquid type variables w/ precise refinements
 - [ ] Builtin functions - in the builtin type environment and evaluation context
