@@ -295,6 +295,7 @@ pub fn cons_op<'a>(k_env: &mut KEnv, env: &Env, e: &Op) -> (Type, LinkedList<Con
 pub fn cons_expr<'a>(k_env: &mut KEnv, env: &Env, expr: &Expr) -> (Type, LinkedList<Constraint>) {
     use lambdal::Op as LOp;
     use lambdal::Expr::*;
+    use common::Op2::Eq;
 
     match *expr {
         If(ref e1, ref e2, ref e3) => {
@@ -321,9 +322,16 @@ pub fn cons_expr<'a>(k_env: &mut KEnv, env: &Env, expr: &Expr) -> (Type, LinkedL
         }
         Let(ref id, ref e1, ref e2) => {
             let mut env = env.clone();
-
             let f = k_env.fresh(&env, expr);
             let (f1, mut c1) = cons_expr(k_env, &env, e1);
+            if let box Expr::Op(ref op) = *e1 {
+                env.add_constraint(&Expr::Op(LOp::Op2(Eq,
+                                                      box LOp::Imm(Imm::Var(id.clone())),
+                                                      box op.clone())));
+            } else {
+                println!("TODO: let not in ANF: {:?}", expr);
+            }
+
             env.insert(id, &f1);
             let (f2, mut c2) = cons_expr(k_env, &env, e2);
             c1.append(&mut c2);
@@ -430,12 +438,20 @@ fn qstar(
     for tmpl in qset {
         for v in in_scope.iter() {
             if let Some(e) = replace(v, tmpl) {
-                if let Ok(_) = hindley_milner::infer(&e) {
+                let r = hindley_milner::infer_in(env.clone(), &e);
+                if let Ok(_) = r {
                     if let Ok(ee) = lambdal::q(&e) {
-                        if let TBool = hm_shape_expr(env, &ee) {
+                        let ty = hm_shape_expr(env, &ee);
+                        if let TBool = ty.clone() {
                             qstar.insert(ee);
+                        } else {
+                            println!("not TBool for {:?} ({:?})", ee, ty);
                         }
+                    } else {
+                        println!("lambdal conv failed for {:?}", e);
                     }
+                } else {
+                    println!("HM failed for {:?}: {:?}", e, r);
                 }
             };
         }
@@ -475,7 +491,12 @@ fn smt_from_imm(
     use lambdal::Imm as I;
 
     match *q {
-        I::Var(ref id)        => vars[id],
+        I::Var(ref id)        => {
+            match vars.get(id) {
+                Some(v) => *v,
+                None => panic!("smt_from_imm: {} not in {:?}", id, vars),
+            }
+        }
         I::Bool(b)            => s.new_const(core::OpCodes::Const(b)),
         I::Int(n)             => s.new_const(integer::OpCodes::Const(n as u64)),
         I::V                  => vars["!v"],
@@ -573,8 +594,6 @@ fn implication_holds(env: &HashMap<Id, explicit::Type>, p: &[lambdal::Expr], q: 
 
     let mut senv: HashMap<Id, _> = HashMap::new();
 
-    println!("implication called w/ q: {:?}", q);
-
     // Defining the symbolic vars x & y
     for (var, ty) in env {
         let sty: LIA_Sorts = match *ty {
@@ -621,6 +640,7 @@ fn implication_holds(env: &HashMap<Id, explicit::Type>, p: &[lambdal::Expr], q: 
     let _ = solver.assert(core::OpCodes::Not, &[imply]);
 
     let (_, sat) = solver.solve(&mut z3, false);
+    println!("\t{:?}", sat);
 
     match sat {
         SMTRes::Unsat(_, _) => true,
@@ -656,13 +676,17 @@ fn weaken(
                 p.push(pc.clone());
             }
 
-            println!("check: {:?}", curr_qs);
             if !implication_holds(env, &p, &curr_qs) {
                 let _ = curr_qs.pop();
                 break;
             }
         };
     };
+
+    println!("WEAKENED:\t{:?}", curr_qs);
+    if curr_qs.len() == 0 {
+        panic!("FIXME");
+    }
 
     Some(curr_qs)
 }
@@ -736,6 +760,7 @@ fn solve(
 
 pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr]) -> Result<HashMap<Id, Vec<lambdal::Expr>>> {
     let mut k_env = KEnv::new(env);
+    println!("infer:\t{:?}", expr);
     let (_, constraint_list) = cons_expr(&mut k_env, &Env::new(env), expr);
 
     let mut constraints: HashMap<Idx, Constraint> = HashMap::new();
