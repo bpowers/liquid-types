@@ -53,43 +53,60 @@ pub struct KInfo {
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
-pub struct Env {
+pub struct KEnv {
     shape: HashMap<Id, explicit::Type>,
-    refined_env: HashMap<Id, Type>,
-    path_constraints: LinkedList<Expr>,
+    refined: HashMap<Id, Type>,
+    env_id: String,
+    next_id: i32,
 }
 
-impl Env {
-    fn new(shape: &HashMap<Id, explicit::Type>) -> Env {
-        Env {
+impl KEnv {
+    fn new(shape: &HashMap<Id, explicit::Type>) -> KEnv {
+        KEnv {
             shape: shape.clone(),
-            refined_env: HashMap::new(),
-            path_constraints: LinkedList::new(),
+            refined: HashMap::new(),
+            env_id: String::from("κ"), // ν
+            next_id: 0,
         }
     }
 
+    fn fresh_ty(&mut self, ty: explicit::Type) -> Type {
+        let id = self.next_id;
+        self.next_id += 1;
+
+        let base = match ty {
+            explicit::Type::TInt => Base::Int,
+            explicit::Type::TBool => Base::Bool,
+            explicit::Type::TFun(id, a, b) => {
+                let fx = self.fresh_ty(*a);
+                let f = self.fresh_ty(*b);
+                return T::Fun(id, box fx, box f);
+            }
+            _ => panic!("FIXME: handle {:?}", ty),
+        };
+        let k = Liquid::K(format!("!k{}", id), box LinkedList::new());
+        T::Ref(self.in_scope(), base, box k)
+    }
+
+    fn fresh(&mut self, e: &Expr) -> Type {
+        let hm_type = hm_shape_expr(&self.shape, e);
+        self.fresh_ty(hm_type)
+    }
+
     fn get(&self, s: &Id) -> Type {
-        match self.refined_env.get(s) {
+        match self.refined.get(s) {
             Some(ty) => ty.clone(),
             None => panic!("env.get('{}' missing ({:?})", s, self.in_scope()),
         }
     }
 
     fn insert(&mut self, s: &Id, ty: &Type) {
-        self.refined_env.insert(s.clone(), ty.clone());
-    }
-
-    fn add_constraint(&mut self, e: &Expr) {
-        self.path_constraints.push_back(e.clone())
+        self.refined.insert(s.clone(), ty.clone());
     }
 
     fn in_scope(&self) -> HashSet<Id> {
-        let keys: HashSet<_> = self.refined_env.keys().cloned().collect();
+        let keys: HashSet<_> = self.refined.keys().cloned().collect();
         return keys
-    }
-
-    fn snapshot(&self) -> (HashSet<Id>, LinkedList<Expr>) {
-        (self.in_scope(), self.path_constraints.clone())
     }
 }
 
@@ -142,47 +159,7 @@ fn hm_shape_expr(env: &HashMap<Id, explicit::Type>, expr: &Expr) -> explicit::Ty
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Clone)]
-pub struct KEnv {
-    shape: HashMap<Id, explicit::Type>,
-    env_id: String,
-    next_id: i32,
-}
-
-impl KEnv {
-    fn new(shape: &HashMap<Id, explicit::Type>) -> KEnv {
-        KEnv {
-            shape: shape.clone(),
-            env_id: String::from("κ"), // ν
-            next_id: 0,
-        }
-    }
-
-    fn fresh_ty(&mut self, env: &Env, ty: explicit::Type) -> Type {
-        let id = self.next_id;
-        self.next_id += 1;
-
-        let base = match ty {
-            explicit::Type::TInt => Base::Int,
-            explicit::Type::TBool => Base::Bool,
-            explicit::Type::TFun(id, a, b) => {
-                let fx = self.fresh_ty(env, *a);
-                let f = self.fresh_ty(env, *b);
-                return T::Fun(id, box fx, box f);
-            }
-            _ => panic!("FIXME: handle {:?}", ty),
-        };
-        let k = Liquid::K(format!("!k{}", id), box LinkedList::new());
-        T::Ref(env.in_scope(), base, box k)
-    }
-
-    fn fresh(&mut self, env: &Env, e: &Expr) -> Type {
-        let hm_type = hm_shape_expr(&env.shape, e);
-        self.fresh_ty(env, hm_type)
-    }
-}
-
-fn ty<'a>(_: &mut KEnv, _: &Env, c: &Imm) -> Type {
+fn ty<'a>(_: &mut KEnv, c: &Imm) -> Type {
     use common::Op2;
     use self::Liquid::E;
 
@@ -211,49 +188,47 @@ fn subst(_: &Id, _: &Imm, ty: &Type) -> Type {
     ty.clone()
 }
 
-pub fn cons_imm<'a>(k_env: &mut KEnv, env: &Env, imm: &Imm) -> (Type, LinkedList<Constraint>) {
+pub fn cons_imm<'a>(k_env: &mut KEnv, pathc: &LinkedList<Expr>, imm: &Imm) -> (Type, LinkedList<Constraint>) {
     use lambdal::Op::Imm as I;
     use lambdal::Imm::*;
     use common::Op2::Eq;
 
     match *imm {
         Var(ref id) => {
-            let ty: Type = if let Some(b) = base(&env.get(id)) {
+            let ty: Type = if let Some(b) = base(&k_env.get(id)) {
                 let eq = Expr::Op(Op::Op2(Eq, box I(V), box I(Var(id.clone()))));
-                T::Ref(env.in_scope(), b, box Liquid::E(eq))
+                T::Ref(k_env.in_scope(), b, box Liquid::E(eq))
             } else {
-                println!("{} not base -- using just env ({:?})", id, env.get(id));
-                env.get(id)
+                println!("{} not base -- using just env ({:?})", id, k_env.get(id));
+                k_env.get(id)
             };
             (ty, LinkedList::new())
         }
         Bool(_) => {
-            (ty(k_env, &env, imm), LinkedList::new())
+            (ty(k_env, imm), LinkedList::new())
         }
         Int(_) => {
-            (ty(k_env, &env, imm), LinkedList::new())
+            (ty(k_env, imm), LinkedList::new())
         }
         Fun(ref x, ref e) => {
-            let mut env = env.clone();
-            let fx = k_env.fresh(&env, &Expr::Op(Op::Imm(Var(x.clone()))));
-            env.insert(x, &fx);
-            let f = k_env.fresh(&env, e);
-            let (fe, mut c) = cons_expr(k_env, &env, e);
+            let fx = k_env.fresh(&Expr::Op(Op::Imm(Var(x.clone()))));
+            k_env.insert(x, &fx);
+            let f = k_env.fresh(e);
+            let (fe, mut c) = cons_expr(k_env, pathc, e);
             // Γ ⊢ (x:fx → f)
-            c.push_back((env.snapshot(), C::WellFormed(box f.clone())));
+            c.push_back(((k_env.in_scope(), pathc.clone()), C::WellFormed(box f.clone())));
             // Γ,x:fx ⊢ (fe <: f)
-            c.push_back((env.snapshot(), C::Subtype(box fe.clone(), box f.clone())));
+            c.push_back(((k_env.in_scope(), pathc.clone()), C::Subtype(box fe.clone(), box f.clone())));
 
             (T::Fun(x.clone(), box fx.clone(), box f), c)
         }
         Fix(ref x, ref e) => {
             // const w/ ∀α.(α→α)→α
-            let mut env = env.clone();
-            let fx = k_env.fresh(&env, e);
-            env.insert(x, &fx);
+            let fx = k_env.fresh(e);
+            k_env.insert(x, &fx);
 
             println!("FIXME: cons_imm(Fix)");
-            cons_expr(k_env, &env, e)
+            cons_expr(k_env, &pathc, e)
         }
         _ => {
             panic!("TODO: cons_imm for {:?}", imm);
@@ -261,14 +236,14 @@ pub fn cons_imm<'a>(k_env: &mut KEnv, env: &Env, imm: &Imm) -> (Type, LinkedList
     }
 }
 
-pub fn cons_op<'a>(k_env: &mut KEnv, env: &Env, e: &Op) -> (Type, LinkedList<Constraint>) {
+pub fn cons_op<'a>(k_env: &mut KEnv, pathc: &LinkedList<Expr>, e: &Op) -> (Type, LinkedList<Constraint>) {
     use common::Op2::Eq;
 
     match *e {
-        Op::Imm(ref imm) => cons_imm(k_env, env, imm),
+        Op::Imm(ref imm) => cons_imm(k_env, pathc, imm),
         Op::Op2(ref op, ref l, ref r) => {
-            let (_, mut c1) = cons_op(k_env, env, l);
-            let (_, mut c2) = cons_op(k_env, env, r);
+            let (_, mut c1) = cons_op(k_env, pathc, l);
+            let (_, mut c2) = cons_op(k_env, pathc, r);
             c1.append(&mut c2);
 
             let ty = explicit::opty(*op);
@@ -279,7 +254,7 @@ pub fn cons_op<'a>(k_env: &mut KEnv, env: &Env, e: &Op) -> (Type, LinkedList<Con
             };
 
             let eq = Expr::Op(Op::Op2(Eq, box Op::Imm(Imm::V), box e.clone()));
-            let f = T::Ref(env.in_scope(), base, box Liquid::E(eq));
+            let f = T::Ref(k_env.in_scope(), base, box Liquid::E(eq));
 
             (f, c1)
         }
@@ -289,66 +264,56 @@ pub fn cons_op<'a>(k_env: &mut KEnv, env: &Env, e: &Op) -> (Type, LinkedList<Con
     }
 }
 
-pub fn cons_expr<'a>(k_env: &mut KEnv, env: &Env, expr: &Expr) -> (Type, LinkedList<Constraint>) {
+pub fn cons_expr<'a>(k_env: &mut KEnv, pathc: &LinkedList<Expr>, expr: &Expr) -> (Type, LinkedList<Constraint>) {
     use lambdal::Op as LOp;
     use lambdal::Expr::*;
-    use common::Op2::Eq;
 
     match *expr {
         If(ref e1, ref e2, ref e3) => {
-            let mut env_t = env.clone();
-            let mut env_f = env.clone();
-            env_t.add_constraint(&Expr::Op(LOp::Imm(*e1.clone())));
-            env_f.add_constraint(&Expr::App(box Imm::Var(String::from("not")), e1.clone()));
+            let mut pathc_t = pathc.clone();
+            let mut pathc_f = pathc.clone();
+            pathc_t.push_back(Expr::Op(LOp::Imm(*e1.clone())));
+            pathc_f.push_back(Expr::App(box Imm::Var(String::from("not")), e1.clone()));
 
-            let f = k_env.fresh(&env, expr);
+            let f = k_env.fresh(expr);
             // type of e1 has already been verified to be a bool by HM
-            let (_, mut c1) = cons_imm(k_env, &env, e1);
-            let (f2, mut c2) = cons_expr(k_env, &env_t, e2);
-            let (f3, mut c3) = cons_expr(k_env, &env_f, e3);
+            let (_, mut c1) = cons_imm(k_env, &pathc, e1);
+            let (f2, mut c2) = cons_expr(k_env, &pathc_t, e2);
+            let (f3, mut c3) = cons_expr(k_env, &pathc_f, e3);
             c1.append(&mut c2);
             c1.append(&mut c3);
             // Γ ⊢ (f)
-            c1.push_back((env.snapshot(), C::WellFormed(box f.clone())));
+            c1.push_back(((k_env.in_scope(), pathc.clone()), C::WellFormed(box f.clone())));
             // Γ,e1 ⊢ (f2 <: f)
-            c1.push_back((env_t.snapshot(), C::Subtype(box f2.clone(), box f.clone())));
+            c1.push_back(((k_env.in_scope(), pathc_t), C::Subtype(box f2.clone(), box f.clone())));
             // Γ,¬e1 ⊢ (f3 <: f)
-            c1.push_back((env_f.snapshot(), C::Subtype(box f3.clone(), box f.clone())));
+            c1.push_back(((k_env.in_scope(), pathc_f), C::Subtype(box f3.clone(), box f.clone())));
 
             (f, c1)
         }
         Let(ref id, ref e1, ref e2) => {
-            let mut env = env.clone();
-            let f = k_env.fresh(&env, expr);
-            let (f1, mut c1) = cons_expr(k_env, &env, e1);
+            let f = k_env.fresh(expr);
+            let (f1, mut c1) = cons_expr(k_env, pathc, e1);
 
-            if let box Expr::Op(ref op) = *e1 {
-                env.add_constraint(&Expr::Op(LOp::Op2(Eq,
-                                                      box LOp::Imm(Imm::Var(id.clone())),
-                                                      box op.clone())));
-            } else {
-                println!("TODO: let not in ANF: {:?}", expr);
-            }
-
-            env.insert(id, &f1);
-            let (f2, mut c2) = cons_expr(k_env, &env, e2);
+            k_env.insert(id, &f1);
+            let (f2, mut c2) = cons_expr(k_env, pathc, e2);
             c1.append(&mut c2);
             // Γ ⊢ (f)
-            c1.push_back((env.snapshot(), C::WellFormed(box f.clone())));
+            c1.push_back(((k_env.in_scope(), pathc.clone()), C::WellFormed(box f.clone())));
             // Γ,x:f1 ⊢ (f2 <: f)
-            c1.push_back((env.snapshot(), C::Subtype(box f2.clone(), box f.clone())));
+            c1.push_back(((k_env.in_scope(), pathc.clone()), C::Subtype(box f2.clone(), box f.clone())));
 
             (f, c1)
         }
         App(ref e1, ref e2) => {
-            let (f1, mut c1) = cons_imm(k_env, env, e1);
+            let (f1, mut c1) = cons_imm(k_env, pathc, e1);
             println!("## {:?}\t:\t{:?}", e1, f1);
-            let (f2, mut c2) = cons_imm(k_env, env, e2);
+            let (f2, mut c2) = cons_imm(k_env, pathc, e2);
             c1.append(&mut c2);
             if let T::Fun(ref x, ref fx, ref f) = f1 {
                 let f = subst(x, e2, f);
                 // Γ ⊢ (f2 <: fx)
-                c1.push_back((env.snapshot(), C::Subtype(box f2.clone(), fx.clone())));
+                c1.push_back(((k_env.in_scope(), pathc.clone()), C::Subtype(box f2.clone(), fx.clone())));
                 return (f, c1);
             } else {
                 panic!("expected TFun, not {:?}", f1);
@@ -361,7 +326,7 @@ pub fn cons_expr<'a>(k_env: &mut KEnv, env: &Env, expr: &Expr) -> (Type, LinkedL
             // 0
             // x <: Fx})
         }
-        Op(ref op) => cons_op(k_env, &env, op),
+        Op(ref op) => cons_op(k_env, &pathc, op),
     }
 }
 
@@ -759,7 +724,8 @@ fn solve(
 pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr]) -> Result<HashMap<Id, Vec<lambdal::Expr>>> {
     let mut k_env = KEnv::new(env);
     println!("infer:\t{:?}", expr);
-    let (_, constraint_list) = cons_expr(&mut k_env, &Env::new(env), expr);
+    let (_, constraint_list) = cons_expr(&mut k_env, &LinkedList::new(), expr);
+    println!("k_env: {:?}", k_env);
 
     let mut constraints: HashMap<Idx, Constraint> = HashMap::new();
     split(&mut constraints, &constraint_list);

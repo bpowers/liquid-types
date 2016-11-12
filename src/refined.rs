@@ -23,7 +23,7 @@ impl<B: Debug> Debug for T<B> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::T::*;
         match *self {
-            Ref(ref scope, base, ref b) => write!(fmt, "{{ν: {:?} | {:?}}}", base, b),
+            Ref(_, base, ref b) => write!(fmt, "{{ν: {:?} | {:?}}}", base, b),
             Fun(ref id, ref tx, ref t) => write!(fmt, "F({}: {:?} -> {:?})", id, tx, t),
         }
     }
