@@ -1,6 +1,3 @@
-#[cfg(test)]
-use std;
-
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::LinkedList;
@@ -324,6 +321,7 @@ pub fn cons_expr<'a>(k_env: &mut KEnv, env: &Env, expr: &Expr) -> (Type, LinkedL
             let mut env = env.clone();
             let f = k_env.fresh(&env, expr);
             let (f1, mut c1) = cons_expr(k_env, &env, e1);
+
             if let box Expr::Op(ref op) = *e1 {
                 env.add_constraint(&Expr::Op(LOp::Op2(Eq,
                                                       box LOp::Imm(Imm::Var(id.clone())),
@@ -811,7 +809,6 @@ macro_rules! expr(
         use lambdal;
         use implicit_parse;
         use tok::Tokenizer;
-        use std;
         let s = $s;
         let tokenizer = Tokenizer::new(&s);
         let iexpr = match implicit_parse::parse_Program(&s, tokenizer) {

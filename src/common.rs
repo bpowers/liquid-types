@@ -39,6 +39,7 @@ macro_rules! eprintln(
 #[macro_export]
 macro_rules! die(
     ($($arg:tt)*) => { {
+        use std;
 	    eprintln!($($arg)*);
 	    std::process::exit(1/*EXIT_FAILURE*/)
     } }
