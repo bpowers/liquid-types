@@ -17,6 +17,8 @@ use rustproof_libsmt::theories::{core, integer};
 use rustproof_libsmt::logics::lia::LIA;
 use rustproof_libsmt::logics::lia::LIA_Sorts;
 
+use explicit::Type::{TInt, TBool};
+
 macro_rules! otry {
     ($expr:expr) => (match $expr {
         Some(val) => val,
@@ -364,6 +366,36 @@ fn split(map: &mut HashMap<Idx, Constraint>, constraints: &LinkedList<Constraint
     }
 }
 
+
+fn replace_imm(imm: &Imm, from: &Imm, to: &Imm) -> Imm {
+    if imm == from {
+        return to.clone();
+    }
+
+    imm.clone()
+}
+
+fn replace_op(op: &Op, from: &Imm, to: &Imm) -> Op {
+    use lambdal::Op::*;
+    match *op {
+        Op2(op, ref l, ref r) => Op2(op, box replace_op(l, from, to), box replace_op(r, from, to)),
+        MkArray(ref sz, ref n) => MkArray(box replace_imm(sz, from, to), box replace_imm(n, from, to)),
+        GetArray(ref a, ref i) => GetArray(box replace_imm(a, from, to), box replace_imm(i, from, to)),
+        SetArray(ref a, ref i, ref v) => SetArray(box replace_imm(a, from, to), box replace_imm(i, from, to), box replace_imm(v, from, to)),
+        Imm(ref imm) => Imm(replace_imm(imm, from, to)),
+    }
+}
+
+fn replace_expr(expr: &Expr, from: &Imm, to: &Imm) -> Expr {
+    use lambdal::Expr::*;
+    match *expr {
+        If(ref imm, ref e1, ref e2) => If(box replace_imm(imm, from, to), box replace_expr(e1, from, to), box replace_expr(e2, from, to)),
+        Let(ref id, ref e1, ref e2) => Let(id.clone(), box replace_expr(e1, from, to), box replace_expr(e2, from, to)),
+        App(ref imm1, ref imm2) => App(box replace_imm(imm1, from, to), box replace_imm(imm2, from, to)),
+        Op(ref op) => Op(replace_op(op, from, to)),
+    }
+}
+
 fn replace(v: &Id, q: &implicit::Expr) -> Option<implicit::Expr> {
     use implicit::Expr as I;
 
@@ -414,7 +446,7 @@ fn qstar(
                         println!("lambdal conv failed for {:?}", e);
                     }
                 } else {
-                    println!("HM failed for {:?}: {:?}", e, r);
+                    //println!("HM failed for {:?}: {:?}", e, r);
                 }
             };
         }
@@ -549,8 +581,25 @@ fn smt_from_expr(
     }
 }
 
+fn sort_from_ty(ty: &explicit::Type) -> Option<LIA_Sorts> {
+    let sort: LIA_Sorts = match *ty {
+        explicit::Type::TInt => integer::Sorts::Int.into(),
+        explicit::Type::TBool => core::Sorts::Bool.into(),
+        _ => {
+            //println!("TODO: v'{}' more sorts than int ({:?})", var, ty);
+            return None
+        }
+    };
+    Some(sort)
+}
+
 // whether the conjunction of all p implies the conjunction of all q
-fn implication_holds(env: &HashMap<Id, explicit::Type>, p: &[lambdal::Expr], q: &[lambdal::Expr]) -> bool {
+fn implication_holds(
+    env: &HashMap<Id, explicit::Type>,
+    v_ty: explicit::Type,
+    p: &[lambdal::Expr],
+    q: &[lambdal::Expr]) -> bool {
+
     let mut z3 = Z3::new_with_binary("./z3");
     let mut solver = SMTLib2::new(Some(LIA));
     solver.set_logic(&mut z3);
@@ -559,19 +608,13 @@ fn implication_holds(env: &HashMap<Id, explicit::Type>, p: &[lambdal::Expr], q: 
 
     // Defining the symbolic vars x & y
     for (var, ty) in env {
-        let sty: LIA_Sorts = match *ty {
-            explicit::Type::TInt => integer::Sorts::Int.into(),
-            explicit::Type::TBool => core::Sorts::Bool.into(),
-            _ => {
-                //println!("TODO: v'{}' more sorts than int ({:?})", var, ty);
-                continue;
-            }
-        };
-        let idx = solver.new_var(Some(&var), sty);
-        senv.insert(var.clone(), idx);
+        if let Some(sort) = sort_from_ty(ty) {
+            let idx = solver.new_var(Some(&var), sort);
+            senv.insert(var.clone(), idx);
+        }
     }
     // TODO: is v always an int?
-    senv.insert(String::from("!v"), solver.new_var(Some("!v"), integer::Sorts::Int));
+    senv.insert(String::from("!v"), solver.new_var(Some("!v"), sort_from_ty(&v_ty).unwrap()));
 
     let mut ps: Vec<_> = Vec::new();
     for t in p {
@@ -639,7 +682,7 @@ fn weaken(
                 p.push(pc.clone());
             }
 
-            if !implication_holds(env, &p, &curr_qs) {
+            if !implication_holds(env, TInt, &p, &curr_qs) {
                 let _ = curr_qs.pop();
                 break;
             }
@@ -694,7 +737,7 @@ fn solve(
                 p.push(pc.clone());
             }
 
-            if !implication_holds(env, &p, &qs.curr_qs) {
+            if !implication_holds(env, TInt, &p, &qs.curr_qs) {
                 if qs.curr_qs[0] == const_true {
                     return err!("implication failure for -> true");
                 }
@@ -736,12 +779,12 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
     let mut by_id: HashMap<Id, Vec<(LinkedList<Expr>, Box<Type>)>> = HashMap::new();
     for (_, c) in constraints.iter() {
         if let &((_, ref path), C::Subtype(ref p, ref e)) = c {
+            // TODO: next.
             if let box T::Ref(_, _, box Liquid::K(ref id, _)) = *e {
                 let mut antecedent = vec![(path.clone(), p.clone())];
                 if by_id.contains_key(id) {
                     let mut others = by_id[id].clone();
                     others.append(&mut antecedent);
-                    println!("@@ multi'{}:\t{:?}", id, others);
                     by_id.insert(id.clone(), others);
                 } else {
                     by_id.insert(id.clone(), antecedent);
@@ -822,7 +865,7 @@ fn test_implication() {
     ];
 
     // expect this to hold
-    if !implication_holds(&env, &p, &q) {
+    if !implication_holds(&env, TInt, &p, &q) {
         die!("1 expected {:?} => {:?}", p, q);
     }
 
@@ -835,7 +878,7 @@ fn test_implication() {
     ];
 
     // but this shouldn't
-    if implication_holds(&env, &p, &q) {
+    if implication_holds(&env, TInt, &p, &q) {
         die!("2 expected {:?} => {:?}", p, q);
     }
 }
