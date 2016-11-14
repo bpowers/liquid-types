@@ -17,7 +17,7 @@ use rustproof_libsmt::theories::{core, integer};
 use rustproof_libsmt::logics::lia::LIA;
 use rustproof_libsmt::logics::lia::LIA_Sorts;
 
-use explicit::Type::{TInt, TBool};
+use explicit::Type::TInt;
 
 macro_rules! otry {
     ($expr:expr) => (match $expr {
@@ -50,6 +50,7 @@ pub type Constraint = ((HashSet<Id>, LinkedList<Expr>), C); // Boolean valued ex
 
 #[derive(Debug, Clone)]
 pub struct KInfo {
+    base: Base,
     all_qs: HashSet<lambdal::Expr>,
     curr_qs: Vec<lambdal::Expr>,
 }
@@ -458,11 +459,12 @@ fn build_a(constraints: &HashMap<Idx, Constraint>, env: &HashMap<Id, explicit::T
 
     for (_, c) in constraints.iter() {
         if let &((_, _), C::WellFormed(ref ty)) = c {
-            if let &box T::Ref(ref in_scope, _, box Liquid::K(ref id, _)) = ty {
+            if let &box T::Ref(ref in_scope, ref base, box Liquid::K(ref id, _)) = ty {
                 // TODO: subst?
                 let all_qs = qstar(id, in_scope, env, q);
                 let curr_qs: Vec<_> = all_qs.iter().cloned().collect();
                 a.insert(id.clone(), KInfo{
+                    base: *base,
                     all_qs: all_qs,
                     curr_qs: curr_qs,
                 });
@@ -629,22 +631,18 @@ fn implication_holds(
             senv.insert(var.clone(), idx);
         }
     }
-    // TODO: is v always an int?
+
     senv.insert(String::from("!v"), solver.new_var(Some("!v"), sort_from_ty(&v_ty).unwrap()));
 
     let mut ps: Vec<_> = Vec::new();
     for t in p {
-        println!("p smt:\t{:?}", t);
         let pred = smt_from_expr(&mut solver, &senv, t);
-        //let _ = solver.assert(integer::OpCodes::Cmp, &[pred, strue]);
         ps.push(pred);
     }
 
     let mut qs: Vec<_> = Vec::new();
     for t in q {
-        println!("q smt:\t{:?}", t);
         let pred = smt_from_expr(&mut solver, &senv, t);
-        //let _ = solver.assert(integer::OpCodes::Cmp, &[pred, strue]);
         qs.push(pred);
     }
 
@@ -662,7 +660,6 @@ fn implication_holds(
     let _ = solver.assert(core::OpCodes::Not, &[imply]);
 
     let (_, sat) = solver.solve(&mut z3, false);
-    println!("\t{:?}", sat);
 
     match sat {
         SMTRes::Unsat(_, _) => true,
@@ -709,11 +706,6 @@ fn weaken(
         };
     };
 
-    println!("WEAKENED:\t{:?}", curr_qs);
-    if curr_qs.len() == 0 {
-        //panic!("FIXME");
-    }
-
     Some(curr_qs)
 }
 
@@ -735,7 +727,9 @@ fn solve(
             None => {
                 let mut all_qs = HashSet::new();
                 all_qs.insert(const_true.clone());
+                // FIXME: shouldn't default to Int
                 KInfo{
+                    base: Base::Int,
                     all_qs: all_qs,
                     curr_qs: vec![const_true.clone()],
                 }
@@ -756,7 +750,7 @@ fn solve(
             for var in in_scope {
                 p.extend(expr_from_var(a, var, &renv[var]));
             }
-            println!("check: {:?} /\\ {:?} => {:?}", path_constraints, p, qs.curr_qs);
+            //println!("check: {:?} /\\ {:?} => {:?}", path_constraints, p, qs.curr_qs);
             for pc in path_constraints {
                 p.push(pc.clone());
             }
@@ -769,18 +763,17 @@ fn solve(
                     Some(new_qs) => {
                         let mut new_a = a.clone();
                         new_a.insert(id.clone(), KInfo{
+                            base: qs.base,
                             all_qs: qs.all_qs.clone(),
                             curr_qs: new_qs.clone(),
                         });
-                        println!("RECURSION ({:?})", new_qs);
+                        //println!("RECURSION ({:?})", new_qs);
                         return solve(env, renv, constraints, &new_a);
                     }
                     None => {
                         return err!("Weaken failed for {:?}", p);
                     }
                 }
-            } else {
-                println!("{} is ok", id);
             }
         };
     };
@@ -790,9 +783,7 @@ fn solve(
 
 pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr]) -> Result<HashMap<Id, Vec<lambdal::Expr>>> {
     let mut k_env = KEnv::new(env);
-    println!("infer:\t{:?}", expr);
     let (_, constraint_list) = cons_expr(&mut k_env, &LinkedList::new(), expr);
-    println!("k_env: {:?}", k_env);
 
     let mut constraints: HashMap<Idx, Constraint> = HashMap::new();
     split(&mut constraints, &constraint_list);
@@ -817,14 +808,8 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
     }
     let mut all_constraints: LinkedList<STConstraints> = LinkedList::new();
     for (id, v) in by_id {
-        println!("->{}:\t{:?}", id, v);
         all_constraints.push_back((v.clone(), id.clone()));
     }
-
-    println!("\nΓ:");
-    for (id, ty) in env {
-        println!(" {}:\t{:?}", id, ty);
-    };
 
     let min_a = solve(env, &k_env.refined, &all_constraints, &a)?;
 
