@@ -42,7 +42,7 @@ pub enum Liquid {
 pub type Type = T<Liquid>;
 // if we have a type T1 with two subtype constraints: T2 <: T1 and T3
 // <: T1, that would be a single STConstraint with 2 antedents.
-pub type STConstraints = (Vec<(LinkedList<Expr>, Box<Type>)>, Id);
+pub type STConstraints = (Vec<(HashSet<Id>, LinkedList<Expr>, Box<Type>)>, Id);
 
 pub type Idx = i32; // constraint index
 
@@ -58,7 +58,6 @@ pub struct KInfo {
 pub struct KEnv {
     shape: HashMap<Id, explicit::Type>,
     refined: HashMap<Id, Type>,
-    env_id: String,
     next_id: i32,
 }
 
@@ -67,7 +66,6 @@ impl KEnv {
         KEnv {
             shape: shape.clone(),
             refined: HashMap::new(),
-            env_id: String::from("κ"), // ν
             next_id: 0,
         }
     }
@@ -486,16 +484,16 @@ fn smt_from_imm(
     use lambdal::Imm as I;
 
     match *q {
-        I::Var(ref id)        => {
+        I::Var(ref id) => {
             match vars.get(id) {
                 Some(v) => *v,
                 None => panic!("smt_from_imm: {} not in {:?}", id, vars),
             }
         }
-        I::Bool(b)            => s.new_const(core::OpCodes::Const(b)),
-        I::Int(n)             => s.new_const(integer::OpCodes::Const(n as u64)),
-        I::V                  => vars["!v"],
-        I::Star               => unreachable!(),
+        I::Bool(b)   => s.new_const(core::OpCodes::Const(b)),
+        I::Int(n)    => s.new_const(integer::OpCodes::Const(n as u64)),
+        I::V         => vars["!v"],
+        I::Star      => unreachable!("star in smt?"),
         I::Fun(_, _) => unreachable!("fun in smt?"),
         I::Fix(_, _) => unreachable!("fix in smt?"),
     }
@@ -508,7 +506,6 @@ fn smt_from_op(
 
     use lambdal::Op as O;
     use common::Op2;
-
 
     match *q {
         O::Imm(ref imm)          => smt_from_imm(s, vars, imm),
@@ -566,7 +563,7 @@ fn smt_from_expr(
             let _ = s.assert(integer::OpCodes::Cmp, eq_exprs);
             smt_from_expr(s, vars, e2)
         }
-        E::App(ref e1, ref e2)         => {
+        E::App(ref e1, ref e2) => {
             if *e1 == box Imm::Var(String::from("not")) {
                 let exprs = &[smt_from_imm(s, vars, e2)];
                 s.assert(core::OpCodes::Not, exprs)
@@ -579,6 +576,25 @@ fn smt_from_expr(
             panic!("smt_from_expr unimplemented {:?}", q);
         }
     }
+}
+
+fn expr_from_var(a: &HashMap<Id, KInfo>, var: &Id, ty: &Type) -> Vec<lambdal::Expr> {
+    let const_true = Expr::Op(Op::Imm(Imm::Bool(true)));
+    let exprs = match *ty {
+        T::Ref(_, _, box Liquid::E(ref expr)) => vec![expr.clone()],
+        T::Ref(_, _, box Liquid::K(ref p_id, _)) => match a.get(p_id) {
+            Some(ps) => ps.clone().curr_qs,
+            None => vec![const_true.clone()],
+        },
+        T::Fun(_, _, _) => {
+            panic!("unexpected {:?} -- should all be split() by now", ty)
+        }
+    };
+    let mut instantiated = vec![];
+    for e in exprs {
+        instantiated.push(replace_expr(&e, &Imm::V, &Imm::Var(var.clone())));
+    }
+    instantiated
 }
 
 fn sort_from_ty(ty: &explicit::Type) -> Option<LIA_Sorts> {
@@ -657,8 +673,9 @@ fn implication_holds(
 // whether the conjunction of all p implies the conjunction of all q
 fn weaken(
     env: &HashMap<Id, explicit::Type>,
+    renv: &HashMap<Id, Type>,
     a: &HashMap<Id, KInfo>,
-    all_p: &Vec<(LinkedList<Expr>, Box<Type>)>,
+    all_p: &Vec<(HashSet<Id>, LinkedList<Expr>, Box<Type>)>,
     qs: &HashSet<lambdal::Expr>) -> Option<Vec<lambdal::Expr>> {
 
     let const_true = Expr::Op(Op::Imm(Imm::Bool(true)));
@@ -667,7 +684,7 @@ fn weaken(
     for q in qs {
         curr_qs.push(q.clone());
 
-        for &(ref path_constraints, ref p) in all_p {
+        for &(ref in_scope, ref path_constraints, ref p) in all_p {
             let mut p = match *p {
                 box T::Ref(_, _, box Liquid::E(ref expr)) => vec![expr.clone()],
                 box T::Ref(_, _, box Liquid::K(ref p_id, _)) => match a.get(p_id) {
@@ -678,6 +695,9 @@ fn weaken(
                     panic!("unexpected {:?} -- should all be split() by now", p)
                 }
             };
+            for var in in_scope {
+                p.extend(expr_from_var(a, var, &renv[var]));
+            }
             for pc in path_constraints {
                 p.push(pc.clone());
             }
@@ -691,7 +711,7 @@ fn weaken(
 
     println!("WEAKENED:\t{:?}", curr_qs);
     if curr_qs.len() == 0 {
-        panic!("FIXME");
+        //panic!("FIXME");
     }
 
     Some(curr_qs)
@@ -699,6 +719,7 @@ fn weaken(
 
 fn solve(
     env: &HashMap<Id, explicit::Type>,
+    renv: &HashMap<Id, Type>,
     constraints: &LinkedList<STConstraints>,
     a: &HashMap<Id, KInfo>) -> Result<HashMap<Id, KInfo>> {
 
@@ -721,7 +742,7 @@ fn solve(
             }
         };
 
-        for &(ref path_constraints, ref p) in all_p {
+        for &(ref in_scope, ref path_constraints, ref p) in all_p {
             let mut p = match *p {
                 box T::Ref(_, _, box Liquid::E(ref expr)) => vec![expr.clone()],
                 box T::Ref(_, _, box Liquid::K(ref p_id, _)) => match a.get(p_id) {
@@ -732,6 +753,9 @@ fn solve(
                     panic!("unexpected {:?} -- should all be split() by now", p)
                 }
             };
+            for var in in_scope {
+                p.extend(expr_from_var(a, var, &renv[var]));
+            }
             println!("check: {:?} /\\ {:?} => {:?}", path_constraints, p, qs.curr_qs);
             for pc in path_constraints {
                 p.push(pc.clone());
@@ -741,7 +765,7 @@ fn solve(
                 if qs.curr_qs[0] == const_true {
                     return err!("implication failure for -> true");
                 }
-                match weaken(env, a, all_p, &qs.all_qs) {
+                match weaken(env, renv, a, all_p, &qs.all_qs) {
                     Some(new_qs) => {
                         let mut new_a = a.clone();
                         new_a.insert(id.clone(), KInfo{
@@ -749,7 +773,7 @@ fn solve(
                             curr_qs: new_qs.clone(),
                         });
                         println!("RECURSION ({:?})", new_qs);
-                        return solve(env, constraints, &new_a);
+                        return solve(env, renv, constraints, &new_a);
                     }
                     None => {
                         return err!("Weaken failed for {:?}", p);
@@ -776,12 +800,11 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
     let a = build_a(&constraints, env, q);
 
     // group subtyping constraints by supertype
-    let mut by_id: HashMap<Id, Vec<(LinkedList<Expr>, Box<Type>)>> = HashMap::new();
+    let mut by_id: HashMap<Id, Vec<(HashSet<Id>, LinkedList<Expr>, Box<Type>)>> = HashMap::new();
     for (_, c) in constraints.iter() {
         if let &((_, ref path), C::Subtype(ref p, ref e)) = c {
-            // TODO: next.
-            if let box T::Ref(_, _, box Liquid::K(ref id, _)) = *e {
-                let mut antecedent = vec![(path.clone(), p.clone())];
+            if let box T::Ref(ref in_scope, _, box Liquid::K(ref id, _)) = *e {
+                let mut antecedent = vec![(in_scope.clone(), path.clone(), p.clone())];
                 if by_id.contains_key(id) {
                     let mut others = by_id[id].clone();
                     others.append(&mut antecedent);
@@ -803,7 +826,7 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
         println!(" {}:\t{:?}", id, ty);
     };
 
-    let min_a = solve(env, &all_constraints, &a)?;
+    let min_a = solve(env, &k_env.refined, &all_constraints, &a)?;
 
     let mut res = HashMap::new();
     for (k, v) in min_a {
