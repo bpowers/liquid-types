@@ -175,13 +175,17 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Imm) -> (ConvEnv, Exp
         }
         E::Fun(ref id, _, ref e) => {
             let (cenv, fun) = expr(cenv, e, &identity);
-            let fun_imm = I::Fun(id.clone(), box fun);
-            k(cenv, fun_imm)
+            let (cenv, fun_ref) = cenv.tmp();
+            let (cenv, result) = k(cenv, I::Var(fun_ref.clone()));
+
+            (cenv, Let(fun_ref, box Op(Imm(I::Fun(id.clone(), box fun))), box result))
         }
         E::Fix(ref id, _, ref e) => {
             let (cenv, fix) = expr(cenv, e, &identity);
-            let fix_imm = I::Fix(id.clone(), box fix);
-            k(cenv, fix_imm)
+            let (cenv, fix_ref) = cenv.tmp();
+            let (cenv, result) = k(cenv, I::Var(fix_ref.clone()));
+
+            (cenv, Let(fix_ref, box Op(Imm(I::Fix(id.clone(), box fix))), box result))
         }
         E::App(ref e1, ref e2) => {
             expr(cenv, e1, &|cenv, ie1| {
@@ -365,6 +369,7 @@ pub fn q(implicit_expr: &implicit::Expr) -> common::Result<Expr> {
 
 #[test]
 fn test_q() {
+    use std;
     use common::Op2::*;
 
     let q1 = implicit::Expr::Op2(LT, box implicit::Expr::V, box implicit::Expr::Star);
@@ -464,6 +469,7 @@ macro_rules! test_anf(
     ($s:expr, $ae:expr) => { {
         use implicit_parse;
         use tok::Tokenizer;
+        use std;
         let s = $s;
         let tokenizer = Tokenizer::new(&s);
         let iexpr = match implicit_parse::parse_Program(&s, tokenizer) {
@@ -533,10 +539,11 @@ fn anf_transforms() {
 
     test_anf!(
         "let f = (fun n -> n + 1) in f (2+3)",
-            box Let(String::from("f!a1"), box Op(Imm(I::Fun(String::from("n!a2"),
+        Let(String::from("!tmp!1"), box Op(Imm(I::Fun(String::from("n!a2"),
                                                       box Let(String::from("!tmp!0"), box Op(Op2(O::Add, box Imm(I::Var(String::from("n!a2"))), box Imm(I::Int(1)))),
                                                               box Op(Imm(I::Var(String::from("!tmp!0")))))))),
+            box Let(String::from("f!a1"), box Op(Imm(I::Var(String::from("!tmp!1")))),
                     box Let(String::from("!tmp!2"), box Op(Op2(O::Add, box Imm(I::Int(2)), box Imm(I::Int(3)))),
                             box Let(String::from("!tmp!3"), box App(box I::Var(String::from("f!a1")), box I::Var(String::from("!tmp!2"))),
-                                    box Op(Imm(I::Var(String::from("!tmp!3"))))))));
+                                    box Op(Imm(I::Var(String::from("!tmp!3")))))))));
 }

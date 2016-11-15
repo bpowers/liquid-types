@@ -243,6 +243,7 @@ macro_rules! test_eval(
     ($s:expr, $v:expr) => { {
         use implicit_parse;
         use tok::Tokenizer;
+        use std;
         use lambdal;
         let s = $s;
         let tokenizer = Tokenizer::new(&s);
