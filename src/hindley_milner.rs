@@ -172,7 +172,19 @@ fn gen_constraints<'a>(m: &mut MVEnv,
             let (mut c2, t2) = gen_constraints(m, env, e2)?;
             let id = match *e1 {
                 box E::Fun(ref id, _, _) => id.clone(),
-                _ => String::from("gonna-fail"),
+                box E::Var(ref id) => {
+                    if let Some(&Type::TFun(ref xid, _, _)) = env.get(id) {
+                        xid.clone()
+                    } else {
+                        // this is a problem, unless we're only
+                        // running this to process Q, in which case it
+                        // doesn't matter.
+                        String::from("gonna-fail2")
+                    }
+                }
+                _ => {
+                    String::from("gonna-fail")
+                }
             };
             c1.append(&mut c2);
             c1.push((t1.clone(), Type::TFun(id, box t2.clone(), box mv.clone())));

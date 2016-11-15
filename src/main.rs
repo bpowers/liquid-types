@@ -138,12 +138,17 @@ fn main() {
     //     ]
     // };
 
-    let refined = match liquid::infer(&anf_expr, &type_env, &q) {
-        Ok(expr) => expr,
+    let refined_env = match liquid::infer(&anf_expr, &type_env, &q) {
+        Ok(env) => env,
         Err(e) => die!("infer: {}", error::Error::description(&e)),
     };
 
-    println!("refined:\n\n{:?}\n", refined);
+    // println!("refined:\n\n{:?}\n", refined);
+
+    println!("\nrefined Γ:");
+    for (id, ty) in refined_env {
+        println!(" {}:\t{:?}", id, ty);
+    };
 
     let val = eval::interpret(&anf_expr);
 

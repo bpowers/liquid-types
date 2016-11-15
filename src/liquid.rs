@@ -184,8 +184,8 @@ fn base(ty: &Type) -> Option<Base> {
     }
 }
 
-fn subst(_: &Id, _: &Imm, ty: &Type) -> Type {
-    println!("TODO: subst");
+fn subst(id: &Id, imm: &Imm, ty: &Type) -> Type {
+    println!("TODO: subst {} => {:?} in {:?}", id, imm, ty);
     ty.clone()
 }
 
@@ -213,10 +213,13 @@ pub fn cons_imm<'a>(k_env: &mut KEnv, pathc: &LinkedList<Expr>, imm: &Imm) -> (T
         }
         Fun(ref x, ref e) => {
             let fx = k_env.fresh(&Expr::Op(Op::Imm(Var(x.clone()))));
+            let fx_well_formed = ((k_env.in_scope(), pathc.clone()), C::WellFormed(box fx.clone()));
             k_env.insert(x, &fx);
+
             let f = k_env.fresh(e);
             let (fe, mut c) = cons_expr(k_env, pathc, e);
             // Γ ⊢ (x:fx → f)
+            c.push_back(fx_well_formed);
             c.push_back(((k_env.in_scope(), pathc.clone()), C::WellFormed(box f.clone())));
             // Γ,x:fx ⊢ (fe <: f)
             c.push_back(((k_env.in_scope(), pathc.clone()), C::Subtype(box fe.clone(), box f.clone())));
@@ -227,8 +230,8 @@ pub fn cons_imm<'a>(k_env: &mut KEnv, pathc: &LinkedList<Expr>, imm: &Imm) -> (T
             // const w/ ∀α.(α→α)→α
             let fx = k_env.fresh(e);
             k_env.insert(x, &fx);
+            // TODO: well-formed?
 
-            println!("FIXME: cons_imm(Fix)");
             cons_expr(k_env, &pathc, e)
         }
         _ => {
@@ -781,14 +784,58 @@ fn solve(
     Ok(a.clone())
 }
 
-pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr]) -> Result<HashMap<Id, Vec<lambdal::Expr>>> {
+fn conjoin(qs: &[Expr]) -> Op {
+    use common::Op2;
+    if let Expr::Op(op) = qs[0].clone() {
+        match qs[1..].len() {
+            0 => op,
+            _ => Op::Op2(Op2::And, box op, box conjoin(&qs[1..])),
+        }
+    } else {
+        panic!("expected q to be an Op, not {:?}", qs)
+    }
+}
+
+fn concretize_liquid(_: &HashMap<Id, Type>, a: &HashMap<Id, KInfo>, lqdt: &Liquid) -> Liquid {
+    match *lqdt {
+        Liquid::E(ref expr) => Liquid::E(expr.clone()),
+        Liquid::K(ref id, _) => { // TODO: substitutions
+            println!("K: {:?} (a: {:?})", lqdt, a);
+            let ref qs = a[id].curr_qs;
+            match qs.len() {
+                0 => Liquid::E(Expr::Op(Op::Imm(Imm::Bool(true)))),
+                _ => Liquid::E(Expr::Op(conjoin(&qs))),
+            }
+        }
+    }
+}
+
+fn concretize_ty(renv: &HashMap<Id, Type>, a: &HashMap<Id, KInfo>, ty: &Type) -> Type {
+    match *ty {
+        T::Ref(ref in_scope, base, ref predicate) => T::Ref(in_scope.clone(), base, box concretize_liquid(renv, a, predicate)),
+        T::Fun(ref id, ref xty, ref yty) => T::Fun(id.clone(), box concretize_ty(renv, a, xty), box concretize_ty(renv, a, yty)),
+    }
+}
+
+// turn types that have k in them into dependent types w/o ks
+fn concretize(renv: &HashMap<Id, Type>, a: &HashMap<Id, KInfo>) -> HashMap<Id, Type> {
+    let mut result = HashMap::new();
+
+    for (id, ty) in renv {
+        result.insert(id.clone(), concretize_ty(renv, a, ty));
+    }
+
+    result
+}
+
+pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr]) -> Result<HashMap<Id, Type>> {
     let mut k_env = KEnv::new(env);
+    println!("infer:\t{:?}", expr);
     let (_, constraint_list) = cons_expr(&mut k_env, &LinkedList::new(), expr);
+    println!("k_env: {:?}", k_env);
 
     let mut constraints: HashMap<Idx, Constraint> = HashMap::new();
     split(&mut constraints, &constraint_list);
-
-    let a = build_a(&constraints, env, q);
 
     // group subtyping constraints by supertype
     let mut by_id: HashMap<Id, Vec<(HashSet<Id>, LinkedList<Expr>, Box<Type>)>> = HashMap::new();
@@ -808,17 +855,23 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
     }
     let mut all_constraints: LinkedList<STConstraints> = LinkedList::new();
     for (id, v) in by_id {
+        println!("->{}:\t{:?}", id, v);
         all_constraints.push_back((v.clone(), id.clone()));
     }
 
+    let a = build_a(&constraints, env, q);
     let min_a = solve(env, &k_env.refined, &all_constraints, &a)?;
 
-    let mut res = HashMap::new();
-    for (k, v) in min_a {
-        res.insert(k, v.curr_qs.clone());
-    }
+    println!("a:");
+    for (id, ki) in a {
+        println!("{}\t{:?}", id, ki);
+    };
+    println!("min_a:");
+    for (id, ki) in &min_a {
+        println!("{}\t{:?}", id, ki);
+    };
 
-    Ok(res)
+    Ok(concretize(&k_env.refined, &min_a))
 }
 
 macro_rules! expr(

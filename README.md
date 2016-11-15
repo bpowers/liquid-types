@@ -15,7 +15,6 @@ Subtraction: - make sure there are spaces around `-` like in `k - 1`. `k-1` does
 TODO
 ----
 
-- [ ] Generate liquid type constraints from lambdal + Shape(Γ)
 - [ ] Replace liquid type variables w/ precise refinements
 - [ ] Builtin functions - in the builtin type environment and evaluation context
 - [ ] Allow specifying Q on commandline (like Q = {0 ≤ ν; ν < len a} // from pg. 21)
