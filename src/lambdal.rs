@@ -60,7 +60,7 @@ impl Debug for Op {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::Op::*;
         match *self {
-            Op2(op, ref l, ref r) => write!(fmt, "({:?} {:?} {:?})", op, l, r),
+            Op2(op, ref l, ref r) => write!(fmt, "{:?} {:?} {:?}", l, op, r),
             MkArray(ref sz, ref n) => write!(fmt, "array({:?}, {:?})", sz, n),
             GetArray(ref a, ref idx) => write!(fmt, "{:?}[{:?}]", a, idx),
             SetArray(ref a, ref idx, ref n) => write!(fmt, "{:?}[{:?}] = {:?}", a, idx, n),

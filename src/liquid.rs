@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::LinkedList;
+use std::result;
+use std::fmt::{Debug, Formatter, Error};
 
 use hindley_milner;
 use explicit;
@@ -33,11 +35,22 @@ pub enum C {
 }
 
 
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub enum Liquid {
     E(Expr),
     K(Id, Box<LinkedList<Expr>>), // list of pending substitutions
 }
+
+impl Debug for Liquid {
+    fn fmt(&self, fmt: &mut Formatter) -> result::Result<(), Error> {
+        use self::Liquid::*;
+        match *self {
+            E(ref expr) => write!(fmt, "{:?}", expr),
+            K(ref id, ref subs) => write!(fmt, "{} {:?}", id, subs),
+        }
+    }
+}
+
 
 pub type Type = T<Liquid>;
 // if we have a type T1 with two subtype constraints: T2 <: T1 and T3
@@ -799,8 +812,8 @@ fn conjoin(qs: &[Expr]) -> Op {
 fn concretize_liquid(_: &HashMap<Id, Type>, a: &HashMap<Id, KInfo>, lqdt: &Liquid) -> Liquid {
     match *lqdt {
         Liquid::E(ref expr) => Liquid::E(expr.clone()),
-        Liquid::K(ref id, _) => { // TODO: substitutions
-            println!("K: {:?} (a: {:?})", lqdt, a);
+        Liquid::K(ref id, _) => {
+            // TODO: substitutions
             let ref qs = a[id].curr_qs;
             match qs.len() {
                 0 => Liquid::E(Expr::Op(Op::Imm(Imm::Bool(true)))),

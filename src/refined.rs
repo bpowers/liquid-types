@@ -24,7 +24,7 @@ impl<B: Debug> Debug for T<B> {
         use self::T::*;
         match *self {
             Ref(_, base, ref b) => write!(fmt, "{{ν: {:?} | {:?}}}", base, b),
-            Fun(ref id, ref tx, ref t) => write!(fmt, "F({}: {:?} -> {:?})", id, tx, t),
+            Fun(ref id, ref tx, ref t) => write!(fmt, "F({}: {:?} → {:?})", id, tx, t),
         }
     }
 }

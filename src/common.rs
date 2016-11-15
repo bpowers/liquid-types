@@ -1,8 +1,9 @@
-use std::{fmt, error, result};
+use std::{error, result};
+use std::fmt::{self, Debug, Formatter, Error};
 
 pub type Id = String;
 
-#[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
+#[derive(PartialEq, Eq, Hash, Copy, Clone)]
 pub enum Op2 {
     LT,
     GT,
@@ -22,6 +23,26 @@ pub enum Op2 {
 pub enum Const {
     Int(i64),
     Bool(bool),
+}
+
+impl Debug for Op2 {
+    fn fmt(&self, fmt: &mut Formatter) -> result::Result<(), Error> {
+        use self::Op2::*;
+        match *self {
+            LT => write!(fmt, "<"),
+            GT => write!(fmt, "<"),
+            LTE => write!(fmt, "≤"),
+            GTE => write!(fmt, "≥"),
+            Eq => write!(fmt, "="),
+            Add => write!(fmt, "+"),
+            Sub => write!(fmt, "-"),
+            Mul => write!(fmt, "*"),
+            And => write!(fmt, "∧"),
+            Or => write!(fmt, "⋁"),
+            Impl => write!(fmt, "⇒"),
+            Iff => write!(fmt, "⇔"),
+        }
+    }
 }
 
 // const EXIT_FAILURE: i32 = 1;
