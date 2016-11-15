@@ -605,7 +605,8 @@ fn expr_from_var(a: &HashMap<Id, KInfo>, var: &Id, ty: &Type) -> Vec<lambdal::Ex
             None => vec![const_true.clone()],
         },
         T::Fun(_, _, _) => {
-            panic!("unexpected {:?} -- should all be split() by now", ty)
+            // TODO: ensure defined correct.
+            vec![const_true.clone()]
         }
     };
     let mut instantiated = vec![];
@@ -814,6 +815,9 @@ fn concretize_liquid(_: &HashMap<Id, Type>, a: &HashMap<Id, KInfo>, lqdt: &Liqui
         Liquid::E(ref expr) => Liquid::E(expr.clone()),
         Liquid::K(ref id, _) => {
             // TODO: substitutions
+            if !a.contains_key(id) {
+                panic!("NOT FOUND {}", id);
+            }
             let ref qs = a[id].curr_qs;
             match qs.len() {
                 0 => Liquid::E(Expr::Op(Op::Imm(Imm::Bool(true)))),
