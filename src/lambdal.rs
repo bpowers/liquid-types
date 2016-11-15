@@ -369,7 +369,6 @@ pub fn q(implicit_expr: &implicit::Expr) -> common::Result<Expr> {
 
 #[test]
 fn test_q() {
-    use std;
     use common::Op2::*;
 
     let q1 = implicit::Expr::Op2(LT, box implicit::Expr::V, box implicit::Expr::Star);
@@ -469,7 +468,6 @@ macro_rules! test_anf(
     ($s:expr, $ae:expr) => { {
         use implicit_parse;
         use tok::Tokenizer;
-        use std;
         let s = $s;
         let tokenizer = Tokenizer::new(&s);
         let iexpr = match implicit_parse::parse_Program(&s, tokenizer) {

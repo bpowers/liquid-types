@@ -51,7 +51,7 @@ impl Debug for Op2 {
 #[macro_export]
 macro_rules! eprintln(
     ($($arg:tt)*) => { {
-	    use std::io::Write;
+        use std::io::Write;
         let r = writeln!(&mut ::std::io::stderr(), $($arg)*);
         r.expect("failed printing to stderr");
     } }
@@ -60,14 +60,15 @@ macro_rules! eprintln(
 #[macro_export]
 macro_rules! die(
     ($($arg:tt)*) => { {
-	    eprintln!($($arg)*);
-	    std::process::exit(1/*EXIT_FAILURE*/)
+        use std;
+        eprintln!($($arg)*);
+        std::process::exit(1/*EXIT_FAILURE*/)
     } }
 );
 #[macro_export]
 macro_rules! err(
     ($($arg:tt)*) => { {
-	Err(LiquidError::new(format!($($arg)*)))
+        Err(LiquidError::new(format!($($arg)*)))
     } }
 );
 

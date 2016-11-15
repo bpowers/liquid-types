@@ -1,6 +1,3 @@
-#[cfg(test)]
-use std;
-
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::LinkedList;
@@ -899,7 +896,6 @@ macro_rules! expr(
         use lambdal;
         use implicit_parse;
         use tok::Tokenizer;
-        use std;
         let s = $s;
         let tokenizer = Tokenizer::new(&s);
         let iexpr = match implicit_parse::parse_Program(&s, tokenizer) {
