@@ -348,7 +348,9 @@ pub fn q_op(e: &implicit::Expr) -> common::Result<Op> {
         I::Var(ref id) => Var(id.clone()),
         I::Const(Const::Int(b)) => Int(b),
         I::Const(Const::Bool(b)) => Bool(b),
-        I::Star => Star,
+        I::Star => {
+            return err!("found star.");
+        }
         I::V => V,
         _ => {
             panic!("unexpected imm in q: {:?}", e);

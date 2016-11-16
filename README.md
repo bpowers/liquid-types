@@ -15,6 +15,7 @@ Subtraction: - make sure there are spaces around `-` like in `k - 1`. `k-1` does
 TODO
 ----
 
+- [ ] figure out why !k11 doesn't have y in scope
 - [ ] perform substitutions
 - [ ] remove explicit 'wellformed' C, and just generate a from hashsets in Ref
 - [ ] Builtin functions - in the builtin type environment and evaluation context

@@ -68,6 +68,7 @@ macro_rules! die(
 #[macro_export]
 macro_rules! err(
     ($($arg:tt)*) => { {
+        use common::LiquidError;
         Err(LiquidError::new(format!($($arg)*)))
     } }
 );

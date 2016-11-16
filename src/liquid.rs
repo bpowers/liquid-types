@@ -98,7 +98,7 @@ impl KEnv {
             }
             _ => panic!("FIXME: handle {:?}", ty),
         };
-        let k = Liquid::K(format!("!k{}", id), box LinkedList::new());
+        let k = Liquid::K(format!("_k{}", id), box LinkedList::new());
         T::Ref(self.in_scope(), base, box k)
     }
 
@@ -344,12 +344,14 @@ pub fn cons_expr<'a>(k_env: &mut KEnv, pathc: &LinkedList<Expr>, expr: &Expr) ->
         }
         App(ref e1, ref e2) => {
             let (f1, mut c1) = cons_imm(k_env, pathc, e1);
-            println!("## {:?}\t:\t{:?}", e1, f1);
+            //println!("## {:?}\t:\t{:?}", e1, f1);
             let (f2, mut c2) = cons_imm(k_env, pathc, e2);
             c1.append(&mut c2);
             if let T::Fun(ref x, ref fx, ref f) = f1 {
                 let f = subst(x, e2, f);
                 // Γ ⊢ (f2 <: fx)
+                println!("App Γ ⊢ {:?} <: {:?} ({:?})", f2, fx, k_env.in_scope());
+                c1.push_back(((HashSet::new(), pathc.clone()), C::WellFormed(fx.clone())));
                 c1.push_back(((k_env.in_scope(), pathc.clone()), C::Subtype(box f2.clone(), fx.clone())));
                 return (f, c1);
             } else {
@@ -468,6 +470,22 @@ fn qstar(
 
     let mut qstar: HashSet<lambdal::Expr> = HashSet::new();
     for tmpl in qset {
+        if in_scope.len() == 0 {
+            let r = hindley_milner::infer_in(env.clone(), tmpl);
+            if let Ok(_) = r {
+                if let Ok(ee) = lambdal::q(tmpl) {
+                    let ty = hm_shape_expr(env, &ee);
+                    if let TBool = ty.clone() {
+                        qstar.insert(ee);
+                    } else {
+                        println!("not TBool for {:?} ({:?})", ee, ty);
+                    }
+                } else {
+                    println!("lambdal conv failed for {:?}", tmpl);
+                }
+            }
+            continue;
+        }
         for v in in_scope.iter() {
             if let Some(e) = replace(v, tmpl) {
                 let r = hindley_milner::infer_in(env.clone(), &e);
@@ -496,8 +514,10 @@ fn build_a(constraints: &HashMap<Idx, Constraint>, env: &HashMap<Id, explicit::T
     let mut a: HashMap<Id, KInfo> = HashMap::new();
 
     for (_, c) in constraints.iter() {
-        if let &((_, _), C::WellFormed(ref ty)) = c {
-            if let &box T::Ref(ref in_scope, ref base, box Liquid::K(ref id, _)) = ty {
+        if let &((ref in_scope, _), C::WellFormed(ref ty)) = c {
+            if let &box T::Ref(_, ref base, box Liquid::K(ref id, _)) = ty {
+                // let diff: HashSet<_> = in_scope_c.difference(&in_scope).cloned().collect();
+                // println!("BA\t{}\t{:?} ({:?})", id, diff, in_scope_c);
                 // TODO: subst?
                 let all_qs = qstar(id, in_scope, env, q);
                 let curr_qs: Vec<_> = all_qs.iter().cloned().collect();
@@ -776,9 +796,15 @@ fn solve(
         for &(ref in_scope, ref path_constraints, ref p) in all_p {
             let mut p = match *p {
                 box T::Ref(_, _, box Liquid::E(ref expr)) => vec![expr.clone()],
-                box T::Ref(_, _, box Liquid::K(ref p_id, _)) => match a.get(p_id) {
-                    Some(ps) => ps.clone().curr_qs,
-                    None => vec![const_true.clone()],
+                box T::Ref(_, _, box Liquid::K(ref p_id, ref substs)) => {
+                    let qs = match a.get(p_id) {
+                        Some(ps) => ps.clone().curr_qs,
+                        None => vec![const_true.clone()],
+                    };
+                    if substs.len() > 0 {
+                        println!("** TODO-subst: [{:?}]({:?})", substs, qs);
+                    }
+                    qs
                 },
                 box T::Fun(_, _, _) => {
                     panic!("unexpected {:?} -- should all be split() by now", p)
@@ -917,7 +943,7 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
 
     let mut all_constraints: LinkedList<STConstraints> = LinkedList::new();
     for (id, v) in by_id {
-        println!("->{}:\t{:?}", id, v);
+        //println!("->{}:\t{:?}", id, v);
         all_constraints.push_back((v.clone(), id.clone()));
     }
 
@@ -933,6 +959,7 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
         println!("{}\t{:?}", id, ki.curr_qs);
     };
 
+    println!("TOP: {:?}", concretize_ty(&k_env.refined, &min_a, &top));
     Ok(concretize(&k_env.refined, &min_a))
 }
 
