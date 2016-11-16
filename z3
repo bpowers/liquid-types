@@ -3,5 +3,5 @@
 #PID=".`readlink /proc/self`"
 PID=""
 
-rm -f interaction.$PID.txt
-tee -a interaction.$PID.txt | z3 -in -smt2 | tee -a interaction.$PID.txt
+rm -f /tmp/interaction$PID.txt
+tee -a /tmp/interaction$PID.txt | z3 -in -smt2 | tee -a /tmp/interaction$PID.txt

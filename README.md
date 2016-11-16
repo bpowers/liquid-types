@@ -15,17 +15,9 @@ Subtraction: - make sure there are spaces around `-` like in `k - 1`. `k-1` does
 TODO
 ----
 
-- [ ] figure out why !k11 doesn't have y in scope
-- [ ] perform substitutions
-- [ ] remove explicit 'wellformed' C, and just generate a from hashsets in Ref
+- [ ] Get examples/sum.ml to give precise for sum of: k:int->{v:int| 0 <= v && k <= v}
 - [ ] Builtin functions - in the builtin type environment and evaluation context
 - [ ] Allow specifying Q on commandline (like Q = {0 ≤ ν; ν < len a} // from pg. 21)
-- [ ] fixpoint: "expr typechecks if there is an appropriate liquid type that can be instantiated for the α in the polymorphic type of fix; intuitively, this liquid type corresponds to the type of the recursive function f"
-- [ ] Divide by zero
-- [ ] Report error or not
-- [ ] verify no liquid type vars remain
-- [ ] Polymorphic constraints for HM?  or does that already happen if I don't make sure metavars are removed?
-- [ ] more tests: add test that implicit -> explicit -> implicit is correct (mod α-renaming)
 
 NOT IMPLEMENTED
 ---------------
