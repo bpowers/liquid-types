@@ -30,7 +30,7 @@ impl Debug for Op2 {
         use self::Op2::*;
         match *self {
             LT => write!(fmt, "<"),
-            GT => write!(fmt, "<"),
+            GT => write!(fmt, ">"),
             LTE => write!(fmt, "≤"),
             GTE => write!(fmt, "≥"),
             Eq => write!(fmt, "="),
@@ -38,7 +38,7 @@ impl Debug for Op2 {
             Sub => write!(fmt, "-"),
             Mul => write!(fmt, "*"),
             And => write!(fmt, "∧"),
-            Or => write!(fmt, "⋁"),
+            Or => write!(fmt, "∨"),
             Impl => write!(fmt, "⇒"),
             Iff => write!(fmt, "⇔"),
         }

@@ -48,8 +48,8 @@ impl Debug for Imm {
             Bool(b) => write!(fmt, "{}", b),
             Int(n) => write!(fmt, "{}", n),
             Var(ref id) => write!(fmt, "{}", id),
-            Fun(ref id, ref e) => write!(fmt, "(fun {} -> {:?})", id, e),
-            Fix(ref id, ref e) => write!(fmt, "(fix {} -> {:?})", id, e),
+            Fun(ref id, ref e) => write!(fmt, "fun {} -> {:?}", id, e),
+            Fix(ref id, ref e) => write!(fmt, "fix {} -> {:?}", id, e),
             Star => write!(fmt, "★"),
             V => write!(fmt, "ν"),
         }
@@ -73,9 +73,9 @@ impl Debug for Expr {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {
         use self::Expr::*;
         match *self {
-            If(ref cond, ref l, ref r) => write!(fmt, "if ({:?}) then ({:?}) else ({:?})", cond, l, r),
+            If(ref cond, ref l, ref r) => write!(fmt, "if {:?} then {:?} else {:?}", cond, l, r),
             App(ref e1, ref e2) => write!(fmt, "{:?} {:?}", e1, e2),
-            Let(ref id, ref e1, ref e2) => write!(fmt, "let {} = ({:?}) in ({:?})", id, e1, e2),
+            Let(ref id, ref e1, ref e2) => write!(fmt, "let {} = {:?} in {:?}", id, e1, e2),
             Op(ref op) => write!(fmt, "{:?}", op),
         }
     }
@@ -104,7 +104,7 @@ impl ConvEnv {
             next_id: self.next_id+1,
         };
 
-        (c, format!("!tmp-{}!{}", self.env_id, id))
+        (c, format!("tmp{}_{}", self.env_id, id))
     }
 }
 

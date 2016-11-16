@@ -147,8 +147,9 @@ fn main() {
 
     println!("\nrefined Γ:");
     for (id, ty) in refined_env {
-        println!(" {}:\t{:?}", id, ty);
+        println!("{}:\t{:?}", id, ty);
     };
+    println!("");
 
     let val = eval::interpret(&anf_expr);
 
