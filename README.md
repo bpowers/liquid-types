@@ -15,7 +15,6 @@ Subtraction: - make sure there are spaces around `-` like in `k - 1`. `k-1` does
 TODO
 ----
 
-- [ ] print out all subtype constraints
 - [ ] perform substitutions
 - [ ] remove explicit 'wellformed' C, and just generate a from hashsets in Ref
 - [ ] Builtin functions - in the builtin type environment and evaluation context

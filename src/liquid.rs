@@ -717,9 +717,7 @@ fn weaken(
     let const_true = Expr::Op(Op::Imm(Imm::Bool(true)));
 
     let mut curr_qs: Vec<lambdal::Expr> = Vec::new();
-    for q in qs {
-        curr_qs.push(q.clone());
-
+    'outer: for q in qs {
         for &(ref in_scope, ref path_constraints, ref p) in all_p {
             let mut p = match *p {
                 box T::Ref(_, _, box Liquid::E(ref expr)) => vec![expr.clone()],
@@ -738,11 +736,11 @@ fn weaken(
                 p.push(pc.clone());
             }
 
-            if !implication_holds(env, TInt, &p, &curr_qs) {
-                let _ = curr_qs.pop();
-                break;
+            if !implication_holds(env, TInt, &p, &[q.clone()]) {
+                continue 'outer;
             }
         };
+        curr_qs.push(q.clone());
     };
 
     Some(curr_qs)
@@ -786,7 +784,7 @@ fn solve(
                     panic!("unexpected {:?} -- should all be split() by now", p)
                 }
             };
-            if id == "!k12" {
+            if id == "!k11" {
                 println!("IN-SCOPE: {:?}", in_scope);
             }
             for var in in_scope {
@@ -796,7 +794,7 @@ fn solve(
                 p.push(pc.clone());
             }
 
-            if id == "!k12" {
+            if id == "!k11" {
                 println!("CHECK: {:?} /\\ {:?} => {:?}", path_constraints, p, qs.curr_qs);
             }
             let implication = implication_holds(env, TInt, &p, &qs.curr_qs);

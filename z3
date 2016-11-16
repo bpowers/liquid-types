@@ -1,4 +1,7 @@
 #!/bin/bash
 
-rm -f interaction.txt
-tee -a interaction.txt | z3 -in -smt2 | tee -a interaction.txt
+#PID=".`readlink /proc/self`"
+PID=""
+
+rm -f interaction.$PID.txt
+tee -a interaction.$PID.txt | z3 -in -smt2 | tee -a interaction.$PID.txt
