@@ -361,7 +361,6 @@ pub fn q_op(e: &implicit::Expr) -> common::Result<Op> {
 
 #[allow(dead_code)]
 pub fn q(implicit_expr: &implicit::Expr) -> common::Result<Expr> {
-    use common::LiquidError;
     if let Ok(op) = q_op(implicit_expr) {
         return Ok(Expr::Op(op));
     }

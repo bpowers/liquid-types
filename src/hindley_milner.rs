@@ -12,7 +12,7 @@ use implicit_parse;
 #[cfg(test)]
 use tok::Tokenizer;
 
-use common::{Id, LiquidError, Result};
+use common::{Id, Result};
 
 struct MVEnv<'a> {
     env_id: &'a str,

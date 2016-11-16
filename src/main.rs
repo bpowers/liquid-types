@@ -25,7 +25,7 @@ mod liquid;
 mod eval;
 mod lambdal;
 
-use common::{LiquidError, Result};
+use common::Result;
 
 fn usage() -> ! {
     let argv0 = std::env::args().nth(0).unwrap_or("<mdl>".to_string());

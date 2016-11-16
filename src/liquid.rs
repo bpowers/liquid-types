@@ -9,7 +9,7 @@ use explicit;
 use implicit;
 use lambdal;
 use lambdal::{Expr, Op, Imm};
-use common::{Id, Result, LiquidError};
+use common::{Id, Result};
 use refined::{Base, T};
 
 use rustproof_libsmt::backends::smtlib2::SMTLib2;
@@ -183,8 +183,6 @@ fn ty<'a>(_: &mut KEnv, c: &Imm) -> Type {
         _ => unreachable!("only called for constants."),
     };
 
-    println!("ty({:?})", base);
-
     // {ν : int | ν = 3 }
     let eq = E(Expr::Op(Op::Op2(Op2::Eq, box Op::Imm(Imm::V), box Op::Imm(c.clone()))));
     T::Ref(HashSet::new(), base, box eq)
@@ -199,7 +197,7 @@ fn base(ty: &Type) -> Option<Base> {
 
 fn subst(sid: &Id, imm: &Imm, ty: &Type) -> Type {
     if let &T::Ref(ref scope, base, box Liquid::K(ref id, ref pending)) = ty {
-        println!("TODO: subst [{:?}/{}]({:?})", imm, sid, ty);
+        //println!("TODO: subst [{:?}/{}]({:?})", imm, sid, ty);
         let mut pending = pending.clone();
         pending.push_back((imm.clone(), sid.clone()));
         T::Ref(scope.clone(), base, box Liquid::K(id.clone(), pending))
@@ -234,7 +232,7 @@ pub fn cons_imm<'a>(k_env: &mut KEnv, pathc: &LinkedList<Expr>, imm: &Imm) -> (T
         }
         Fun(ref x, ref e) => {
             let fx = k_env.fresh(&Expr::Op(Op::Imm(Var(x.clone()))));
-            println!("Fun: {} => {:?} ({:?})", x, fx, k_env.in_scope());
+            //println!("Fun: {} => {:?} ({:?})", x, fx, k_env.in_scope());
             let ffun_env = (k_env.in_scope(), pathc.clone());
 
             k_env.insert(x, &fx);
@@ -249,7 +247,7 @@ pub fn cons_imm<'a>(k_env: &mut KEnv, pathc: &LinkedList<Expr>, imm: &Imm) -> (T
             c.push_back((ffun_env.clone(), C::WellFormed(box ffun.clone())));
             //c.push_back(((k_env.in_scope(), pathc.clone()), C::WellFormed(box f.clone())));
             // Γ,x:fx ⊢ (fe <: f)
-            println!("SUBTYPE: {:?} <: {:?} ({:?})", fe, f, ffun_env);
+            //println!("SUBTYPE: {:?} <: {:?} ({:?})", fe, f, ffun_env);
             c.push_back((ffun_env.clone(), C::Subtype(box fe, box f)));
 
             (ffun, c)
@@ -350,7 +348,7 @@ pub fn cons_expr<'a>(k_env: &mut KEnv, pathc: &LinkedList<Expr>, expr: &Expr) ->
             if let T::Fun(ref x, ref fx, ref f) = f1 {
                 let f = subst(x, e2, f);
                 // Γ ⊢ (f2 <: fx)
-                println!("App Γ ⊢ {:?} <: {:?} ({:?})", f2, fx, k_env.in_scope());
+                //println!("App Γ ⊢ {:?} <: {:?} ({:?})", f2, fx, k_env.in_scope());
                 c1.push_back(((HashSet::new(), pathc.clone()), C::WellFormed(fx.clone())));
                 c1.push_back(((k_env.in_scope(), pathc.clone()), C::Subtype(box f2.clone(), fx.clone())));
                 return (f, c1);
@@ -376,7 +374,7 @@ fn split(map: &mut HashMap<Idx, Constraint>, constraints: &LinkedList<Constraint
         if let &((ref scope, ref pathc), C::Subtype(box T::Fun(_, ref tx1, ref t1),
                                                     box T::Fun(ref x2, ref tx2, ref t2))) = c {
 
-            println!("!SUBTYPE {:?} <: {:?} ({:?})", tx2, tx1, scope);
+            //println!("!SUBTYPE {:?} <: {:?} ({:?})", tx2, tx1, scope);
 
             let mut contra_cs: LinkedList<Constraint> = LinkedList::new();
             contra_cs.push_back(((scope.clone(), pathc.clone()), C::Subtype(tx2.clone(), tx1.clone())));
@@ -480,8 +478,6 @@ fn qstar(
                     } else {
                         println!("not TBool for {:?} ({:?})", ee, ty);
                     }
-                } else {
-                    println!("lambdal conv failed for {:?}", tmpl);
                 }
             }
             continue;
@@ -642,9 +638,22 @@ fn expr_from_var(a: &HashMap<Id, KInfo>, var: &Id, ty: &Type) -> Vec<lambdal::Ex
     let const_true = Expr::Op(Op::Imm(Imm::Bool(true)));
     let exprs = match *ty {
         T::Ref(_, _, box Liquid::E(ref expr)) => vec![expr.clone()],
-        T::Ref(_, _, box Liquid::K(ref p_id, _)) => match a.get(p_id) {
-            Some(ps) => ps.clone().curr_qs,
-            None => vec![const_true.clone()],
+        T::Ref(_, _, box Liquid::K(ref p_id, ref substs)) => {
+            let qs = match a.get(p_id) {
+                Some(ps) => ps.clone().curr_qs,
+                None => vec![const_true.clone()],
+            };
+            let mut qs_replaced = vec![];
+            for mut q in qs {
+                for &(ref sub, ref var) in substs.iter() {
+                    q = replace_expr(&q, &Imm::Var(var.clone()), sub);
+                }
+                qs_replaced.push(q);
+            }
+            // if substs.len() > 0 {
+            //     println!("TODO-subste: -> {:?}", qs_replaced);
+            // }
+            qs_replaced
         },
         T::Fun(_, _, _) => {
             // TODO: ensure defined correct.
@@ -831,7 +840,7 @@ fn solve(
                 if qs.curr_qs[0] == const_true {
                     return err!("implication failure for -> true");
                 }
-                println!("WEAKENING {} ({:?})", id, qs.curr_qs);
+                //println!("WEAKENING {} ({:?})", id, qs.curr_qs);
                 match weaken(env, renv, a, all_p, &qs.all_qs) {
                     Some(new_qs) => {
                         let mut new_a = a.clone();
@@ -906,17 +915,16 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
     let mut k_env = KEnv::new(env);
     println!("infer:\t{:?}", expr);
     let (top, constraint_list) = cons_expr(&mut k_env, &LinkedList::new(), expr);
-    println!("TOP TYPE: {:?}", top);
-    println!("Γ:");
+    println!("Liquid Γ:");
     for (id, ty) in &k_env.refined {
         println!(" {}\t{:?}", id, ty);
     }
 
-    println!("STLIST BEGIN");
-    for st in &constraint_list {
-        println!("{:?}", st);
-    };
-    println!("STLIST END");
+    // println!("STLIST BEGIN");
+    // for st in &constraint_list {
+    //     println!("{:?}", st);
+    // };
+    // println!("STLIST END");
 
     let mut constraints: HashMap<Idx, Constraint> = HashMap::new();
     split(&mut constraints, &constraint_list);
@@ -959,7 +967,7 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
         println!("{}\t{:?}", id, ki.curr_qs);
     };
 
-    println!("TOP: {:?}", concretize_ty(&k_env.refined, &min_a, &top));
+    println!("\nTOP TYPE: {:?}", concretize_ty(&k_env.refined, &min_a, &top));
     Ok(concretize(&k_env.refined, &min_a))
 }
 
