@@ -146,8 +146,10 @@ fn main() {
     // println!("refined:\n\n{:?}\n", refined);
 
     println!("\nrefined Γ:");
-    for (id, ty) in refined_env {
-        println!("{}:\t{:?}", id, ty);
+    let mut ids: Vec<_> = refined_env.keys().clone().collect();
+    ids.sort();
+    for id in ids {
+        println!("{}:\t{:?}", id, refined_env[id]);
     };
     println!("");
 

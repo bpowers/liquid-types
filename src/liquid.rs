@@ -913,12 +913,18 @@ fn concretize(renv: &HashMap<Id, Type>, a: &HashMap<Id, KInfo>) -> HashMap<Id, T
 
 pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr]) -> Result<HashMap<Id, Type>> {
     let mut k_env = KEnv::new(env);
-    println!("infer:\t{:?}", expr);
+    println!("infer:\t{:?}\n", expr);
     let (top, constraint_list) = cons_expr(&mut k_env, &LinkedList::new(), expr);
-    println!("Liquid Γ:");
-    for (id, ty) in &k_env.refined {
-        println!(" {}\t{:?}", id, ty);
+
+    {
+        println!("Liquid Γ:");
+        let mut ids: Vec<_> = k_env.refined.keys().clone().collect();
+        ids.sort();
+        for id in ids {
+            println!("{}:\t{:?}", id, k_env.refined[id]);
+        };
     }
+    println!("");
 
     // println!("STLIST BEGIN");
     // for st in &constraint_list {
@@ -930,11 +936,21 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
     split(&mut constraints, &constraint_list);
 
     // group subtyping constraints by supertype
-    println!("SUBTYPE BEGIN");
+    println!("Subtype Constraints");
     let mut by_id: HashMap<Id, Vec<(HashSet<Id>, LinkedList<Expr>, Box<Type>)>> = HashMap::new();
-    for (_, c) in constraints.iter() {
+    let mut ckeys: Vec<Idx> = constraints.keys().map(|i| *i).collect();
+    ckeys.sort_by_key(|k| {
+        if let ((_, _), C::Subtype(_, box T::Ref(_, _, box Liquid::K(ref id, _)))) = constraints[k] {
+            i32::from_str(&id[2..]).unwrap_or(-1)
+        } else {
+            -2
+        }
+    });
+    for ckey in ckeys {
+        let ref c = constraints[&ckey];
         if let &((ref in_scope, ref path), C::Subtype(ref p, ref e)) = c {
-            println!("Γ ⊢ {:?}   \t<: {:?} ({:?})", p, e, in_scope);
+            println!("Γ ⊢ {:?}   \t<: {:?} (PATH: {:?})", p, e, path);
+            //println!("Γ ⊢ {:?}   \t<: {:?} (PATH: {:?}) (IN_SCOPE: {:?})", p, e, path, in_scope);
             if let box T::Ref(_, _, box Liquid::K(ref id, _)) = *e {
                 let mut antecedent = vec![(in_scope.clone(), path.clone(), p.clone())];
                 if by_id.contains_key(id) {
@@ -944,10 +960,12 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
                 } else {
                     by_id.insert(id.clone(), antecedent);
                 }
+            } else {
+                println!("TODO: subtype constraint for non-liquid type {:?}", e);
             }
         }
     }
-    println!("SUBTYPE END");
+    println!("");
 
     let mut all_constraints: LinkedList<STConstraints> = LinkedList::new();
     for (id, v) in by_id {
@@ -958,14 +976,24 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
     let a = build_a(&constraints, env, q);
     let min_a = solve(env, &k_env.refined, &all_constraints, &a)?;
 
-    println!("a:");
-    for (id, ki) in a {
-        println!("{}\t{:?}", id, ki.all_qs);
-    };
-    println!("min_a:");
-    for (id, ki) in &min_a {
-        println!("{}\t{:?}", id, ki.curr_qs);
-    };
+    use std::str::FromStr;
+    {
+        println!("a:");
+        let mut ids: Vec<_> = a.keys().clone().collect();
+        ids.sort_by_key(|id| i32::from_str(&id[2..]).unwrap_or(-1));
+        for id in ids {
+            println!("{}\t{:?}", id, a[id].all_qs);
+        };
+    }
+    {
+        use std::str::FromStr;
+        println!("min_a:");
+        let mut ids: Vec<_> = min_a.keys().clone().collect();
+        ids.sort_by_key(|id| i32::from_str(&id[2..]).unwrap_or(-1));
+        for id in ids {
+            println!("{}\t{:?}", id, a[id].curr_qs);
+        };
+    }
 
     println!("\nTOP TYPE: {:?}", concretize_ty(&k_env.refined, &min_a, &top));
     Ok(concretize(&k_env.refined, &min_a))
