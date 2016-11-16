@@ -115,7 +115,6 @@ impl KEnv {
     }
 
     fn insert(&mut self, id: &Id, ty: &Type) {
-        println!("INSERT: {} -> {:?}", id, ty);
         self.refined.insert(id.clone(), ty.clone());
     }
 
@@ -793,13 +792,15 @@ fn solve(
             if id == "!k15" {
                 println!("CHECK: {:?} /\\ {:?} => {:?}", path_constraints, p, qs.curr_qs);
             }
-            if !implication_holds(env, TInt, &p, &qs.curr_qs) {
-                if id == "!k15" {
-                    panic!("HOLUP");
-                }
+            let implication = implication_holds(env, TInt, &p, &qs.curr_qs);
+            // if id == "!k15" {
+            //     panic!("HOLUP");
+            // }
+            if !implication {
                 if qs.curr_qs[0] == const_true {
                     return err!("implication failure for -> true");
                 }
+                println!("WEAKENING {} ({:?})", id, qs.curr_qs);
                 match weaken(env, renv, a, all_p, &qs.all_qs) {
                     Some(new_qs) => {
                         let mut new_a = a.clone();
@@ -873,7 +874,7 @@ fn concretize(renv: &HashMap<Id, Type>, a: &HashMap<Id, KInfo>) -> HashMap<Id, T
 pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr]) -> Result<HashMap<Id, Type>> {
     let mut k_env = KEnv::new(env);
     println!("infer:\t{:?}", expr);
-    let (top, mut constraint_list) = cons_expr(&mut k_env, &LinkedList::new(), expr);
+    let (top, constraint_list) = cons_expr(&mut k_env, &LinkedList::new(), expr);
     println!("TOP TYPE: {:?}", top);
     println!("Γ:");
     for (id, ty) in &k_env.refined {
