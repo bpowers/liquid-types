@@ -221,7 +221,7 @@ pub fn cons_imm<'a>(k_env: &mut KEnv, pathc: &LinkedList<Expr>, imm: &Imm) -> (T
                 let eq = Expr::Op(Op::Op2(Eq, box I(V), box I(Var(id.clone()))));
                 T::Ref(k_env.in_scope(), b, box Liquid::E(eq))
             } else {
-                println!("{} not base -- using just env ({:?})", id, k_env.get(id));
+                //println!("{} not base -- using just env ({:?})", id, k_env.get(id));
                 k_env.get(id)
             };
             (ty, LinkedList::new())
@@ -234,6 +234,7 @@ pub fn cons_imm<'a>(k_env: &mut KEnv, pathc: &LinkedList<Expr>, imm: &Imm) -> (T
         }
         Fun(ref x, ref e) => {
             let fx = k_env.fresh(&Expr::Op(Op::Imm(Var(x.clone()))));
+            println!("Fun: {} => {:?} ({:?})", x, fx, k_env.in_scope());
             let ffun_env = (k_env.in_scope(), pathc.clone());
 
             k_env.insert(x, &fx);
@@ -241,15 +242,15 @@ pub fn cons_imm<'a>(k_env: &mut KEnv, pathc: &LinkedList<Expr>, imm: &Imm) -> (T
             let (fe, mut c) = cons_expr(k_env, pathc, e);
 
             let ffun = T::Fun(x.clone(), box fx.clone(), box f.clone());
-            println!("FX: {:?}", fx);
-            println!("FFUN: {:?}", ffun);
+            //println!("FX: {:?}", fx);
+            //println!("FFUN: {:?}", ffun);
             // Γ ⊢ (x:fx → f)
             c.push_back((ffun_env.clone(), C::WellFormed(box fx.clone())));
-            c.push_back((ffun_env, C::WellFormed(box ffun.clone())));
+            c.push_back((ffun_env.clone(), C::WellFormed(box ffun.clone())));
             //c.push_back(((k_env.in_scope(), pathc.clone()), C::WellFormed(box f.clone())));
             // Γ,x:fx ⊢ (fe <: f)
-            println!("SUBTYPE: {:?} <: {:?} ({:?})", fe, f, e);
-            c.push_back(((k_env.in_scope(), pathc.clone()), C::Subtype(box fe, box f)));
+            println!("SUBTYPE: {:?} <: {:?} ({:?})", fe, f, ffun_env);
+            c.push_back((ffun_env.clone(), C::Subtype(box fe, box f)));
 
             (ffun, c)
         }
@@ -324,16 +325,20 @@ pub fn cons_expr<'a>(k_env: &mut KEnv, pathc: &LinkedList<Expr>, expr: &Expr) ->
         }
         Let(ref id, ref e1, ref e2) => {
             let f = k_env.fresh(expr);
+            let mut in_scope = k_env.in_scope();
             let (f1, mut c1) = cons_expr(k_env, pathc, e1);
-
             k_env.insert(id, &f1);
+            in_scope.insert(id.clone());
+
+            let let_env = (in_scope, pathc.clone());
+
             let (f2, mut c2) = cons_expr(k_env, pathc, e2);
             c1.append(&mut c2);
             // Γ ⊢ (f)
-            println!("ST Γ ⊢ {:?} <: {:?} ({:?})", f2, f, k_env.in_scope());
-            c1.push_back(((k_env.in_scope(), pathc.clone()), C::WellFormed(box f.clone())));
+            //println!("ST Γ ⊢ {:?} <: {:?} ({:?})", f2, f, k_env.in_scope());
+            c1.push_back((let_env.clone(), C::WellFormed(box f.clone())));
             // Γ,x:f1 ⊢ (f2 <: f)
-            c1.push_back(((k_env.in_scope(), pathc.clone()), C::Subtype(box f2.clone(), box f.clone())));
+            c1.push_back((let_env, C::Subtype(box f2.clone(), box f.clone())));
 
             (f, c1)
         }
@@ -368,6 +373,8 @@ fn split(map: &mut HashMap<Idx, Constraint>, constraints: &LinkedList<Constraint
     for c in constraints.iter() {
         if let &((ref scope, ref pathc), C::Subtype(box T::Fun(_, ref tx1, ref t1),
                                                     box T::Fun(ref x2, ref tx2, ref t2))) = c {
+
+            println!("!SUBTYPE {:?} <: {:?} ({:?})", tx2, tx1, scope);
 
             let mut contra_cs: LinkedList<Constraint> = LinkedList::new();
             contra_cs.push_back(((scope.clone(), pathc.clone()), C::Subtype(tx2.clone(), tx1.clone())));
@@ -779,7 +786,7 @@ fn solve(
                     panic!("unexpected {:?} -- should all be split() by now", p)
                 }
             };
-            if id == "!k15" {
+            if id == "!k12" {
                 println!("IN-SCOPE: {:?}", in_scope);
             }
             for var in in_scope {
@@ -789,7 +796,7 @@ fn solve(
                 p.push(pc.clone());
             }
 
-            if id == "!k15" {
+            if id == "!k12" {
                 println!("CHECK: {:?} /\\ {:?} => {:?}", path_constraints, p, qs.curr_qs);
             }
             let implication = implication_holds(env, TInt, &p, &qs.curr_qs);
@@ -881,6 +888,12 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
         println!(" {}\t{:?}", id, ty);
     }
 
+    println!("STLIST BEGIN");
+    for st in &constraint_list {
+        println!("{:?}", st);
+    };
+    println!("STLIST END");
+
     let mut constraints: HashMap<Idx, Constraint> = HashMap::new();
     split(&mut constraints, &constraint_list);
 
@@ -889,7 +902,7 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
     let mut by_id: HashMap<Id, Vec<(HashSet<Id>, LinkedList<Expr>, Box<Type>)>> = HashMap::new();
     for (_, c) in constraints.iter() {
         if let &((ref in_scope, ref path), C::Subtype(ref p, ref e)) = c {
-            println!("Γ ⊢ {:?}   \t<: {:?}", p, e);
+            println!("Γ ⊢ {:?}   \t<: {:?} ({:?})", p, e, in_scope);
             if let box T::Ref(_, _, box Liquid::K(ref id, _)) = *e {
                 let mut antecedent = vec![(in_scope.clone(), path.clone(), p.clone())];
                 if by_id.contains_key(id) {
