@@ -371,10 +371,8 @@ fn split(map: &mut HashMap<Idx, Constraint>, constraints: &LinkedList<Constraint
             // recurse
             split(map, &contra_cs);
             idx = (map.len() as i32)+1;
-        } else if let &((ref scope, ref pathc), C::WellFormed(box T::Fun(ref id, ref tx, ref t))) = c {
+        } else if let &((ref scope, ref pathc), C::WellFormed(box T::Fun(ref id, _, ref t))) = c {
             let mut wf_cs: LinkedList<Constraint> = LinkedList::new();
-
-            wf_cs.push_back(((scope.clone(), pathc.clone()), C::WellFormed(tx.clone())));
 
             let mut scope = scope.clone();
             scope.insert(id.clone());
