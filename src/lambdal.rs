@@ -372,13 +372,13 @@ pub fn q(implicit_expr: &implicit::Expr) -> common::Result<Expr> {
 fn test_q() {
     use common::Op2::*;
 
-    let q1 = implicit::Expr::Op2(LT, box implicit::Expr::V, box implicit::Expr::Star);
+    let q1 = implicit::Expr::Op2(LT, box implicit::Expr::V, box implicit::Expr::Const(common::Const::Int(3)));
     let ql = match q(&q1) {
         Ok(expr) => expr,
         Err(e) => die!("q: {:?}", e),
     };
 
-    let expected = Expr::Op(Op::Op2(LT, box Op::Imm(Imm::V), box Op::Imm(Imm::Star)));
+    let expected = Expr::Op(Op::Op2(LT, box Op::Imm(Imm::V), box Op::Imm(Imm::Int(3))));
 
     if !cmp(&ql, &expected) {
         die!("conversion of q failed: {:?}", ql)
