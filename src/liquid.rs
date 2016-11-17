@@ -98,7 +98,8 @@ impl KEnv {
             }
             _ => panic!("FIXME: handle {:?}", ty),
         };
-        let k = Liquid::K(format!("_k{}", id), box LinkedList::new());
+        let kid = format!("_k{}", id);
+        let k = Liquid::K(kid, box LinkedList::new());
         T::Ref(self.in_scope(), base, box k)
     }
 
@@ -254,11 +255,16 @@ pub fn cons_imm<'a>(k_env: &mut KEnv, pathc: &LinkedList<Expr>, imm: &Imm) -> (T
         }
         Fix(ref x, ref e) => {
             // const w/ ∀α.(α→α)→α
-            let fx = k_env.fresh(e);
-            k_env.insert(x, &fx);
+            let f = k_env.fresh(e);
+            k_env.insert(x, &f);
+            let ffix_env = (k_env.in_scope(), pathc.clone());
+
             // TODO: well-formed?
 
-            cons_expr(k_env, &pathc, e)
+            let (fe, mut c) = cons_expr(k_env, &pathc, e);
+            c.push_back((ffix_env, C::Subtype(box fe.clone(), box f.clone())));
+
+            (f, c)
         }
         _ => {
             panic!("TODO: cons_imm for {:?}", imm);
@@ -333,6 +339,7 @@ pub fn cons_expr<'a>(k_env: &mut KEnv, pathc: &LinkedList<Expr>, expr: &Expr) ->
             let (f2, mut c2) = cons_expr(k_env, pathc, e2);
             c1.append(&mut c2);
             // Γ ⊢ (f)
+            // println!("WF Γ ⊢ {:?} ({:?})", f, expr);
             //println!("ST Γ ⊢ {:?} <: {:?} ({:?})", f2, f, k_env.in_scope());
             c1.push_back((let_env.clone(), C::WellFormed(box f.clone())));
             // Γ,x:f1 ⊢ (f2 <: f)
@@ -386,8 +393,10 @@ fn split(map: &mut HashMap<Idx, Constraint>, constraints: &LinkedList<Constraint
             // recurse
             split(map, &contra_cs);
             idx = (map.len() as i32)+1;
-        } else if let &((ref scope, ref pathc), C::WellFormed(box T::Fun(ref id, _, ref t))) = c {
+        } else if let &((ref scope, ref pathc), C::WellFormed(box T::Fun(ref id, ref tx, ref t))) = c {
             let mut wf_cs: LinkedList<Constraint> = LinkedList::new();
+
+            wf_cs.push_back(((scope.clone(), pathc.clone()), C::WellFormed(tx.clone())));
 
             let mut scope = scope.clone();
             scope.insert(id.clone());
@@ -819,20 +828,27 @@ fn solve(
                     panic!("unexpected {:?} -- should all be split() by now", p)
                 }
             };
-            if id == "!k11" {
-                println!("IN-SCOPE: {:?}", in_scope);
-            }
+            // if id == "_k10" {
+            //     println!("\t\t{:?}", a[&String::from("_k7")]);
+            //     //println!("IN-SCOPE: {:?}", in_scope);
+            // }
             for var in in_scope {
+                if id == "_k10" {
+                    println!("\t{}\t{:?}\t{:?}", var, &renv[var], expr_from_var(a, var, &renv[var]));
+                }
                 p.extend(expr_from_var(a, var, &renv[var]));
             }
             for pc in path_constraints {
                 p.push(pc.clone());
             }
 
-            if id == "!k11" {
-                println!("CHECK: {:?} /\\ {:?} => {:?}", path_constraints, p, qs.curr_qs);
-            }
             let implication = implication_holds(env, TInt, &p, &qs.curr_qs);
+            if id == "_k10" || id == "_k7" {
+                println!("CHECK({}:{}): {:?} /\\ {:?} => {:?}", id, implication, path_constraints, p, qs.curr_qs);
+                // if !implication && qs.curr_qs.len() == 3 {
+                //     panic!("inspect the deck");
+                // }
+            }
             // if id == "!k15" {
             //     panic!("HOLUP");
             // }
@@ -840,9 +856,14 @@ fn solve(
                 if qs.curr_qs[0] == const_true {
                     return err!("implication failure for -> true");
                 }
-                //println!("WEAKENING {} ({:?})", id, qs.curr_qs);
+                if id == "_k7" {
+                    println!("WEAKENING {} ({:?})", id, qs.curr_qs);
+                }
                 match weaken(env, renv, a, all_p, &qs.all_qs) {
                     Some(new_qs) => {
+                        if id == "_k7" {
+                            println!("WEAKENED {} ({:?})", id, new_qs);
+                        }
                         let mut new_a = a.clone();
                         new_a.insert(id.clone(), KInfo{
                             base: qs.base,
@@ -935,7 +956,22 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
     let mut constraints: HashMap<Idx, Constraint> = HashMap::new();
     split(&mut constraints, &constraint_list);
 
-    // group subtyping constraints by supertype
+    // println!("Well Formed Constraints");
+    // let mut ckeys: Vec<Idx> = constraints.keys().map(|i| *i).collect();
+    // ckeys.sort_by_key(|k| {
+    //     if let ((_, _), C::WellFormed(box T::Ref(_, _, box Liquid::K(ref id, _)))) = constraints[k] {
+    //         i32::from_str(&id[2..]).unwrap_or(-1)
+    //     } else {
+    //         -2
+    //     }
+    // });
+    // for ckey in ckeys {
+    //     let ref c = constraints[&ckey];
+    //     if let &((ref in_scope, ref path), C::WellFormed(ref p)) = c {
+    //         println!("Γ ⊢ {:?} (PATH: {:?}) (IN_SCOPE: {:?})", p, path, in_scope);
+    //     }
+    // }
+
     println!("Subtype Constraints");
     let mut by_id: HashMap<Id, Vec<(HashSet<Id>, LinkedList<Expr>, Box<Type>)>> = HashMap::new();
     let mut ckeys: Vec<Idx> = constraints.keys().map(|i| *i).collect();
@@ -946,11 +982,12 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
             -2
         }
     });
+    // group subtyping constraints by supertype
     for ckey in ckeys {
         let ref c = constraints[&ckey];
         if let &((ref in_scope, ref path), C::Subtype(ref p, ref e)) = c {
-            println!("Γ ⊢ {:?}   \t<: {:?} (PATH: {:?})", p, e, path);
-            //println!("Γ ⊢ {:?}   \t<: {:?} (PATH: {:?}) (IN_SCOPE: {:?})", p, e, path, in_scope);
+            //println!("Γ ⊢ {:?}   \t<: {:?} (PATH: {:?})", p, e, path);
+            println!("Γ ⊢ {:?}   \t<: {:?} (PATH: {:?}) (IN_SCOPE: {:?})", p, e, path, in_scope);
             if let box T::Ref(_, _, box Liquid::K(ref id, _)) = *e {
                 let mut antecedent = vec![(in_scope.clone(), path.clone(), p.clone())];
                 if by_id.contains_key(id) {
@@ -991,7 +1028,7 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
         let mut ids: Vec<_> = min_a.keys().clone().collect();
         ids.sort_by_key(|id| i32::from_str(&id[2..]).unwrap_or(-1));
         for id in ids {
-            println!("{}\t{:?}", id, a[id].curr_qs);
+            println!("{}\t{:?}", id, min_a[id].curr_qs);
         };
     }
 
