@@ -3,7 +3,7 @@ use std::fmt::{self, Debug, Formatter, Error};
 
 pub type Id = String;
 
-#[derive(PartialEq, Eq, Hash, Copy, Clone)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub enum Op2 {
     LT,
     GT,

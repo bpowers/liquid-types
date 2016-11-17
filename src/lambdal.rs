@@ -10,7 +10,7 @@ use implicit;
 use env;
 use hindley_milner;
 
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub enum Imm {
     Bool(bool),
     Int(i64),
@@ -21,7 +21,7 @@ pub enum Imm {
     V,
 }
 
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub enum Op {
     // should only be used with Imms, but Ops to make liquid type
     // constraints expressable without creating new temporaries
@@ -33,7 +33,7 @@ pub enum Op {
 }
 //    WellFormed(Imm), // Var-only
 
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub enum Expr {
     If(Box<Imm>, Box<Expr>, Box<Expr>),
     App(Box<Imm>, Box<Imm>),

@@ -748,6 +748,7 @@ fn weaken(
         curr_qs.push(q.clone());
     };
 
+    curr_qs.sort();
     Some(curr_qs)
 }
 
