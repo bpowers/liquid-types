@@ -21,6 +21,7 @@ mod explicit;
 mod refined;
 mod hindley_milner;
 mod env;
+#[macro_use]
 mod liquid;
 mod eval;
 mod lambdal;
@@ -105,38 +106,13 @@ fn main() {
         Err(e) => die!("anf: {}", error::Error::description(&e)),
     };
 
-    // alternatively:
-    // Qbc (bounds checking)
-    // X: 0, ★, len ★
-    // ν < X
-    // ν <= X
-    // ν = X
-    // ν >= X
-    // ν > X
-
-    let q: &[implicit::Expr] = {
-        use implicit::Expr::*;
-        use common::Op2::*;
-        use common::Const::*;
-        &[
-            Op2(LTE, box Const(Int(0)), box V),
-            Op2(LTE, box Star, box V),
-            Op2(LT, box V, box Star),
-            Op2(LT, box V, box App(box Var(String::from("len")), box Star)),
-        ]
-    };
-    // let q: &[lambdal::Expr] = {
-    //     use lambdal::Imm as I;
-    //     use lambdal::Op::*;
-    //     use lambdal::Expr::Op;
-    //     use common::Op2::*;
-    //     &[
-    //         // Op(Op2(LTE, box Imm(I::Int(0)), box Imm(I::V))),
-    //         // Op(Op2(LTE, box Imm(I::Star), box Imm(I::V))),
-    //         // Op(Op2(LT, box Imm(I::V), box Imm(I::Star))),
-    //         //Op2(LT, box V, box App(box Var(String::from("len")), box Star)),
-    //     ]
-    // };
+    // define the liquid type templates
+    let q = [
+        q!("0 <= ν"),
+        q!("★ <= ν"),
+        q!("ν < ★"),
+        //q!("ν < len ★"),
+    ];
 
     let refined_env = match liquid::infer(&anf_expr, &type_env, &q) {
         Ok(env) => env,

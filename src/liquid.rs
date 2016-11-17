@@ -959,6 +959,23 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
     Ok(concretize(&k_env.refined, &min_a))
 }
 
+#[macro_export]
+macro_rules! q(
+    ($s:expr) => { {
+        use implicit_parse;
+        use tok::Tokenizer;
+        let s = $s;
+        let tokenizer = Tokenizer::new(&s);
+        let iexpr = match implicit_parse::parse_Program(&s, tokenizer) {
+            Ok(iexpr) => *iexpr,
+            Err(e) => {
+                die!("parse_Program({}): {:?}", $s, e);
+            }
+        };
+        iexpr
+    } }
+);
+
 macro_rules! expr(
     ($s:expr) => { {
         use lambdal;

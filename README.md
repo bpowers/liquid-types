@@ -12,18 +12,12 @@ QUIRKS
 Subtraction: - make sure there are spaces around `-` like in `k - 1`. `k-1` doesn't currently work.
 
 
-TODO
-----
-
-- [ ] sum_a2 has type F(k_a3: {ν: Int | _k2 []} → {ν: Int | _k3 []}), but _k3 is not in any subtype constraints.
-- [ ] Get examples/sum.ml to give precise for sum of: k:int->{v:int| 0 <= v && k <= v}
-- [ ] Builtin functions - in the builtin type environment and evaluation context
-- [ ] Allow specifying Q on commandline (like Q = {0 ≤ ν; ν < len a} // from pg. 21)
-
 NOT IMPLEMENTED
 ---------------
 
-- Polymorphic Types
+- Specifying Q on the command line - to change Q edit the definition in main.rs.
+- Types -- instantiation or polymorphism, only built-in `bool` and `int` types are available.
+- Some built-in functions like `len`, and precise dependent types for `intarray` `sub`.
 
 
 LICENSE
