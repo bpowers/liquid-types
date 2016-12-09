@@ -99,6 +99,14 @@ fn pairs() {
 }
 
 #[test]
+fn comment() {
+    test("a(* xx *)1", vec![
+        ("~         ", Ident("a")),
+        ("         ~", Num(1)),
+    ]);
+}
+
+#[test]
 fn idents() {
     test("_3 n3_", vec![
         ("~~    ", Ident("_3")),
