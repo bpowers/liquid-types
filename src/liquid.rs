@@ -526,7 +526,7 @@ fn smt_from_imm(
             }
         }
         I::Bool(b)   => s.new_const(core::OpCodes::Const(b)),
-        I::Int(n)    => s.new_const(integer::OpCodes::Const(n as u64)),
+        I::Int(n)    => s.new_const(integer::OpCodes::Const(n)),
         I::V         => vars["!v"],
         I::Star      => unreachable!("star in smt?"),
         I::Fun(_, _) => unreachable!("fun in smt?"),

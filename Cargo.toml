@@ -8,7 +8,7 @@ build = "build.rs" # LALRPOP preprocessing
 libc = "0.2.9"
 lazy_static = "0.1.15"
 unicode-xid = "0.0.3"
-rustproof-libsmt = { git = "https://github.com/bpowers/libsmt.rs", rev = "2fd93f69e3" }
+rustproof-libsmt = { git = "https://github.com/bpowers/libsmt.rs", rev = "2496a3e638f5" }
 
 # Add a dependency on the LALRPOP runtime library:
 [dependencies.lalrpop-util]
