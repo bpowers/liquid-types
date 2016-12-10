@@ -22,6 +22,9 @@ build: test
 test:
 	cargo test
 
+docker: Makefile Dockerfile build.sh
+	./build.sh
+
 clean:
 	cargo clean
 	find . -name '*~'   -type f -print0 | xargs -0 rm -f
