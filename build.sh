@@ -20,7 +20,4 @@ docker \
   .
 echo "---------"
 
-echo "-------"
-echo "running: "
-docker run --rm -t -i $IMAGE_NAME
-echo "-------"
+echo "$IMAGE_NAME" >.docker_image_name

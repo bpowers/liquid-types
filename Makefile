@@ -22,12 +22,15 @@ build: test
 test:
 	cargo test
 
-docker: Makefile Dockerfile build.sh
+.docker_image_name: Makefile Dockerfile build.sh
 	./build.sh
+
+docker: .docker_image_name
+	docker run -v $(PWD):/src/liquid-types -t -i $(shell cat .docker_image_name)
 
 clean:
 	cargo clean
 	find . -name '*~'   -type f -print0 | xargs -0 rm -f
 	find . -name '*.bk' -type f -print0 | xargs -0 rm -f
 
-.PHONY: all build test clean
+.PHONY: all build docker test clean
