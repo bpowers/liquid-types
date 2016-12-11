@@ -26,7 +26,7 @@ test:
 	./build.sh
 
 docker: .docker_image_name
-	docker run -it $(shell cat .docker_image_name)
+	docker run --rm -it $(shell cat .docker_image_name)
 
 clean:
 	cargo clean
