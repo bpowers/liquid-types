@@ -86,6 +86,7 @@ NOT IMPLEMENTED
 - Specifying Q (the set of liquid type templates) on the command line - to change Q edit the definition in main.rs.
 - Uninstantiated, or polymorphic functions instantiated in context with different types.
 - Types -- instantiation or polymorphism, only built-in `bool` and `int` types are available.
+- Pending substitutions in liquid type parameters.
 - Liquid type inference for arrays, array operations like `sub`, `set` and the built-in function `len`.
 
 
