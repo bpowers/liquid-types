@@ -47,14 +47,30 @@ $ liquid-types examples/max3.ml
 ```
 
 This will spit out debugging information about the liquid environment
-(Γ) and subtyping constraints, along with the refined types produced
-by running liquid type inference.  The type inferred by max is:
+(Γ) and subtyping constraints, the liquid type templates we start with
+(a), and the liquid type templates after we've iteratively weakened
+them (min_a), along with the refined types produced by running liquid
+type inference.
+
+For example, the type inferred for max above is:
 
 ```
 max_a1:	F(x_a2: {ν: Int | 0 ≤ ν} → F(y_a3: {ν: Int | true} → {ν: Int | 0 ≤ ν ∧ x_a2 ≤ ν ∧ y_a3 ≤ ν}))
 ```
 
-(you can ignore the `_a$N` suffix on variables, which is added during A-normalization)
+(the `_a$N` suffix on variables can be ignored, it is added during A-normalization)
+
+
+IMPLEMENTED
+-----------
+
+Most of the paper is implemented, including:
+
+- The liquid type inference algorithm, including constraint generation and iterative weakening.
+- lexing/parsing/interpreting a subset of an implicitly-typed ML-like language
+- Hindley-Milner type inference
+- A-normalization
+- Alpha renaming
 
 
 NOT IMPLEMENTED
@@ -62,7 +78,7 @@ NOT IMPLEMENTED
 
 - Specifying Q on the command line - to change Q edit the definition in main.rs.
 - Types -- instantiation or polymorphism, only built-in `bool` and `int` types are available.
-- Some built-in functions like `len`, and precise dependent types for `intarray` `sub`.
+- Liquid type inference for arrays, array operations like `sub`, `set` and the built-in function `len`.
 
 
 QUIRKS
