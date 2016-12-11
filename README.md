@@ -2,9 +2,8 @@ Logically Qualified Data Types
 ==============================
 
 This repository contains an implementation in Rust of [liquid
-types](http://goto.ucsd.edu/~rjhala/liquid/liquid_types.pdf) on a core
-language λ<sub>L</sub> -- a variant of the λ-calculus with ML-style
-polymorphism extended with liquid types.
+types](http://goto.ucsd.edu/~rjhala/liquid/liquid_types.pdf) on an
+implicitly-typed variant of ML.
 
 
 BUILD
@@ -26,18 +25,21 @@ $ make docker
 
 This will download an image with rust nightly and z3, build the
 project, and give you a bash shell you can test examples in by running
-the `liquid-types` binary.
+the `liquid-types` binary.  The first time you run the command will
+take around 10 minutes to download the image, build the binary and run
+our unit tests.  Subsequent invocations should be instantaneous.
 
-For example, `examples/max3.ml` defines a function max and applies it
+
+RUN
+---
+
+As an example, `examples/max3.ml` defines a function max and applies it
 to two arguments:
 
 ```ML
 let max = fun x -> fun y -> if x > y then x else y in max 1 -3
 ```
 
-
-RUN
----
 
 In the docker shell, you can infer liquid types for this program by
 running:
@@ -60,6 +62,11 @@ max_a1:	F(x_a2: {ν: Int | 0 ≤ ν} → F(y_a3: {ν: Int | true} → {ν: Int |
 
 (the `_a$N` suffix on variables can be ignored, it is added during A-normalization)
 
+There are additional programs in the `examples/` directory, and feel
+free to try your own!  If you hit any problems, please open an
+[issue](/../../issues/new).
+
+
 
 IMPLEMENTED
 -----------
@@ -76,7 +83,8 @@ Most of the paper is implemented, including:
 NOT IMPLEMENTED
 ---------------
 
-- Specifying Q on the command line - to change Q edit the definition in main.rs.
+- Specifying Q (the set of liquid type templates) on the command line - to change Q edit the definition in main.rs.
+- Uninstantiated, or polymorphic functions instantiated in context with different types.
 - Types -- instantiation or polymorphism, only built-in `bool` and `int` types are available.
 - Liquid type inference for arrays, array operations like `sub`, `set` and the built-in function `len`.
 
