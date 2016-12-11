@@ -28,7 +28,7 @@ test:
 	cargo test
 
 .docker_image_name: Makefile Dockerfile
-	docker build -t $(IMAGE_NAME) -f ./Dockerfile
+	docker build -t $(IMAGE_NAME) -f ./Dockerfile .
 	echo $(IMAGE_NAME) >.docker_image_name
 
 docker: .docker_image_name
