@@ -5,6 +5,11 @@ ifneq ($V, 1)
 MAKEFLAGS += -s
 endif
 
+# only used in .docker_image_name target
+PROJECT    = $(shell basename `git rev-parse --show-toplevel`)
+GIT_REV    = $(shell git rev-parse --short HEAD)
+IMAGE_NAME = $(PROJECT):$(GIT_REV)
+
 # GNU make, you are the worst.
 .SUFFIXES:
 %: %,v
@@ -22,8 +27,9 @@ build: test
 test:
 	cargo test
 
-.docker_image_name: Makefile Dockerfile build.sh
-	./build.sh
+.docker_image_name: Makefile Dockerfile
+	docker build -t $(IMAGE_NAME) -f ./Dockerfile
+	echo $(IMAGE_NAME) >.docker_image_name
 
 docker: .docker_image_name
 	docker run --rm -it $(shell cat .docker_image_name)
