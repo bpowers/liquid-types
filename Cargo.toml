@@ -5,14 +5,14 @@ authors = ["Bobby Powers <bobbypowers@gmail.com>"]
 build = "build.rs" # LALRPOP preprocessing
 
 [dependencies]
-libc = "0.2.9"
-lazy_static = "0.1.15"
-unicode-xid = "0.0.3"
+libc = "0.2.32"
+lazy_static = "0.2.9"
+unicode-xid = "0.1.0"
 rustproof-libsmt = { git = "https://github.com/bpowers/libsmt.rs", rev = "2496a3e638f5" }
 
 # Add a dependency on the LALRPOP runtime library:
 [dependencies.lalrpop-util]
-version = "0.12.1"
+version = "0.13.1"
 
 [build-dependencies.lalrpop]
-version = "0.12.1"
+version = "0.13.1"
