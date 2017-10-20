@@ -1,6 +1,5 @@
 #![feature(box_syntax,box_patterns)]
 
-#[macro_use]
 extern crate lazy_static;
 extern crate unicode_xid;
 extern crate rustproof_libsmt;

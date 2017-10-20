@@ -599,7 +599,7 @@ fn smt_from_expr(
             smt_from_expr(s, vars, e2)
         }
         E::App(ref e1, ref e2) => {
-            if *e1 == box Imm::Var(String::from("not")) {
+            if **e1 == Imm::Var(String::from("not")) {
                 let exprs = &[smt_from_imm(s, vars, e2)];
                 s.assert(core::OpCodes::Not, exprs)
             } else {

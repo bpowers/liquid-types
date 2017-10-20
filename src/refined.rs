@@ -2,7 +2,8 @@ use std::collections::HashSet;
 use std::fmt::{Debug, Formatter, Error};
 pub use common::Id;
 
-pub type Metavar = (i32, String);
+// not used
+// pub type Metavar = (i32, String);
 
 #[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
 pub enum Base {
