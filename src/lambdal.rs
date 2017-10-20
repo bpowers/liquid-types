@@ -465,6 +465,7 @@ pub fn cmp(e1: &Expr, e2: &Expr) -> bool {
     cmp_expr(vmap, e1, e2)
 }
 
+#[test]
 macro_rules! test_anf(
     ($s:expr, $ae:expr) => { {
         use implicit_parse;

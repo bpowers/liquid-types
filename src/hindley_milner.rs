@@ -420,6 +420,7 @@ pub fn infer(expr: &implicit::Expr) -> Result<explicit::Expr> {
     infer_in(id_env, expr)
 }
 
+#[test]
 macro_rules! test_parse(
     ($s:expr) => { {
         let s = $s;
@@ -430,6 +431,7 @@ macro_rules! test_parse(
     } }
 );
 
+#[test]
 macro_rules! test_parse_fails(
     ($s:expr) => { {
         let s = $s;
@@ -440,6 +442,7 @@ macro_rules! test_parse_fails(
     } }
 );
 
+#[test]
 macro_rules! test_unbound_ident(
     ($s:expr) => { {
         let s = $s;

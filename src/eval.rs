@@ -239,6 +239,7 @@ pub fn interpret(expr: &Expr) -> Value {
     eval(&ctx, expr)
 }
 
+#[test]
 macro_rules! test_eval(
     ($s:expr, $v:expr) => { {
         use implicit_parse;
