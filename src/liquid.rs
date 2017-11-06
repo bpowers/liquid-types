@@ -975,7 +975,7 @@ macro_rules! q(
     } }
 );
 
-#[test]
+#[cfg(test)]
 macro_rules! expr(
     ($s:expr) => { {
         use lambdal;
