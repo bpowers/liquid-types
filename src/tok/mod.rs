@@ -101,7 +101,7 @@ const KEYWORDS: &'static [(&'static str, Tok<'static>)] = &[
     ("array", Array),
     ("set", Set),
     ("rec", Rec),
-    ];
+];
 
 impl<'input> Tokenizer<'input> {
     pub fn new(input: &'input str) -> Self {
@@ -127,13 +127,15 @@ impl<'input> Tokenizer<'input> {
     }
 
     fn take_while<F>(&mut self, mut keep_going: F) -> Option<usize>
-        where F: FnMut(char) -> bool
+    where
+        F: FnMut(char) -> bool,
     {
         self.take_until(|c| !keep_going(c))
     }
 
     fn take_until<F>(&mut self, mut terminate: F) -> Option<usize>
-        where F: FnMut(char) -> bool
+    where
+        F: FnMut(char) -> bool,
     {
         loop {
             match self.lookahead {
@@ -165,7 +167,8 @@ impl<'input> Tokenizer<'input> {
         // search for a keyword first; if none are found, this is
         // either a MacroId or an Id, depending on whether there
         // is a `<` immediately afterwards
-        let tok = KEYWORDS.iter()
+        let tok = KEYWORDS
+            .iter()
             .filter(|&&(w, _)| w == word)
             .map(|&(_, ref t)| t.clone())
             .next()
@@ -185,7 +188,7 @@ impl<'input> Tokenizer<'input> {
 
     fn comment_end(&mut self) -> Result<(), Error> {
         match self.take_until(|c| c == '*') {
-            Some(_)  => {
+            Some(_) => {
                 match self.bump() {
                     Some((_, ')')) => {
                         self.bump(); // consume
@@ -200,12 +203,11 @@ impl<'input> Tokenizer<'input> {
 }
 
 macro_rules! consume {
-    ($s: expr, $i:expr, $tok:expr, $len:expr) => { {
+    ($s: expr, $i:expr, $tok:expr, $len:expr) => {{
         $s.bump();
-        Some(Ok(($i, $tok, $i+$len)))
-    } }
+        Some(Ok(($i, $tok, $i + $len)))
+    }};
 }
-
 
 impl<'input> Iterator for Tokenizer<'input> {
     type Item = Result<Spanned<Tok<'input>>, Error>;
@@ -225,16 +227,16 @@ impl<'input> Iterator for Tokenizer<'input> {
                         Some((_, '=')) => consume!(self, i, Lte, 2),
                         _ => {
                             // we've already bumped, don't consume
-                            Some(Ok((i, Lt, i+1)))
+                            Some(Ok((i, Lt, i + 1)))
                         }
                     }
                 }
-                Some((i, '>')) =>  {
+                Some((i, '>')) => {
                     match self.bump() {
                         Some((_, '=')) => consume!(self, i, Gte, 2),
                         _ => {
                             // we've already bumped, don't consume
-                            Some(Ok((i, Gt, i+1)))
+                            Some(Ok((i, Gt, i + 1)))
                         }
                     }
                 }
@@ -250,29 +252,23 @@ impl<'input> Iterator for Tokenizer<'input> {
                         }
                         _ => {
                             // we've already bumped, don't consume
-                            Some(Ok((i, Minus, i+1)))
+                            Some(Ok((i, Minus, i + 1)))
                         }
                     }
                 }
                 Some((i, '+')) => consume!(self, i, Plus, 1),
                 Some((i, '*')) => consume!(self, i, Mul, 1),
-                Some((i, ':')) => {
-                    match self.bump() {
-                        Some((_, ':')) => consume!(self, i, Cons, 2),
-                        _ => Some(error(UnrecognizedToken, i)),
-                    }
-                }
-                Some((i, '(')) => {
-                    match self.bump() {
-                        Some((_, '*')) => {
-                            match self.comment_end() {
-                                Ok(()) => self.next(),
-                                Err(_) => Some(error(UnclosedComment, i)),
-                            }
-                        }
-                        _ => Some(Ok((i, LParen, i+1))),
-                    }
-                }
+                Some((i, ':')) => match self.bump() {
+                    Some((_, ':')) => consume!(self, i, Cons, 2),
+                    _ => Some(error(UnrecognizedToken, i)),
+                },
+                Some((i, '(')) => match self.bump() {
+                    Some((_, '*')) => match self.comment_end() {
+                        Ok(()) => self.next(),
+                        Err(_) => Some(error(UnclosedComment, i)),
+                    },
+                    _ => Some(Ok((i, LParen, i + 1))),
+                },
                 Some((i, ')')) => consume!(self, i, RParen, 1),
                 Some((i, '[')) => consume!(self, i, LBracket, 1),
                 Some((i, ']')) => consume!(self, i, RBracket, 1),

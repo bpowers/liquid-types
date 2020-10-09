@@ -58,7 +58,7 @@ fn parse_args() -> String {
 }
 
 pub fn implicit_open<'a, R: Read>(file: &mut R) -> Result<Box<implicit::Expr>> {
-    let s = {
+    let input = {
         let mut s = String::new();
         match file.read_to_string(&mut s) {
             Err(why) => return err!("read: {}", why),
@@ -67,8 +67,9 @@ pub fn implicit_open<'a, R: Read>(file: &mut R) -> Result<Box<implicit::Expr>> {
         s
     };
 
-    let tokenizer = tok::Tokenizer::new(&s);
-    match implicit_parse::parse_Program(&s, tokenizer) {
+    let lexer = tok::Tokenizer::new(&input);
+    let parser = crate::implicit_parse::ProgramParser::new();
+    match parser.parse(&input, lexer) {
         Ok(v) => Ok(v),
         Err(e) => err!("parse_Program: {:?}", e),
     }
@@ -82,11 +83,7 @@ fn main() {
             let mut file = match File::open(path) {
                 // The `description` method of `io::Error` returns a string that
                 // describes the error
-                Err(why) => die!(
-                    "open({}): {}",
-                    path.display(),
-                    why,
-                ),
+                Err(why) => die!("open({}): {}", path.display(), why,),
                 Ok(file) => file,
             };
 
