@@ -567,20 +567,19 @@ fn build_a(
 
 fn smt_from_imm<'ctx>(
     ctx: &'ctx Context,
-    s: &Solver,
-    vars: &HashMap<String, Box<impl Ast<'ctx>>>,
+    vars: &HashMap<String, Dynamic<'ctx>>,
     q: &lambdal::Imm,
-) -> Box<impl Ast<'ctx>> {
+) -> Dynamic<'ctx> {
     use lambdal::Imm as I;
 
     match q {
         I::Var(id) => match vars.get(id) {
-            Some(v) => Box::new((**v).clone()),
+            Some(v) => (*v).clone(),
             None => panic!("smt_from_imm: {} not in {:?}", id, vars),
         },
-        I::Bool(b) => Bool::from_bool(ctx, *b),
-        I::Int(n) => Int::from_i64(ctx, *n),
-        I::V => *vars["!v"],
+        I::Bool(b) => Dynamic::from(Bool::from_bool(ctx, *b)),
+        I::Int(n) => Dynamic::from(Int::from_i64(ctx, *n)),
+        I::V => vars["!v"].clone(),
         I::Star => unreachable!("star in smt?"),
         I::Fun(_, _) => unreachable!("fun in smt?"),
         I::Fix(_, _) => unreachable!("fix in smt?"),
@@ -590,19 +589,21 @@ fn smt_from_imm<'ctx>(
 fn smt_from_op<'ctx>(
     ctx: &'ctx Context,
     s: &Solver,
-    vars: &HashMap<String, Box<impl Ast<'ctx>>>,
+    vars: &HashMap<String, Dynamic<'ctx>>,
     q: &lambdal::Op,
-) -> Box<impl Ast<'ctx>> {
+) -> Dynamic<'ctx> {
     use crate::common::Op2;
     use crate::lambdal::Op as O;
 
     match q {
-        O::Imm(imm) => smt_from_imm(ctx, s, vars, imm),
+        O::Imm(imm) => smt_from_imm(ctx, vars, imm),
         O::Op2(op, l, r) => {
             let il = smt_from_op(ctx, s, vars, l);
             let ir = smt_from_op(ctx, s, vars, r);
             match op {
                 Op2::And | Op2::Or | Op2::Impl | Op2::Iff => {
+                    let il = il.as_bool().unwrap();
+                    let ir = ir.as_bool().unwrap();
                     let opcode = match op {
                         Op2::And => Bool::and(ctx, &[&il, &ir]),
                         Op2::Or => Bool::or(ctx, &[&il, &ir]),
@@ -612,7 +613,8 @@ fn smt_from_op<'ctx>(
                         }
                         _ => unreachable!(),
                     };
-                    s.assert(&opcode)
+                    // s.assert(&opcode)
+                    Dynamic::from(opcode)
                 }
                 Op2::Add
                 | Op2::Sub
@@ -622,18 +624,21 @@ fn smt_from_op<'ctx>(
                 | Op2::GT
                 | Op2::GTE
                 | Op2::Eq => {
+                    let il = il.as_int().unwrap();
+                    let ir = ir.as_int().unwrap();
                     let opcode = match op {
-                        Op2::LT => il.lt(&ir),
-                        Op2::LTE => il.le(&ir),
-                        Op2::GT => il.gt(&ir),
-                        Op2::GTE => il.ge(&ir),
-                        Op2::Eq => il._eq(&ir),
-                        Op2::Add => il.add(&ir),
-                        Op2::Sub => il.sub(&ir),
-                        Op2::Mul => il.mul(&ir),
+                        Op2::LT => Dynamic::from(il.lt(&ir)),
+                        Op2::LTE => Dynamic::from(il.le(&ir)),
+                        Op2::GT => Dynamic::from(il.gt(&ir)),
+                        Op2::GTE => Dynamic::from(il.ge(&ir)),
+                        Op2::Eq => Dynamic::from(il._eq(&ir)),
+                        Op2::Add => Dynamic::from(Int::add(ctx, &[&ir, &il])),
+                        Op2::Sub => Dynamic::from(Int::sub(ctx, &[&ir, &il])),
+                        Op2::Mul => Dynamic::from(Int::mul(ctx, &[&ir, &il])),
                         _ => unreachable!(),
                     };
-                    s.assert(&opcode)
+                    //s.assert(&opcode)
+                    opcode
                 }
             }
         }
@@ -646,9 +651,9 @@ fn smt_from_op<'ctx>(
 fn smt_from_expr<'ctx>(
     ctx: &'ctx Context,
     s: &Solver,
-    vars: &HashMap<String, Box<impl Ast<'ctx>>>,
+    vars: &HashMap<String, Dynamic<'ctx>>,
     q: &lambdal::Expr,
-) -> Box<impl Ast<'ctx>> {
+) -> Dynamic<'ctx> {
     use lambdal::Expr as E;
 
     match q {
@@ -658,12 +663,19 @@ fn smt_from_expr<'ctx>(
                 None => panic!("key {} not found in {:?}", id, vars),
             };
             let rhs = smt_from_expr(ctx, s, vars, e1);
-            s.assert(&id_idx._eq(&rhs));
+            if let Some(rhs) = rhs.as_int() {
+                s.assert(&id_idx.as_int().unwrap()._eq(&rhs));
+            } else if let Some(rhs) = rhs.as_bool() {
+                s.assert(&id_idx.as_bool().unwrap()._eq(&rhs));
+            } else {
+                unreachable!();
+            }
             smt_from_expr(ctx, s, vars, e2)
         }
         E::App(e1, e2) => {
             if **e1 == Imm::Var(String::from("not")) {
-                s.assert(smt_from_imm(ctx, s, vars, e2).not())
+                s.assert(&smt_from_imm(ctx, vars, e2).as_bool().unwrap().not());
+                Dynamic::from(Bool::from_bool(ctx, false))
             } else {
                 panic!("TODO: only supported app is not");
             }
@@ -711,8 +723,8 @@ fn const_for_type<'ctx>(
     ty: &explicit::Type,
 ) -> Option<Dynamic<'ctx>> {
     let sort: Dynamic<'ctx> = match ty {
-        explicit::Type::TInt => Dynamic::from(Int::new_const(ctx, var)),
-        explicit::Type::TBool => Dynamic::from(Bool::new_const(ctx, var)),
+        explicit::Type::TInt => Dynamic::from(Int::new_const(ctx, var.as_str())),
+        explicit::Type::TBool => Dynamic::from(Bool::new_const(ctx, var.as_str())),
         _ => {
             //println!("TODO: v'{}' more sorts than int ({:?})", var, ty);
             return None;
@@ -746,7 +758,7 @@ fn implication_holds(
         const_for_type(&ctx, &"!v".to_string(), &v_ty).unwrap(),
     );
 
-    let mut ps: Vec<Box<Dynamic>> = Vec::new();
+    let mut ps: Vec<Dynamic> = Vec::new();
     for t in p {
         let pred = smt_from_expr(&ctx, &solver, &senv, t);
         ps.push(pred);
