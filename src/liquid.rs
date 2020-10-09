@@ -33,9 +33,9 @@ pub enum Liquid {
 impl Debug for Liquid {
     fn fmt(&self, fmt: &mut Formatter) -> result::Result<(), Error> {
         use self::Liquid::*;
-        match *self {
-            E(ref expr) => write!(fmt, "{:?}", expr),
-            K(ref id, ref subs) => write!(fmt, "{} {:?}", id, subs),
+        match self {
+            E(expr) => write!(fmt, "{:?}", expr),
+            K(id, subs) => write!(fmt, "{} {:?}", id, subs),
         }
     }
 }
@@ -82,13 +82,13 @@ impl KEnv {
             explicit::Type::TFun(id, a, b) => {
                 let fx = self.fresh_ty(*a);
                 let f = self.fresh_ty(*b);
-                return T::Fun(id, box fx, box f);
+                return T::Fun(id, Box::new(fx), Box::new(f));
             }
             _ => panic!("FIXME: handle {:?}", ty),
         };
         let kid = format!("_k{}", id);
-        let k = Liquid::K(kid, box LinkedList::new());
-        T::Ref(self.in_scope(), base, box k)
+        let k = Liquid::K(kid, Box::new(LinkedList::new()));
+        T::Ref(self.in_scope(), base, Box::new(k))
     }
 
     fn fresh(&mut self, e: &Expr) -> Type {
@@ -117,15 +117,15 @@ fn hm_shape_imm(env: &HashMap<Id, explicit::Type>, imm: &Imm) -> explicit::Type 
     use crate::explicit::Type::*;
     use crate::lambdal::Imm::*;
 
-    match *imm {
+    match imm {
         Bool(_) => TBool,
         Int(_) => TInt,
-        Var(ref id) => env[id].clone(),
-        Fun(ref id, ref e) => {
+        Var(id) => env[id].clone(),
+        Fun(id, e) => {
             let argty = env[id].clone();
-            TFun(id.clone(), box argty, box hm_shape_expr(env, e))
+            TFun(id.clone(), Box::new(argty), Box::new(hm_shape_expr(env, e)))
         }
-        Fix(ref id, _) => env[id].clone(),
+        Fix(id, _) => env[id].clone(),
         V => env["!v"].clone(),
         Star => unreachable!("shape of star"),
     }
@@ -135,12 +135,12 @@ fn hm_shape_op(env: &HashMap<Id, explicit::Type>, op: &Op) -> explicit::Type {
     use explicit::Type::*;
     use lambdal::Op::*;
 
-    match *op {
-        Op2(op, _, _) => explicit::opty(op),
+    match op {
+        Op2(op, _, _) => explicit::opty(*op),
         MkArray(_, _) => TIntArray,
         GetArray(_, _) => TInt,
         SetArray(_, _, _) => TIntArray,
-        Imm(ref imm) => hm_shape_imm(env, imm),
+        Imm(imm) => hm_shape_imm(env, imm),
     }
 }
 
@@ -148,17 +148,17 @@ fn hm_shape_expr(env: &HashMap<Id, explicit::Type>, expr: &Expr) -> explicit::Ty
     use explicit::Type::TFun;
     use lambdal::Expr::*;
 
-    match *expr {
-        If(_, ref e2, _) => hm_shape_expr(env, e2),
-        Let(_, _, ref e2) => hm_shape_expr(env, e2),
-        App(ref e1, _) => {
+    match expr {
+        If(_, e2, _) => hm_shape_expr(env, e2),
+        Let(_, _, e2) => hm_shape_expr(env, e2),
+        App(e1, _) => {
             if let TFun(_, _, rtype) = hm_shape_imm(env, e1) {
                 *rtype
             } else {
                 panic!("app for non-fun: {:?}", e1);
             }
         }
-        Op(ref op) => hm_shape_op(env, op),
+        Op(op) => hm_shape_op(env, op),
     }
 }
 
@@ -175,10 +175,10 @@ fn ty<'a>(_: &mut KEnv, c: &Imm) -> Type {
     // something like {ν : int | ν = 3 }
     let eq = E(Expr::Op(Op::Op2(
         Op2::Eq,
-        box Op::Imm(Imm::V),
-        box Op::Imm(c.clone()),
+        Box::new(Op::Imm(Imm::V)),
+        Box::new(Op::Imm(c.clone())),
     )));
-    T::Ref(HashSet::new(), base, box eq)
+    T::Ref(HashSet::new(), base, Box::new(eq))
 }
 
 fn base(ty: &Type) -> Option<Base> {
@@ -189,12 +189,24 @@ fn base(ty: &Type) -> Option<Base> {
 }
 
 fn subst(sid: &Id, imm: &Imm, ty: &Type) -> Type {
-    if let &T::Ref(ref scope, base, box Liquid::K(ref id, ref pending)) = ty {
-        let mut pending = pending.clone();
-        pending.push_back((imm.clone(), sid.clone()));
-        T::Ref(scope.clone(), base, box Liquid::K(id.clone(), pending))
-    } else if let &T::Fun(ref id, ref tx, ref t) = ty {
-        T::Fun(id.clone(), box subst(sid, imm, tx), box subst(sid, imm, t))
+    if let T::Ref(scope, base, iref) = ty {
+        if let Liquid::K(id, pending) = &**iref {
+            let mut pending = pending.clone();
+            pending.push_back((imm.clone(), sid.clone()));
+            T::Ref(
+                scope.clone(),
+                *base,
+                Box::new(Liquid::K(id.clone(), pending)),
+            )
+        } else {
+            panic!("Expected liquid type, not fun or full dep type: {:?}", ty);
+        }
+    } else if let T::Fun(id, tx, t) = ty {
+        T::Fun(
+            id.clone(),
+            Box::new(subst(sid, imm, tx)),
+            Box::new(subst(sid, imm, t)),
+        )
     } else {
         panic!("Expected liquid type, not fun or full dep type: {:?}", ty);
     }
@@ -209,11 +221,11 @@ pub fn cons_imm<'a>(
     use crate::lambdal::Imm::*;
     use crate::lambdal::Op::Imm as I;
 
-    match *imm {
-        Var(ref id) => {
+    match imm {
+        Var(id) => {
             let ty: Type = if let Some(b) = base(&k_env.get(id)) {
-                let eq = Expr::Op(Op::Op2(Eq, box I(V), box I(Var(id.clone()))));
-                T::Ref(k_env.in_scope(), b, box Liquid::E(eq))
+                let eq = Expr::Op(Op::Op2(Eq, Box::new(I(V)), Box::new(I(Var(id.clone())))));
+                T::Ref(k_env.in_scope(), b, Box::new(Liquid::E(eq)))
             } else {
                 k_env.get(id)
             };
@@ -221,7 +233,7 @@ pub fn cons_imm<'a>(
         }
         Bool(_) => (ty(k_env, imm), LinkedList::new()),
         Int(_) => (ty(k_env, imm), LinkedList::new()),
-        Fun(ref x, ref e) => {
+        Fun(x, e) => {
             let fx = k_env.fresh(&Expr::Op(Op::Imm(Var(x.clone()))));
             let ffun_env = (k_env.in_scope(), pathc.clone());
 
@@ -229,23 +241,26 @@ pub fn cons_imm<'a>(
             let f = k_env.fresh(e);
             let (fe, mut c) = cons_expr(k_env, pathc, e);
 
-            let ffun = T::Fun(x.clone(), box fx.clone(), box f.clone());
+            let ffun = T::Fun(x.clone(), Box::new(fx.clone()), Box::new(f.clone()));
             // Γ ⊢ (x:fx → f)
-            c.push_back((ffun_env.clone(), C::WellFormed(box fx.clone())));
-            c.push_back((ffun_env.clone(), C::WellFormed(box ffun.clone())));
+            c.push_back((ffun_env.clone(), C::WellFormed(Box::new(fx.clone()))));
+            c.push_back((ffun_env.clone(), C::WellFormed(Box::new(ffun.clone()))));
             // Γ,x:fx ⊢ (fe <: f)
-            c.push_back((ffun_env.clone(), C::Subtype(box fe, box f)));
+            c.push_back((ffun_env.clone(), C::Subtype(Box::new(fe), Box::new(f))));
 
             (ffun, c)
         }
-        Fix(ref x, ref e) => {
+        Fix(x, e) => {
             // const w/ ∀α.(α→α)→α
             let f = k_env.fresh(e);
             k_env.insert(x, &f);
             let ffix_env = (k_env.in_scope(), pathc.clone());
 
             let (fe, mut c) = cons_expr(k_env, &pathc, e);
-            c.push_back((ffix_env, C::Subtype(box fe.clone(), box f.clone())));
+            c.push_back((
+                ffix_env,
+                C::Subtype(Box::new(fe.clone()), Box::new(f.clone())),
+            ));
 
             (f, c)
         }
@@ -262,9 +277,9 @@ pub fn cons_op<'a>(
 ) -> (Type, LinkedList<Constraint>) {
     use crate::common::Op2::Eq;
 
-    match *e {
-        Op::Imm(ref imm) => cons_imm(k_env, pathc, imm),
-        Op::Op2(ref op, ref l, ref r) => {
+    match e {
+        Op::Imm(imm) => cons_imm(k_env, pathc, imm),
+        Op::Op2(op, l, r) => {
             let (_, mut c1) = cons_op(k_env, pathc, l);
             let (_, mut c2) = cons_op(k_env, pathc, r);
             c1.append(&mut c2);
@@ -276,8 +291,8 @@ pub fn cons_op<'a>(
                 _ => panic!("FIXME: handle {:?}", ty),
             };
 
-            let eq = Expr::Op(Op::Op2(Eq, box Op::Imm(Imm::V), box e.clone()));
-            let f = T::Ref(k_env.in_scope(), base, box Liquid::E(eq));
+            let eq = Expr::Op(Op::Op2(Eq, Box::new(Op::Imm(Imm::V)), Box::new(e.clone())));
+            let f = T::Ref(k_env.in_scope(), base, Box::new(Liquid::E(eq)));
 
             (f, c1)
         }
@@ -295,12 +310,15 @@ pub fn cons_expr<'a>(
     use lambdal::Expr::*;
     use lambdal::Op as LOp;
 
-    match *expr {
-        If(ref e1, ref e2, ref e3) => {
+    match expr {
+        If(e1, e2, e3) => {
             let mut pathc_t = pathc.clone();
             let mut pathc_f = pathc.clone();
             pathc_t.push_back(Expr::Op(LOp::Imm(*e1.clone())));
-            pathc_f.push_back(Expr::App(box Imm::Var(String::from("not")), e1.clone()));
+            pathc_f.push_back(Expr::App(
+                Box::new(Imm::Var(String::from("not"))),
+                (*e1).clone(),
+            ));
 
             let f = k_env.fresh(expr);
             // type of e1 has already been verified to be a bool by HM
@@ -312,22 +330,22 @@ pub fn cons_expr<'a>(
             // Γ ⊢ (f)
             c1.push_back((
                 (k_env.in_scope(), pathc.clone()),
-                C::WellFormed(box f.clone()),
+                C::WellFormed(Box::new(f.clone())),
             ));
             // Γ,e1 ⊢ (f2 <: f)
             c1.push_back((
                 (k_env.in_scope(), pathc_t),
-                C::Subtype(box f2.clone(), box f.clone()),
+                C::Subtype(Box::new(f2.clone()), Box::new(f.clone())),
             ));
             // Γ,¬e1 ⊢ (f3 <: f)
             c1.push_back((
                 (k_env.in_scope(), pathc_f),
-                C::Subtype(box f3.clone(), box f.clone()),
+                C::Subtype(Box::new(f3.clone()), Box::new(f.clone())),
             ));
 
             (f, c1)
         }
-        Let(ref id, ref e1, ref e2) => {
+        Let(id, e1, e2) => {
             let f = k_env.fresh(expr);
             let mut in_scope = k_env.in_scope();
             let (f1, mut c1) = cons_expr(k_env, pathc, e1);
@@ -339,30 +357,33 @@ pub fn cons_expr<'a>(
             let (f2, mut c2) = cons_expr(k_env, pathc, e2);
             c1.append(&mut c2);
             // Γ ⊢ (f)
-            c1.push_back((let_env.clone(), C::WellFormed(box f.clone())));
+            c1.push_back((let_env.clone(), C::WellFormed(Box::new(f.clone()))));
             // Γ,x:f1 ⊢ (f2 <: f)
-            c1.push_back((let_env, C::Subtype(box f2.clone(), box f.clone())));
+            c1.push_back((
+                let_env,
+                C::Subtype(Box::new(f2.clone()), Box::new(f.clone())),
+            ));
 
             (f, c1)
         }
-        App(ref e1, ref e2) => {
+        App(e1, e2) => {
             let (f1, mut c1) = cons_imm(k_env, pathc, e1);
             let (f2, mut c2) = cons_imm(k_env, pathc, e2);
             c1.append(&mut c2);
-            if let T::Fun(ref x, ref fx, ref f) = f1 {
+            if let T::Fun(x, fx, f) = &f1 {
                 let f = subst(x, e2, f);
                 // Γ ⊢ (f2 <: fx)
                 c1.push_back(((HashSet::new(), pathc.clone()), C::WellFormed(fx.clone())));
                 c1.push_back((
                     (k_env.in_scope(), pathc.clone()),
-                    C::Subtype(box f2.clone(), fx.clone()),
+                    C::Subtype(Box::new(f2.clone()), fx.clone()),
                 ));
                 return (f, c1);
             } else {
                 panic!("expected TFun, not {:?}", f1);
             }
         }
-        Op(ref op) => cons_op(k_env, &pathc, op),
+        Op(op) => cons_op(k_env, &pathc, op),
     }
 }
 
@@ -370,34 +391,37 @@ fn split(map: &mut HashMap<Idx, Constraint>, constraints: &LinkedList<Constraint
     let mut idx = (map.len() as i32) + 1;
 
     for c in constraints.iter() {
-        if let &(
-            (ref scope, ref pathc),
-            C::Subtype(box T::Fun(_, ref tx1, ref t1), box T::Fun(ref x2, ref tx2, ref t2)),
-        ) = c
-        {
-            let mut contra_cs: LinkedList<Constraint> = LinkedList::new();
-            contra_cs.push_back((
-                (scope.clone(), pathc.clone()),
-                C::Subtype(tx2.clone(), tx1.clone()),
-            ));
+        if let ((scope, pathc), C::Subtype(bt1, bt2)) = c {
+            if let T::Fun(_, tx1, t1) = &**bt1 {
+                if let T::Fun(x2, tx2, t2) = &**bt2 {
+                    let mut contra_cs: LinkedList<Constraint> = LinkedList::new();
+                    contra_cs.push_back((
+                        (scope.clone(), pathc.clone()),
+                        C::Subtype(tx2.clone(), tx1.clone()),
+                    ));
 
-            let mut rscope = scope.clone();
-            rscope.insert(x2.clone());
-            contra_cs.push_back(((rscope, pathc.clone()), C::Subtype(t1.clone(), t2.clone())));
+                    let mut rscope = scope.clone();
+                    rscope.insert(x2.clone());
+                    contra_cs
+                        .push_back(((rscope, pathc.clone()), C::Subtype(t1.clone(), t2.clone())));
 
-            // recurse
-            split(map, &contra_cs);
-            idx = (map.len() as i32) + 1;
-        } else if let &((ref scope, ref pathc), C::WellFormed(box T::Fun(ref id, _, ref t))) = c {
-            let mut wf_cs: LinkedList<Constraint> = LinkedList::new();
+                    // recurse
+                    split(map, &contra_cs);
+                    idx = (map.len() as i32) + 1;
+                }
+            }
+        } else if let ((scope, pathc), C::WellFormed(bwf)) = c {
+            if let T::Fun(id, _, t) = &**bwf {
+                let mut wf_cs: LinkedList<Constraint> = LinkedList::new();
 
-            let mut scope = scope.clone();
-            scope.insert(id.clone());
-            wf_cs.push_back(((scope, pathc.clone()), C::WellFormed(t.clone())));
+                let mut scope = scope.clone();
+                scope.insert(id.clone());
+                wf_cs.push_back(((scope, pathc.clone()), C::WellFormed(t.clone())));
 
-            // recurse
-            split(map, &wf_cs);
-            idx = (map.len() as i32) + 1;
+                // recurse
+                split(map, &wf_cs);
+                idx = (map.len() as i32) + 1;
+            }
         } else {
             map.insert(idx, c.clone());
             idx += 1;
@@ -415,41 +439,47 @@ fn replace_imm(imm: &Imm, from: &Imm, to: &Imm) -> Imm {
 
 fn replace_op(op: &Op, from: &Imm, to: &Imm) -> Op {
     use lambdal::Op::*;
-    match *op {
-        Op2(op, ref l, ref r) => Op2(op, box replace_op(l, from, to), box replace_op(r, from, to)),
-        MkArray(ref sz, ref n) => {
-            MkArray(box replace_imm(sz, from, to), box replace_imm(n, from, to))
-        }
-        GetArray(ref a, ref i) => {
-            GetArray(box replace_imm(a, from, to), box replace_imm(i, from, to))
-        }
-        SetArray(ref a, ref i, ref v) => SetArray(
-            box replace_imm(a, from, to),
-            box replace_imm(i, from, to),
-            box replace_imm(v, from, to),
+    match op {
+        Op2(op, l, r) => Op2(
+            *op,
+            Box::new(replace_op(l, from, to)),
+            Box::new(replace_op(r, from, to)),
         ),
-        Imm(ref imm) => Imm(replace_imm(imm, from, to)),
+        MkArray(sz, n) => MkArray(
+            Box::new(replace_imm(sz, from, to)),
+            Box::new(replace_imm(n, from, to)),
+        ),
+        GetArray(a, i) => GetArray(
+            Box::new(replace_imm(a, from, to)),
+            Box::new(replace_imm(i, from, to)),
+        ),
+        SetArray(a, i, v) => SetArray(
+            Box::new(replace_imm(a, from, to)),
+            Box::new(replace_imm(i, from, to)),
+            Box::new(replace_imm(v, from, to)),
+        ),
+        Imm(imm) => Imm(replace_imm(imm, from, to)),
     }
 }
 
 fn replace_expr(expr: &Expr, from: &Imm, to: &Imm) -> Expr {
     use lambdal::Expr::*;
-    match *expr {
-        If(ref imm, ref e1, ref e2) => If(
-            box replace_imm(imm, from, to),
-            box replace_expr(e1, from, to),
-            box replace_expr(e2, from, to),
+    match expr {
+        If(imm, e1, e2) => If(
+            Box::new(replace_imm(imm, from, to)),
+            Box::new(replace_expr(e1, from, to)),
+            Box::new(replace_expr(e2, from, to)),
         ),
-        Let(ref id, ref e1, ref e2) => Let(
+        Let(id, e1, e2) => Let(
             id.clone(),
-            box replace_expr(e1, from, to),
-            box replace_expr(e2, from, to),
+            Box::new(replace_expr(e1, from, to)),
+            Box::new(replace_expr(e2, from, to)),
         ),
-        App(ref imm1, ref imm2) => App(
-            box replace_imm(imm1, from, to),
-            box replace_imm(imm2, from, to),
+        App(imm1, imm2) => App(
+            Box::new(replace_imm(imm1, from, to)),
+            Box::new(replace_imm(imm2, from, to)),
         ),
-        Op(ref op) => Op(replace_op(op, from, to)),
+        Op(op) => Op(replace_op(op, from, to)),
     }
 }
 
@@ -462,12 +492,12 @@ fn replace(v: &Id, q: &implicit::Expr) -> Option<implicit::Expr> {
         I::Op2(op, l, r) => I::Op2(*op, Box::new(replace(v, l)?), Box::new(replace(v, r)?)),
         I::Fun(id, e) => I::Fun(id.clone(), Box::new(replace(v, e)?)),
         I::App(e1, e2) => I::App(Box::new(replace(v, e1)?), Box::new(replace(v, e2)?)),
-        I::If(e1, e2, ref e3) => I::If(
+        I::If(e1, e2, e3) => I::If(
             Box::new(replace(v, e1)?),
             Box::new(replace(v, e2)?),
             Box::new(replace(v, e3)?),
         ),
-        I::Let(id, e1, ref e2) => I::Let(
+        I::Let(id, e1, e2) => I::Let(
             id.clone(),
             Box::new(replace(v, e1)?),
             Box::new(replace(v, e2)?),
@@ -475,7 +505,7 @@ fn replace(v: &Id, q: &implicit::Expr) -> Option<implicit::Expr> {
         I::Fix(id, e) => I::Fix(id.clone(), Box::new(replace(v, e)?)),
         I::MkArray(sz, n) => I::MkArray(Box::new(replace(v, sz)?), Box::new(replace(v, n)?)),
         I::GetArray(id, idx) => I::GetArray(Box::new(replace(v, id)?), Box::new(replace(v, idx)?)),
-        I::SetArray(id, idx, ref var) => I::SetArray(
+        I::SetArray(id, idx, var) => I::SetArray(
             Box::new(replace(v, id)?),
             Box::new(replace(v, idx)?),
             Box::new(replace(v, var)?),
@@ -544,18 +574,22 @@ fn build_a(
     let mut a: HashMap<Id, KInfo> = HashMap::new();
 
     for (_, c) in constraints.iter() {
-        if let &((ref in_scope, _), C::WellFormed(ref ty)) = c {
-            if let &box T::Ref(_, ref base, box Liquid::K(ref id, _)) = ty {
-                let all_qs = qstar(id, in_scope, env, q);
-                let curr_qs: Vec<_> = all_qs.iter().cloned().collect();
-                a.insert(
-                    id.clone(),
-                    KInfo {
-                        base: *base,
-                        all_qs: all_qs,
-                        curr_qs: curr_qs,
-                    },
-                );
+        if let ((in_scope, _), C::WellFormed(ty)) = c {
+            if let T::Ref(_, base, bk) = &**ty {
+                if let Liquid::K(id, _) = &**bk {
+                    let all_qs = qstar(id, in_scope, env, q);
+                    let curr_qs: Vec<_> = all_qs.iter().cloned().collect();
+                    a.insert(
+                        id.clone(),
+                        KInfo {
+                            base: *base,
+                            all_qs: all_qs,
+                            curr_qs: curr_qs,
+                        },
+                    );
+                } else {
+                    unreachable!();
+                }
             } else {
                 panic!("WellFormed with E doesn't make sense: {:?}.", ty)
             }
@@ -680,7 +714,7 @@ fn smt_from_expr<'ctx>(
                 panic!("TODO: only supported app is not");
             }
         }
-        E::Op(ref op) => smt_from_op(ctx, s, vars, op),
+        E::Op(op) => smt_from_op(ctx, s, vars, op),
         _ => {
             panic!("smt_from_expr unimplemented {:?}", q);
         }
@@ -689,22 +723,24 @@ fn smt_from_expr<'ctx>(
 
 fn expr_from_var(a: &HashMap<Id, KInfo>, var: &Id, ty: &Type) -> Vec<lambdal::Expr> {
     let const_true = Expr::Op(Op::Imm(Imm::Bool(true)));
-    let exprs = match *ty {
-        T::Ref(_, _, box Liquid::E(ref expr)) => vec![expr.clone()],
-        T::Ref(_, _, box Liquid::K(ref p_id, ref substs)) => {
-            let qs = match a.get(p_id) {
-                Some(ps) => ps.clone().curr_qs,
-                None => vec![const_true.clone()],
-            };
-            let mut qs_replaced = vec![];
-            for mut q in qs {
-                for &(ref sub, ref var) in substs.iter() {
-                    q = replace_expr(&q, &Imm::Var(var.clone()), sub);
+    let exprs = match ty {
+        T::Ref(_, _, inner) => match &**inner {
+            Liquid::E(expr) => vec![expr.clone()],
+            Liquid::K(p_id, substs) => {
+                let qs = match a.get(p_id) {
+                    Some(ps) => ps.clone().curr_qs,
+                    None => vec![const_true.clone()],
+                };
+                let mut qs_replaced = vec![];
+                for mut q in qs {
+                    for (sub, var) in substs.iter() {
+                        q = replace_expr(&q, &Imm::Var(var.clone()), sub);
+                    }
+                    qs_replaced.push(q);
                 }
-                qs_replaced.push(q);
+                qs_replaced
             }
-            qs_replaced
-        }
+        },
         T::Fun(_, _, _) => {
             // functions are uninterpreted.
             vec![const_true.clone()]
@@ -807,14 +843,16 @@ fn weaken(
 
     let mut curr_qs: Vec<lambdal::Expr> = Vec::new();
     'outer: for q in qs {
-        for &(ref in_scope, ref path_constraints, ref p) in all_p {
-            let mut p = match *p {
-                box T::Ref(_, _, box Liquid::E(ref expr)) => vec![expr.clone()],
-                box T::Ref(_, _, box Liquid::K(ref p_id, _)) => match a.get(p_id) {
-                    Some(ps) => ps.clone().curr_qs,
-                    None => vec![const_true.clone()],
+        for (in_scope, path_constraints, p) in all_p {
+            let mut p = match &**p {
+                T::Ref(_, _, inner) => match &**inner {
+                    Liquid::E(expr) => vec![expr.clone()],
+                    Liquid::K(p_id, _) => match a.get(p_id) {
+                        Some(ps) => ps.clone().curr_qs,
+                        None => vec![const_true.clone()],
+                    },
                 },
-                box T::Fun(_, _, _) => panic!("unexpected {:?} -- should all be split() by now", p),
+                T::Fun(_, _, _) => panic!("unexpected {:?} -- should all be split() by now", p),
             };
             for var in in_scope {
                 p.extend(expr_from_var(a, var, &renv[var]));
@@ -842,10 +880,10 @@ fn solve(
 ) -> Result<HashMap<Id, KInfo>> {
     let const_true = Expr::Op(Op::Imm(Imm::Bool(true)));
 
-    for &(ref all_p, ref id) in constraints.iter() {
+    for (all_p, id) in constraints.iter() {
         // if we don't find the ID in our environment, it means we are
         // looking at unbound function parameters -- which means we can just look
-        let ref qs = match a.get(id) {
+        let qs = match a.get(id) {
             Some(q) => q.clone(),
             None => {
                 let mut all_qs = HashSet::new();
@@ -859,17 +897,19 @@ fn solve(
             }
         };
 
-        for &(ref in_scope, ref path_constraints, ref p) in all_p {
-            let mut p = match *p {
-                box T::Ref(_, _, box Liquid::E(ref expr)) => vec![expr.clone()],
-                box T::Ref(_, _, box Liquid::K(ref p_id, _)) => {
-                    let qs = match a.get(p_id) {
-                        Some(ps) => ps.clone().curr_qs,
-                        None => vec![const_true.clone()],
-                    };
-                    qs
-                }
-                box T::Fun(_, _, _) => panic!("unexpected {:?} -- should all be split() by now", p),
+        for (in_scope, path_constraints, p) in all_p.iter() {
+            let mut p = match &**p {
+                T::Ref(_, _, inner) => match &**inner {
+                    Liquid::E(expr) => vec![expr.clone()],
+                    Liquid::K(p_id, _) => {
+                        let qs = match a.get(p_id) {
+                            Some(ps) => ps.clone().curr_qs,
+                            None => vec![const_true.clone()],
+                        };
+                        qs
+                    }
+                },
+                T::Fun(_, _, _) => panic!("unexpected {:?} -- should all be split() by now", p),
             };
 
             for var in in_scope {
@@ -913,7 +953,7 @@ fn conjoin(qs: &[Expr]) -> Op {
     if let Expr::Op(op) = qs[0].clone() {
         match qs[1..].len() {
             0 => op,
-            _ => Op::Op2(Op2::And, box op, box conjoin(&qs[1..])),
+            _ => Op::Op2(Op2::And, Box::new(op), Box::new(conjoin(&qs[1..]))),
         }
     } else {
         panic!("expected q to be an Op, not {:?}", qs)
@@ -921,15 +961,15 @@ fn conjoin(qs: &[Expr]) -> Op {
 }
 
 fn concretize_liquid(_: &HashMap<Id, Type>, a: &HashMap<Id, KInfo>, lqdt: &Liquid) -> Liquid {
-    match *lqdt {
-        Liquid::E(ref expr) => Liquid::E(expr.clone()),
-        Liquid::K(ref id, _) => {
+    match lqdt {
+        Liquid::E(expr) => Liquid::E(expr.clone()),
+        Liquid::K(id, _) => {
             // TODO: substitutions
             if !a.contains_key(id) {
                 //panic!("NOT FOUND {}", id);
                 return Liquid::E(Expr::Op(Op::Imm(Imm::Bool(true))));
             }
-            let ref qs = a[id].curr_qs;
+            let qs = &a[id].curr_qs;
             match qs.len() {
                 0 => Liquid::E(Expr::Op(Op::Imm(Imm::Bool(true)))),
                 _ => Liquid::E(Expr::Op(conjoin(&qs))),
@@ -939,16 +979,16 @@ fn concretize_liquid(_: &HashMap<Id, Type>, a: &HashMap<Id, KInfo>, lqdt: &Liqui
 }
 
 fn concretize_ty(renv: &HashMap<Id, Type>, a: &HashMap<Id, KInfo>, ty: &Type) -> Type {
-    match *ty {
-        T::Ref(ref in_scope, base, ref predicate) => T::Ref(
+    match ty {
+        T::Ref(in_scope, base, predicate) => T::Ref(
             in_scope.clone(),
-            base,
-            box concretize_liquid(renv, a, predicate),
+            *base,
+            Box::new(concretize_liquid(renv, a, predicate)),
         ),
-        T::Fun(ref id, ref xty, ref yty) => T::Fun(
+        T::Fun(id, xty, yty) => T::Fun(
             id.clone(),
-            box concretize_ty(renv, a, xty),
-            box concretize_ty(renv, a, yty),
+            Box::new(concretize_ty(renv, a, xty)),
+            Box::new(concretize_ty(renv, a, yty)),
         ),
     }
 }
@@ -991,31 +1031,40 @@ pub fn infer(
     let mut ckeys: Vec<Idx> = constraints.keys().map(|i| *i).collect();
     // sort constrains to make output easier to understand
     ckeys.sort_by_key(|k| {
-        if let ((_, _), C::Subtype(_, box T::Ref(_, _, box Liquid::K(ref id, _)))) = constraints[k]
-        {
-            i32::from_str(&id[2..]).unwrap_or(-1)
+        if let ((_, _), C::Subtype(_, bref)) = &constraints[k] {
+            if let T::Ref(_, _, bk) = &**bref {
+                if let Liquid::K(id, _) = &**bk {
+                    i32::from_str(&id[2..]).unwrap_or(-1)
+                } else {
+                    unreachable!();
+                }
+            } else {
+                unreachable!();
+            }
         } else {
             -2
         }
     });
 
     // group subtyping constraints by supertype
-    for ckey in ckeys {
-        let ref c = constraints[&ckey];
-        if let &((ref in_scope, ref path), C::Subtype(ref p, ref e)) = c {
+    for ckey in ckeys.iter() {
+        let c = &constraints[&ckey];
+        if let ((in_scope, path), C::Subtype(p, e)) = c {
             //println!("Γ ⊢ {:?}   \t<: {:?} (PATH: {:?})", p, e, path);
             println!(
                 "Γ ⊢ {:?}   \t<: {:?} (PATH: {:?}) (IN_SCOPE: {:?})",
                 p, e, path, in_scope
             );
-            if let box T::Ref(_, _, box Liquid::K(ref id, _)) = *e {
-                let mut antecedent = vec![(in_scope.clone(), path.clone(), p.clone())];
-                if by_id.contains_key(id) {
-                    let mut others = by_id[id].clone();
-                    others.append(&mut antecedent);
-                    by_id.insert(id.clone(), others);
-                } else {
-                    by_id.insert(id.clone(), antecedent);
+            if let T::Ref(_, _, bk) = &**e {
+                if let Liquid::K(id, _) = &**bk {
+                    let mut antecedent = vec![(in_scope.clone(), path.clone(), p.clone())];
+                    if by_id.contains_key(id) {
+                        let mut others = by_id[id].clone();
+                        others.append(&mut antecedent);
+                        by_id.insert(id.clone(), others);
+                    } else {
+                        by_id.insert(id.clone(), antecedent);
+                    }
                 }
             } else {
                 println!("TODO: subtype constraint for non-liquid type {:?}", e);
