@@ -8,75 +8,75 @@ use tok::{self, Tok};
 #[LALR]
 grammar<'input>(text: &'input str);
 
-pub Program: Box<Expr> = {
+pub Program: Expr = {
     Expr,
 };
 
-Expr: Box<Expr> = {
-    "if" <c:Expr> "then" <t:Expr> "else" <f:Expr>    => Box::new(If(c, t, f)),
-    "let" <id:Ident> "=" <v:Expr> "in" <e:Expr>      => Box::new(Let(id, v, e)),
-    "let" "rec" <f:Ident> "=" <v:Expr> "in" <e:Expr> => Box::new(Let(f.clone(), Box::new(Fix(f, v)), e)),
-    "fun" <id:Ident> "->" <e:Expr>                   => Box::new(Fun(id, e)),
-    "fix" <id:Ident> "->" <e:Expr>                   => Box::new(Fix(id, e)),
+Expr: Expr = {
+    "if" <c:Expr> "then" <t:Expr> "else" <f:Expr>    => If(Box::new(c), Box::new(t), Box::new(f)),
+    "let" <id:Ident> "=" <v:Expr> "in" <e:Expr>      => Let(id, Box::new(v), Box::new(e)),
+    "let" "rec" <f:Ident> "=" <v:Expr> "in" <e:Expr> => Let(f.clone(), Box::new(Fix(f, v)), Box::new(e)),
+    "fun" <id:Ident> "->" <e:Expr>                   => Fun(id, Box::new(e)),
+    "fix" <id:Ident> "->" <e:Expr>                   => Fix(id, Box::new(e)),
     "begin" <e:Expr> "end"                           => e,
     LCmp,
 };
 
-LCmp: Box<Expr> = {
-    <l:ACmp> "∧" <r:LCmp> => Box::new(Op2(And, l, r)),
-    <l:ACmp> "∨" <r:LCmp> => Box::new(Op2(Or, l, r)),
+LCmp: Expr = {
+    <l:ACmp> "∧" <r:LCmp> => Op2(And, Box::new(l), Box::new(r)),
+    <l:ACmp> "∨" <r:LCmp> => Op2(Or, Box::new(l), Box::new(r)),
     ACmp,
 };
 
-ACmp: Box<Expr> = {
-    <l:Add> "=" <r:ACmp>  => Box::new(Op2(Eq, l, r)),
-    <l:Add> "<" <r:ACmp>  => Box::new(Op2(LT, l, r)),
-    <l:Add> "<=" <r:ACmp> => Box::new(Op2(LTE, l, r)),
-    <l:Add> ">" <r:ACmp>  => Box::new(Op2(GT, l, r)),
-    <l:Add> ">=" <r:ACmp> => Box::new(Op2(GTE, l, r)),
+ACmp: Expr = {
+    <l:Add> "=" <r:ACmp>  => Op2(Eq, Box::new(l), Box::new(r)),
+    <l:Add> "<" <r:ACmp>  => Op2(LT, Box::new(l), Box::new(r)),
+    <l:Add> "<=" <r:ACmp> => Op2(LTE, Box::new(l), Box::new(r)),
+    <l:Add> ">" <r:ACmp>  => Op2(GT, Box::new(l), Box::new(r)),
+    <l:Add> ">=" <r:ACmp> => Op2(GTE, Box::new(l), Box::new(r)),
     Add,
 };
 
-Add: Box<Expr> = {
-    <l:Add> "-" <r:Mul> => Box::new(Op2(Sub, l, r)),
-    <l:Add> "+" <r:Mul> => Box::new(Op2(Add, l, r)),
+Add: Expr = {
+    <l:Add> "-" <r:Mul> => Op2(Sub, Box::new(l), Box::new(r)),
+    <l:Add> "+" <r:Mul> => Op2(Add, Box::new(l), Box::new(r)),
     Mul,
 };
 
-Mul: Box<Expr> = {
-    <l:Mul> "*" <r:Get> => Box::new(Op2(Mul, l, r)),
+Mul: Expr = {
+    <l:Mul> "*" <r:Get> => Op2(Mul, Box::new(l), Box::new(r)),
     Get,
 };
 
-Get: Box<Expr> = {
-    <id:Ident> "[" <idx:Add> "]" "<-" <e:Atom> => Box::new(SetArray(Box::new(Var(id)), idx, e)),
-    <id:Ident> "[" <idx:Add> "]"               => Box::new(GetArray(Box::new(Var(id)), idx)),
+Get: Expr = {
+    <id:Ident> "[" <idx:Add> "]" "<-" <e:Atom> => SetArray(Box::new(Var(id)), Box::new(idx), Box::new(e)),
+    <id:Ident> "[" <idx:Add> "]"               => GetArray(Box::new(Var(id)), Box::new(idx)),
     App,
 };
 
-App: Box<Expr> = {
-    "array" "(" <sz:Add> "," <n:Add> ")" => Box::new(MkArray(sz, n)),
-    "!" <a:Atom>                         => Box::new(App(Box::new(Var(String::from("not"))), a)),
-    <a:App> <b:Atom>                     => Box::new(App(a, b)),
+App: Expr = {
+    "array" "(" <sz:Add> "," <n:Add> ")" => MkArray(Box::new(sz), Box::new(n)),
+    "!" <a:Atom>                         => App(Box::new(Var(String::from("not"))), Box::new(a)),
+    <a:App> <b:Atom>                     => App(Box::new(a), Box::new(b)),
     Atom,
 };
 
-Atom: Box<Expr> = {
-    <id:Ident>    => Box::new(Var(id)),
-    "ν"           => Box::new(V),
-    "★"           => Box::new(Star),
-    "true"        => Box::new(Const(Bool(true))),
-    "false"       => Box::new(Const(Bool(true))),
+Atom: Expr = {
+    <id:Ident>    => Var(id),
+    "ν"           => V,
+    "★"           => Star,
+    "true"        => Const(Bool(true)),
+    "false"       => Const(Bool(true)),
     "(" <Exprs> ")",
     Int,
 };
 
-Exprs: Box<Expr> = {
+Exprs: Expr = {
     Expr,
 };
 
-Int: Box<Expr> = {
-    Num => Box::new(Const(Int(<>))),
+Int: Expr = {
+    Num => Const(Int(<>)),
 };
 
 Ident: Id = {

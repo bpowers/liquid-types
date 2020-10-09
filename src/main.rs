@@ -2,7 +2,7 @@
 
 extern crate lazy_static;
 extern crate unicode_xid;
-extern crate rustproof_libsmt;
+extern crate z3;
 
 use std::error;
 use std::fs::File;

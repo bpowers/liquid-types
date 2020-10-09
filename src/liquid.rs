@@ -12,12 +12,11 @@ use lambdal::{Expr, Op, Imm};
 use common::{Id, Result};
 use refined::{Base, T};
 
-use rustproof_libsmt::backends::smtlib2::SMTLib2;
-use rustproof_libsmt::backends::backend::*;
-use rustproof_libsmt::backends::z3::Z3;
-use rustproof_libsmt::theories::{core, integer};
-use rustproof_libsmt::logics::lia::LIA;
-use rustproof_libsmt::logics::lia::LIA_Sorts;
+use z3::{
+    ast::{Bool, Int, Real, BV},
+    Config, Context,
+};
+// core, integer, LIA, LIA_Sorts
 
 use explicit::Type::TInt;
 
