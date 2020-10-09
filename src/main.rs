@@ -1,5 +1,3 @@
-#![feature(box_syntax, box_patterns)]
-
 extern crate lazy_static;
 extern crate unicode_xid;
 extern crate z3;
