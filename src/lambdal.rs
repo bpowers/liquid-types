@@ -479,7 +479,7 @@ macro_rules! test_anf(
         let input = $s;
         let lexer = Tokenizer::new(&input);
         let iexpr = ProgramParser::new().parse(input, lexer).unwrap();
-        let anf_expr = anf(&iexpr).unwrap();
+        let (anf_expr, _) = anf(&iexpr).unwrap();
         let expected = $ae;
         if !cmp(&anf_expr, &expected) {
             die!("cmp mismatch {:?} != {:?}", anf_expr, expected);

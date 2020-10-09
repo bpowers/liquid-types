@@ -770,20 +770,26 @@ fn implication_holds(
         qs.push(pred);
     }
 
-    /*
     let p_all = match ps.len() {
-        0 => solver.new_const(core::OpCodes::Const(true)),
-        1 => ps[0],
-        _ => solver.assert(core::OpCodes::And, &ps),
+        0 => Bool::from_bool(&ctx, true),
+        1 => ps[0].as_bool().unwrap(),
+        _ => {
+            let ps: Vec<_> = ps.iter().map(|p| p.as_bool().unwrap()).collect();
+            let ps_refs: Vec<_> = ps.iter().collect();
+            Bool::and(&ctx, &ps_refs)
+        },
     };
     let q_all = match qs.len() {
-        0 => solver.new_const(core::OpCodes::Const(true)),
-        1 => qs[0],
-        _ => solver.assert(core::OpCodes::And, &qs),
+        0 => Bool::from_bool(&ctx, true),
+        1 => qs[0].as_bool().unwrap(),
+        _ => {
+            let qs: Vec<_> = qs.iter().map(|q| q.as_bool().unwrap()).collect();
+            let qs_refs: Vec<_> = qs.iter().collect();
+            Bool::and(&ctx, &qs_refs)
+        },
     };
-    let imply = solver.assert(core::OpCodes::Imply, &[p_all, q_all]);
-    let _ = solver.assert(core::OpCodes::Not, &[imply]);
-    */
+    let imply = p_all.implies(&q_all);
+    solver.assert(&imply.not());
 
     let result = solver.check();
     matches!(result, z3::SatResult::Unsat)
@@ -1109,7 +1115,7 @@ fn test_implication() {
 
 #[test]
 fn z3_works() {
-    let mut cfg = Config::new();
+    let cfg = Config::new();
     // TODO: set the logic to LIA?
     let ctx = Context::new(&cfg);
     let solver = Solver::new(&ctx);

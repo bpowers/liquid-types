@@ -245,7 +245,7 @@ macro_rules! test_eval(
         let lexer = Tokenizer::new(&input);
 
         let iexpr = ProgramParser::new().parse(input, lexer).unwrap();
-        let anf_expr = lambdal::anf(&iexpr).unwrap();
+        let (anf_expr, _) = lambdal::anf(&iexpr).unwrap();
         let r = interpret(&anf_expr);
         if r != $v {
             die!("mismatch {:?} != {:?}", r, $v);
