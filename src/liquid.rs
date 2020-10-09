@@ -14,10 +14,8 @@ use crate::lambdal::{self, Expr, Imm, Op};
 use crate::refined::{Base, T};
 use crate::tok::Tokenizer;
 
-use z3::{
-    ast::{Bool, Int, Real, BV},
-    Config, Context,
-};
+use z3::ast::{Ast, Bool, Dynamic, Int};
+use z3::{Config, Context, Solver};
 // core, integer, LIA, LIA_Sorts
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -567,52 +565,54 @@ fn build_a(
     a
 }
 
-fn smt_from_imm(
-    s: &mut SMTLib2<LIA>,
-    vars: &HashMap<String, <SMTLib2<LIA> as SMTBackend>::Idx>,
+fn smt_from_imm<'ctx>(
+    ctx: &'ctx Context,
+    s: &Solver,
+    vars: &HashMap<String, Box<impl Ast<'ctx>>>,
     q: &lambdal::Imm,
-) -> <SMTLib2<LIA> as SMTBackend>::Idx {
+) -> Box<impl Ast<'ctx>> {
     use lambdal::Imm as I;
 
-    match *q {
-        I::Var(ref id) => match vars.get(id) {
-            Some(v) => *v,
+    match q {
+        I::Var(id) => match vars.get(id) {
+            Some(v) => Box::new((**v).clone()),
             None => panic!("smt_from_imm: {} not in {:?}", id, vars),
         },
-        I::Bool(b) => s.new_const(core::OpCodes::Const(b)),
-        I::Int(n) => s.new_const(integer::OpCodes::Const(n)),
-        I::V => vars["!v"],
+        I::Bool(b) => Bool::from_bool(ctx, *b),
+        I::Int(n) => Int::from_i64(ctx, *n),
+        I::V => *vars["!v"],
         I::Star => unreachable!("star in smt?"),
         I::Fun(_, _) => unreachable!("fun in smt?"),
         I::Fix(_, _) => unreachable!("fix in smt?"),
     }
 }
 
-fn smt_from_op(
-    s: &mut SMTLib2<LIA>,
-    vars: &HashMap<String, <SMTLib2<LIA> as SMTBackend>::Idx>,
+fn smt_from_op<'ctx>(
+    ctx: &'ctx Context,
+    s: &Solver,
+    vars: &HashMap<String, Box<impl Ast<'ctx>>>,
     q: &lambdal::Op,
-) -> <SMTLib2<LIA> as SMTBackend>::Idx {
+) -> Box<impl Ast<'ctx>> {
     use crate::common::Op2;
     use crate::lambdal::Op as O;
 
-    match *q {
-        O::Imm(ref imm) => smt_from_imm(s, vars, imm),
-        O::Op2(op, ref l, ref r) => {
-            let il = smt_from_op(s, vars, l);
-            let ir = smt_from_op(s, vars, r);
+    match q {
+        O::Imm(imm) => smt_from_imm(ctx, s, vars, imm),
+        O::Op2(op, l, r) => {
+            let il = smt_from_op(ctx, s, vars, l);
+            let ir = smt_from_op(ctx, s, vars, r);
             match op {
                 Op2::And | Op2::Or | Op2::Impl | Op2::Iff => {
                     let opcode = match op {
-                        Op2::And => core::OpCodes::And,
-                        Op2::Or => core::OpCodes::Or,
-                        Op2::Impl => core::OpCodes::Imply,
+                        Op2::And => Bool::and(ctx, &[&il, &ir]),
+                        Op2::Or => Bool::or(ctx, &[&il, &ir]),
+                        Op2::Impl => il.implies(&ir),
                         Op2::Iff => {
                             panic!("iff not implemented");
                         }
                         _ => unreachable!(),
                     };
-                    s.assert(opcode, &[il, ir])
+                    s.assert(&opcode)
                 }
                 Op2::Add
                 | Op2::Sub
@@ -623,17 +623,17 @@ fn smt_from_op(
                 | Op2::GTE
                 | Op2::Eq => {
                     let opcode = match op {
-                        Op2::LT => integer::OpCodes::Lt,
-                        Op2::LTE => integer::OpCodes::Lte,
-                        Op2::GT => integer::OpCodes::Gt,
-                        Op2::GTE => integer::OpCodes::Gte,
-                        Op2::Eq => integer::OpCodes::Cmp,
-                        Op2::Add => integer::OpCodes::Add,
-                        Op2::Sub => integer::OpCodes::Sub,
-                        Op2::Mul => integer::OpCodes::Mul,
+                        Op2::LT => il.lt(&ir),
+                        Op2::LTE => il.le(&ir),
+                        Op2::GT => il.gt(&ir),
+                        Op2::GTE => il.ge(&ir),
+                        Op2::Eq => il._eq(&ir),
+                        Op2::Add => il.add(&ir),
+                        Op2::Sub => il.sub(&ir),
+                        Op2::Mul => il.mul(&ir),
                         _ => unreachable!(),
                     };
-                    s.assert(opcode, &[il, ir])
+                    s.assert(&opcode)
                 }
             }
         }
@@ -643,32 +643,32 @@ fn smt_from_op(
     }
 }
 
-fn smt_from_expr(
-    s: &mut SMTLib2<LIA>,
-    vars: &HashMap<String, <SMTLib2<LIA> as SMTBackend>::Idx>,
+fn smt_from_expr<'ctx>(
+    ctx: &'ctx Context,
+    s: &Solver,
+    vars: &HashMap<String, Box<impl Ast<'ctx>>>,
     q: &lambdal::Expr,
-) -> <SMTLib2<LIA> as SMTBackend>::Idx {
+) -> Box<impl Ast<'ctx>> {
     use lambdal::Expr as E;
 
-    match *q {
-        E::Let(ref id, ref e1, ref e2) => {
+    match q {
+        E::Let(id, e1, e2) => {
             let id_idx = match vars.get(id) {
-                Some(idx) => *idx,
+                Some(idx) => (*idx).clone(),
                 None => panic!("key {} not found in {:?}", id, vars),
             };
-            let eq_exprs = &[id_idx, smt_from_expr(s, vars, e1)];
-            let _ = s.assert(integer::OpCodes::Cmp, eq_exprs);
-            smt_from_expr(s, vars, e2)
+            let rhs = smt_from_expr(ctx, s, vars, e1);
+            s.assert(&id_idx._eq(&rhs));
+            smt_from_expr(ctx, s, vars, e2)
         }
-        E::App(ref e1, ref e2) => {
+        E::App(e1, e2) => {
             if **e1 == Imm::Var(String::from("not")) {
-                let exprs = &[smt_from_imm(s, vars, e2)];
-                s.assert(core::OpCodes::Not, exprs)
+                s.assert(smt_from_imm(ctx, s, vars, e2).not())
             } else {
                 panic!("TODO: only supported app is not");
             }
         }
-        E::Op(ref op) => smt_from_op(s, vars, op),
+        E::Op(ref op) => smt_from_op(ctx, s, vars, op),
         _ => {
             panic!("smt_from_expr unimplemented {:?}", q);
         }
@@ -705,10 +705,14 @@ fn expr_from_var(a: &HashMap<Id, KInfo>, var: &Id, ty: &Type) -> Vec<lambdal::Ex
     instantiated
 }
 
-fn sort_from_ty(ty: &explicit::Type) -> Option<LIA_Sorts> {
-    let sort: LIA_Sorts = match *ty {
-        explicit::Type::TInt => integer::Sorts::Int.into(),
-        explicit::Type::TBool => core::Sorts::Bool.into(),
+fn const_for_type<'ctx>(
+    ctx: &'ctx Context,
+    var: &Id,
+    ty: &explicit::Type,
+) -> Option<Dynamic<'ctx>> {
+    let sort: Dynamic<'ctx> = match ty {
+        explicit::Type::TInt => Dynamic::from(Int::new_const(ctx, var)),
+        explicit::Type::TBool => Dynamic::from(Bool::new_const(ctx, var)),
         _ => {
             //println!("TODO: v'{}' more sorts than int ({:?})", var, ty);
             return None;
@@ -724,37 +728,37 @@ fn implication_holds(
     p: &[lambdal::Expr],
     q: &[lambdal::Expr],
 ) -> bool {
-    let mut z3 = Z3::new_with_binary("./z3");
-    let mut solver = SMTLib2::new(Some(LIA));
-    solver.set_logic(&mut z3);
+    let cfg = Config::default();
+    let ctx = Context::new(&cfg);
+    let solver = Solver::new(&ctx);
 
-    let mut senv: HashMap<Id, _> = HashMap::new();
+    let mut senv: HashMap<Id, Dynamic> = HashMap::new();
 
     // Defining the symbolic vars x & y
     for (var, ty) in env {
-        if let Some(sort) = sort_from_ty(ty) {
-            let idx = solver.new_var(Some(&var), sort);
-            senv.insert(var.clone(), idx);
+        if let Some(c) = const_for_type(&ctx, var, ty) {
+            senv.insert(var.clone(), c);
         }
     }
 
     senv.insert(
         String::from("!v"),
-        solver.new_var(Some("!v"), sort_from_ty(&v_ty).unwrap()),
+        const_for_type(&ctx, &"!v".to_string(), &v_ty).unwrap(),
     );
 
-    let mut ps: Vec<_> = Vec::new();
+    let mut ps: Vec<Box<Dynamic>> = Vec::new();
     for t in p {
-        let pred = smt_from_expr(&mut solver, &senv, t);
+        let pred = smt_from_expr(&ctx, &solver, &senv, t);
         ps.push(pred);
     }
 
     let mut qs: Vec<_> = Vec::new();
     for t in q {
-        let pred = smt_from_expr(&mut solver, &senv, t);
+        let pred = smt_from_expr(&ctx, &solver, &senv, t);
         qs.push(pred);
     }
 
+    /*
     let p_all = match ps.len() {
         0 => solver.new_const(core::OpCodes::Const(true)),
         1 => ps[0],
@@ -767,13 +771,10 @@ fn implication_holds(
     };
     let imply = solver.assert(core::OpCodes::Imply, &[p_all, q_all]);
     let _ = solver.assert(core::OpCodes::Not, &[imply]);
+    */
 
-    let (_, sat) = solver.solve(&mut z3, false);
-
-    match sat {
-        SMTRes::Unsat(_, _) => true,
-        _ => false,
-    }
+    let result = solver.check();
+    matches!(result, z3::SatResult::Unsat)
 }
 
 // whether the conjunction of all p implies the conjunction of all q
@@ -1048,27 +1049,14 @@ pub(crate) fn q(input: &str) -> Result<crate::implicit::Expr> {
 }
 
 #[cfg(test)]
-macro_rules! expr(
-    ($s:expr) => { {
-        use lambdal;
-        use implicit_parse;
-        use tok::Tokenizer;
-        let s = $s;
-        let tokenizer = Tokenizer::new(&s);
-        let iexpr = match implicit_parse::parse_Program(&s, tokenizer) {
-            Ok(iexpr) => iexpr,
-            Err(e) => {
-                die!("parse_Program({}): {:?}", $s, e);
-            }
-        };
-        match lambdal::q(&iexpr) {
-            Ok(expr) => expr,
-            Err(e) => {
-                die!("anf: {:?}", e);
-            }
-        }
-    } }
-);
+pub(crate) fn expr(input: &str) -> Result<crate::lambdal::Expr> {
+    use crate::common::LiquidError;
+    let lexer = Tokenizer::new(input);
+    match ProgramParser::new().parse(&input, lexer) {
+        Ok(iexpr) => lambdal::q(&iexpr),
+        Err(err) => Err(LiquidError::new(format!("Parser: {:?}", err))),
+    }
+}
 
 #[test]
 fn test_implication() {
@@ -1090,18 +1078,16 @@ fn test_implication() {
     env.insert(String::from("!tmp-3!3"), explicit::Type::TBool);
     env.insert(String::from("!tmp-3!4"), explicit::Type::TBool);
 
-    let p = [expr!("x <= y ∧ ν = y")];
-
-    let q = [expr!("ν >= x ∧ ν >= y")];
+    let p = [expr("x <= y ∧ ν = y").unwrap()];
+    let q = [expr("ν >= x ∧ ν >= y").unwrap()];
 
     // expect this to hold
     if !implication_holds(&env, TInt, &p, &q) {
         die!("1 expected {:?} => {:?}", p, q);
     }
 
-    let p = [expr!("x <= y ∧ ν = y")];
-
-    let q = [expr!("ν < 0 ∧ ν >= x ∧ ν >= y")];
+    let p = [expr("x <= y ∧ ν = y").unwrap()];
+    let q = [expr("ν < 0 ∧ ν >= x ∧ ν >= y").unwrap()];
 
     // but this shouldn't
     if implication_holds(&env, TInt, &p, &q) {
@@ -1111,33 +1097,20 @@ fn test_implication() {
 
 #[test]
 fn z3_works() {
-    let mut z3 = Z3::new_with_binary("./z3");
-    let mut solver = SMTLib2::new(Some(LIA));
-    solver.set_logic(&mut z3);
+    let mut cfg = Config::new();
+    // TODO: set the logic to LIA?
+    let ctx = Context::new(&cfg);
+    let solver = Solver::new(&ctx);
 
     // Defining the symbolic vars x & y
-    let x = solver.new_var(Some("x"), integer::Sorts::Int);
-    let y = solver.new_var(Some("y"), integer::Sorts::Int);
-    let v = solver.new_var(Some("v"), integer::Sorts::Int);
+    let x = Int::new_const(&ctx, "x");
+    let y = Int::new_const(&ctx, "y");
+    let v = Int::new_const(&ctx, "v");
 
-    //let int0 = solver.new_const(integer::OpCodes::Const(0));
+    let p = Bool::and(&ctx, &[&x.le(&y), &v._eq(&y)]);
+    let k = Bool::and(&ctx, &[&v.ge(&x), &v.ge(&y)]);
+    solver.assert(&p.implies(&k).not());
 
-    let p1 = solver.assert(integer::OpCodes::Lte, &[x, y]);
-    let p2 = solver.assert(integer::OpCodes::Cmp, &[v, y]);
-    let p_all = solver.assert(core::OpCodes::And, &[p1, p2]);
-
-    let k1 = solver.assert(integer::OpCodes::Gte, &[v, x]);
-    let k2 = solver.assert(integer::OpCodes::Gte, &[v, y]);
-    let k_all = solver.assert(core::OpCodes::And, &[k1, k2]);
-
-    let imply = solver.assert(core::OpCodes::Imply, &[p_all, k_all]);
-    let _ = solver.assert(core::OpCodes::Not, &[imply]);
-
-    let (_, sat) = solver.solve(&mut z3, false);
-    match sat {
-        SMTRes::Unsat(_, _) => {}
-        _ => {
-            die!("expected unsat, not {:?}", sat);
-        }
-    }
+    let result = solver.check();
+    assert!(matches!(result, z3::SatResult::Unsat));
 }

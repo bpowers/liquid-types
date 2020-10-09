@@ -70,7 +70,7 @@ pub fn implicit_open<'a, R: Read>(file: &mut R) -> Result<Box<implicit::Expr>> {
     let lexer = tok::Tokenizer::new(&input);
     let parser = crate::implicit_parse::ProgramParser::new();
     match parser.parse(&input, lexer) {
-        Ok(v) => Ok(v),
+        Ok(v) => Ok(Box::new(v)),
         Err(e) => err!("parse_Program: {:?}", e),
     }
 }

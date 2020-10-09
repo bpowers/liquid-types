@@ -427,7 +427,7 @@ macro_rules! test_parse(
     ($s:expr) => { {
         let s = $s;
         let tokenizer = Tokenizer::new(&s);
-        if let Err(e) = implicit_parse::parse_Program(&s, tokenizer) {
+        if let Err(e) = implicit_parse::ProgramParser::new().parse(&s, tokenizer) {
             die!("parse_Program({}): {:?}", $s, e)
         }
     } }
@@ -438,7 +438,7 @@ macro_rules! test_parse_fails(
     ($s:expr) => { {
         let s = $s;
         let tokenizer = Tokenizer::new(&s);
-        if let Ok(_) = implicit_parse::parse_Program(&s, tokenizer) {
+        if let Ok(_) = implicit_parse::ProgramParser::new().parse(&s, tokenizer) {
             die!("parse_Program({}) should have failed", $s)
         }
     } }
@@ -449,7 +449,7 @@ macro_rules! test_unbound_ident(
     ($s:expr) => { {
         let s = $s;
         let tokenizer = Tokenizer::new(&s);
-        let exp = match implicit_parse::parse_Program(&s, tokenizer) {
+        let exp = match implicit_parse::ProgramParser::new().parse(&s, tokenizer) {
             Ok(v) => v,
             Err(e) => die!("parse_Program: {:?}", e),
         };

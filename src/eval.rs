@@ -238,23 +238,14 @@ pub fn interpret(expr: &Expr) -> Value {
 #[cfg(test)]
 macro_rules! test_eval(
     ($s:expr, $v:expr) => { {
-        use implicit_parse;
-        use tok::Tokenizer;
-        use lambdal;
-        let s = $s;
-        let tokenizer = Tokenizer::new(&s);
-        let iexpr = match implicit_parse::parse_Program(&s, tokenizer) {
-            Ok(iexpr) => iexpr,
-            Err(e) => {
-                die!("parse_Program({}): {:?}", $s, e);
-            }
-        };
-        let anf_expr = match lambdal::anf(&iexpr) {
-            Ok((anf_expr, _)) => anf_expr,
-            Err(e) => {
-                die!("anf: {:?}", e);
-            }
-        };
+        use crate::implicit_parse::ProgramParser;
+        use crate::tok::Tokenizer;
+        use crate::lambdal;
+        let input = $s;
+        let lexer = Tokenizer::new(&input);
+
+        let iexpr = ProgramParser::new().parse(input, lexer).unwrap();
+        let anf_expr = lambdal::anf(&iexpr).unwrap();
         let r = interpret(&anf_expr);
         if r != $v {
             die!("mismatch {:?} != {:?}", r, $v);

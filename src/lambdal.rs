@@ -474,22 +474,12 @@ pub fn cmp(e1: &Expr, e2: &Expr) -> bool {
 #[cfg(test)]
 macro_rules! test_anf(
     ($s:expr, $ae:expr) => { {
-        use implicit_parse;
-        use tok::Tokenizer;
-        let s = $s;
-        let tokenizer = Tokenizer::new(&s);
-        let iexpr = match implicit_parse::parse_Program(&s, tokenizer) {
-            Ok(iexpr) => iexpr,
-            Err(e) => {
-                die!("parse_Program({}): {:?}", $s, e);
-            }
-        };
-        let anf_expr = match anf(&iexpr) {
-            Ok((anf_expr, _)) => anf_expr,
-            Err(e) => {
-                die!("anf: {:?}", e);
-            }
-        };
+        use crate::implicit_parse::ProgramParser;
+        use crate::tok::Tokenizer;
+        let input = $s;
+        let lexer = Tokenizer::new(&input);
+        let iexpr = ProgramParser::new().parse(input, lexer).unwrap();
+        let anf_expr = anf(&iexpr).unwrap();
         let expected = $ae;
         if !cmp(&anf_expr, &expected) {
             die!("cmp mismatch {:?} != {:?}", anf_expr, expected);
@@ -502,7 +492,7 @@ fn anf_transforms() {
     use self::Expr::*;
     use self::Imm as I;
     use self::Op::*;
-    use common::Op2 as O;
+    use crate::common::Op2 as O;
 
     test_anf!("-22", Op(Imm(I::Int(-22))));
 
