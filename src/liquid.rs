@@ -777,7 +777,7 @@ fn implication_holds(
             let ps: Vec<_> = ps.iter().map(|p| p.as_bool().unwrap()).collect();
             let ps_refs: Vec<_> = ps.iter().collect();
             Bool::and(&ctx, &ps_refs)
-        },
+        }
     };
     let q_all = match qs.len() {
         0 => Bool::from_bool(&ctx, true),
@@ -786,7 +786,7 @@ fn implication_holds(
             let qs: Vec<_> = qs.iter().map(|q| q.as_bool().unwrap()).collect();
             let qs_refs: Vec<_> = qs.iter().collect();
             Bool::and(&ctx, &qs_refs)
-        },
+        }
     };
     let imply = p_all.implies(&q_all);
     solver.assert(&imply.not());

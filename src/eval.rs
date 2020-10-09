@@ -79,22 +79,22 @@ fn eval_op2(ctx: &Closure, op: Op2, l: &Op, r: &Op) -> Value {
 
 fn subst_imm(ctx: &Closure, id: &String, fix: &Imm, i: &Imm) -> Imm {
     use crate::lambdal::Imm::*;
-    match *i {
-        Bool(b) => Bool(b),
-        Int(n) => Int(n),
-        Var(ref x) => {
+    match i {
+        Bool(b) => Bool(*b),
+        Int(n) => Int(*n),
+        Var(x) => {
             if x == id {
                 fix.clone()
             } else {
                 Var(x.clone())
             }
         }
-        Fun(ref vid, ref e) => {
-            let e = box subst_expr(ctx, id, fix, e);
+        Fun(vid, e) => {
+            let e = Box::new(subst_expr(ctx, id, fix, e));
             Fun(vid.clone(), e)
         }
-        Fix(ref vid, ref e) => {
-            let e = box subst_expr(ctx, id, fix, e);
+        Fix(vid, e) => {
+            let e = Box::new(subst_expr(ctx, id, fix, e));
             Fix(vid.clone(), e)
         }
         V | Star => unreachable!("ν or ★ encountered during subst"),
@@ -103,72 +103,72 @@ fn subst_imm(ctx: &Closure, id: &String, fix: &Imm, i: &Imm) -> Imm {
 
 fn subst_op(ctx: &Closure, id: &String, fix: &Imm, o: &Op) -> Op {
     use crate::lambdal::Op::*;
-    match *o {
-        Op2(op, ref e1, ref e2) => {
-            let e1 = box subst_op(ctx, id, fix, e1);
-            let e2 = box subst_op(ctx, id, fix, e2);
+    match o {
+        Op2(op, e1, e2) => {
+            let e1 = Box::new(subst_op(ctx, id, fix, e1));
+            let e2 = Box::new(subst_op(ctx, id, fix, e2));
             Op2(op.clone(), e1, e2)
         }
-        MkArray(ref sz, ref n) => {
-            let sz = box subst_imm(ctx, id, fix, sz);
-            let n = box subst_imm(ctx, id, fix, n);
+        MkArray(sz, n) => {
+            let sz = Box::new(subst_imm(ctx, id, fix, sz));
+            let n = Box::new(subst_imm(ctx, id, fix, n));
             MkArray(sz, n)
         }
-        GetArray(ref iid, ref idx) => {
-            let iid = box subst_imm(ctx, id, fix, iid);
-            let idx = box subst_imm(ctx, id, fix, idx);
+        GetArray(iid, idx) => {
+            let iid = Box::new(subst_imm(ctx, id, fix, iid));
+            let idx = Box::new(subst_imm(ctx, id, fix, idx));
             GetArray(iid, idx)
         }
-        SetArray(ref iid, ref idx, ref v) => {
-            let iid = box subst_imm(ctx, id, fix, iid);
-            let idx = box subst_imm(ctx, id, fix, idx);
-            let v = box subst_imm(ctx, id, fix, v);
+        SetArray(iid, idx, v) => {
+            let iid = Box::new(subst_imm(ctx, id, fix, iid));
+            let idx = Box::new(subst_imm(ctx, id, fix, idx));
+            let v = Box::new(subst_imm(ctx, id, fix, v));
             SetArray(iid, idx, v)
         }
-        Imm(ref imm) => Imm(subst_imm(ctx, id, fix, imm)),
+        Imm(imm) => Imm(subst_imm(ctx, id, fix, imm)),
     }
 }
 
 // fixpoint substitution
 fn subst_expr(ctx: &Closure, id: &String, fix: &Imm, e: &Expr) -> Expr {
     use crate::lambdal::Expr::*;
-    match *e {
-        If(ref e1, ref e2, ref e3) => {
-            let e1 = box subst_imm(ctx, id, fix, e1);
-            let e2 = box subst_expr(ctx, id, fix, e2);
-            let e3 = box subst_expr(ctx, id, fix, e3);
+    match e {
+        If(e1, e2, e3) => {
+            let e1 = Box::new(subst_imm(ctx, id, fix, e1));
+            let e2 = Box::new(subst_expr(ctx, id, fix, e2));
+            let e3 = Box::new(subst_expr(ctx, id, fix, e3));
             If(e1, e2, e3)
         }
-        Let(ref vid, ref e1, ref e2) => {
-            let e1 = box subst_expr(ctx, id, fix, e1);
-            let e2 = box subst_expr(ctx, id, fix, e2);
+        Let(vid, e1, e2) => {
+            let e1 = Box::new(subst_expr(ctx, id, fix, e1));
+            let e2 = Box::new(subst_expr(ctx, id, fix, e2));
             Let(vid.clone(), e1, e2)
         }
-        App(ref e1, ref e2) => {
-            let e1 = box subst_imm(ctx, id, fix, e1);
-            let e2 = box subst_imm(ctx, id, fix, e2);
+        App(e1, e2) => {
+            let e1 = Box::new(subst_imm(ctx, id, fix, e1));
+            let e2 = Box::new(subst_imm(ctx, id, fix, e2));
             App(e1, e2)
         }
-        Op(ref op) => Op(subst_op(ctx, id, fix, op)),
+        Op(op) => Op(subst_op(ctx, id, fix, op)),
     }
 }
 
 fn eval_imm(ctx: &Closure, i: &Imm) -> Value {
     use self::Value::*;
     use crate::lambdal::Imm::*;
-    match *i {
-        Bool(b) => VBool(b),
-        Int(i) => VInt(i),
-        Var(ref id) => match ctx.get(id) {
+    match i {
+        Bool(b) => VBool(*b),
+        Int(i) => VInt(*i),
+        Var(id) => match ctx.get(id) {
             Some(v) => v.clone(),
             None => panic!("lookup {} in ctx failed: {:?}", id, ctx),
         },
-        Fun(ref id, ref e) => VClosure(box ctx.clone(), id.clone(), e.clone()),
-        Fix(ref id, ref e) => {
+        Fun(id, e) => VClosure(Box::new(ctx.clone()), id.clone(), e.clone()),
+        Fix(id, e) => {
             let inner = eval(ctx, e);
             let (_, iid, ie) = vclosure(inner);
-            let substituted_exp = box subst_expr(ctx, id, i, &ie);
-            VClosure(box ctx.clone(), iid, substituted_exp)
+            let substituted_exp = Box::new(subst_expr(ctx, id, i, &ie));
+            VClosure(Box::new(ctx.clone()), iid, substituted_exp)
         }
         V | Star => unreachable!("ν or ★ encountered during subst"),
     }
@@ -177,55 +177,55 @@ fn eval_imm(ctx: &Closure, i: &Imm) -> Value {
 fn eval_op(ctx: &Closure, o: &Op) -> Value {
     use self::Value::*;
     use crate::lambdal::Op::*;
-    match *o {
-        Op2(op, ref e1, ref e2) => eval_op2(ctx, op, e1, e2),
-        MkArray(ref sz, ref n) => {
+    match o {
+        Op2(op, e1, e2) => eval_op2(ctx, *op, e1, e2),
+        MkArray(sz, n) => {
             let sz = vint(eval_imm(ctx, sz));
             let n = vint(eval_imm(ctx, n));
             let mut vec = Vec::with_capacity(sz as usize);
             vec.resize(sz as usize, n);
-            VIntArray(box vec)
+            VIntArray(Box::new(vec))
         }
-        GetArray(ref iid, ref idx) => {
+        GetArray(iid, idx) => {
             let arr = vintarray(eval_imm(ctx, iid));
             let idx = vint(eval_imm(ctx, idx));
             VInt(arr[idx as usize])
         }
-        SetArray(ref iid, ref idx, ref v) => {
+        SetArray(iid, idx, v) => {
             let mut arr = vintarray(eval_imm(ctx, iid)).clone();
             let idx = vint(eval_imm(ctx, idx));
             let v = vint(eval_imm(ctx, v));
             arr[idx as usize] = v;
             VIntArray(arr)
         }
-        Imm(ref imm) => eval_imm(ctx, imm),
+        Imm(imm) => eval_imm(ctx, imm),
     }
 }
 
 fn eval(ctx: &Closure, expr: &Expr) -> Value {
     use crate::lambdal::Expr::*;
-    match *expr {
-        If(ref cond, ref e1, ref e2) => {
+    match expr {
+        If(cond, e1, e2) => {
             if vbool(eval_imm(ctx, cond)) {
                 eval(ctx, e1)
             } else {
                 eval(ctx, e2)
             }
         }
-        App(ref e1, ref e2) => {
+        App(e1, e2) => {
             let v = eval_imm(ctx, e2);
             let (ctx, id, e) = vclosure(eval_imm(ctx, e1));
             let mut new_ctx = ctx.clone();
             new_ctx.insert(id, v);
             eval(&new_ctx, &e)
         }
-        Let(ref id, ref e1, ref e2) => {
+        Let(id, e1, e2) => {
             let v1 = eval(ctx, e1);
             let mut new_ctx = ctx.clone();
             new_ctx.insert(id.clone(), v1);
             eval(&new_ctx, e2)
         }
-        Op(ref op) => eval_op(ctx, op),
+        Op(op) => eval_op(ctx, op),
     }
 }
 
