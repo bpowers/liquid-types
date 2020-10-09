@@ -9,26 +9,8 @@ implicitly-typed variant of ML.
 BUILD
 -----
 
-This projects requires building with a *nightly* version of rust, as
-it uses features like `box_syntax` that aren't in release builds.  It
-also requires having the [z3 theorem
-prover](https://github.com/Z3Prover/z3/wiki) on your path.
-
-A Dockerfile is included to ease development and testing.  To get a
-shell in a docker container suitable for testing, first [install
-docker](https://docs.docker.com/engine/getstarted/step_one/) and then
-run:
-
-```sh
-$ make docker
-```
-
-This will download an image with rust nightly and z3, build the
-project, and give you a bash shell you can test examples in by running
-the `liquid-types` binary.  The first time you run the command will
-take around 10 minutes to download the image, build the binary and run
-our unit tests.  Subsequent invocations should be instantaneous.
-
+This projects requires having the [z3 theorem
+prover](https://github.com/Z3Prover/z3/wiki) library in your library search path.
 
 RUN
 ---
@@ -41,11 +23,11 @@ let max = fun x -> fun y -> if x > y then x else y in max 1 -3
 ```
 
 
-In the docker shell, you can infer liquid types for this program by
+You can infer liquid types for this program by
 running:
 
 ```sh
-$ liquid-types examples/max3.ml
+$ target/debug/liquid-types examples/max3.ml
 ```
 
 This will spit out debugging information about the liquid environment
