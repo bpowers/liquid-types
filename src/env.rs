@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::common::Id;
 use crate::explicit::{self, Type};
 
-fn fmt(n: i32, id: &Id) -> (i32, Id) {
+fn fmt(n: i32, id: &str) -> (i32, Id) {
     (n + 1, format!("{}_a{}", id, n))
 }
 

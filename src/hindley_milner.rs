@@ -23,10 +23,10 @@ impl<'a> MVEnv<'a> {
         }
     }
 
-    fn alloc(&mut self, s: &String) -> Type {
+    fn alloc(&mut self, s: &str) -> Type {
         let id = self.next_id;
         self.next_id += 1;
-        Type::TMetavar((id, s.clone()))
+        Type::TMetavar((id, s.to_string()))
     }
 
     fn alloc_empty(&mut self) -> Type {
@@ -149,7 +149,7 @@ fn gen_constraints<'a>(
         E::Let(id, e1, e2) => {
             let (mut c1, t1) = gen_constraints(m, env, e1)?;
             let mut new_env = env.clone();
-            new_env.insert(id.clone(), t1.clone());
+            new_env.insert(id.clone(), t1);
             let (mut c2, t2) = gen_constraints(m, &new_env, e2)?;
             c1.append(&mut c2);
             (c1, t2)
@@ -189,10 +189,7 @@ fn gen_constraints<'a>(
                 _ => String::from("gonna-fail"),
             };
             c1.append(&mut c2);
-            c1.push((
-                t1.clone(),
-                Type::TFun(id, Box::new(t2.clone()), Box::new(mv.clone())),
-            ));
+            c1.push((t1, Type::TFun(id, Box::new(t2), Box::new(mv.clone()))));
             (c1, mv)
         }
         E::MkArray(sz, n) => {
@@ -333,11 +330,11 @@ fn remove_metavars(
     use crate::typed::Expr as E;
 
     let result: explicit::Expr = match expr {
-        E::Const(c) => E::Const(c.clone()),
+        E::Const(c) => E::Const(*c),
         E::Op2(op, e1, e2) => {
             let e1 = remove_metavars(env, e1)?;
             let e2 = remove_metavars(env, e2)?;
-            E::Op2(op.clone(), e1, e2)
+            E::Op2(*op, e1, e2)
         }
         E::If(e1, e2, e3) => {
             let e1 = remove_metavars(env, e1)?;

@@ -84,7 +84,7 @@ pub struct Tokenizer<'input> {
     lookahead: Option<(usize, char)>,
 }
 
-const KEYWORDS: &'static [(&'static str, Tok<'static>)] = &[
+const KEYWORDS: &[(&str, Tok<'static>)] = &[
     ("if", If),
     ("then", Then),
     ("else", Else),

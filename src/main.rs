@@ -29,7 +29,9 @@ use crate::common::Result;
 use crate::liquid::q;
 
 fn usage() -> ! {
-    let argv0 = std::env::args().nth(0).unwrap_or("<mdl>".to_string());
+    let argv0 = std::env::args()
+        .next()
+        .unwrap_or_else(|| "<mdl>".to_string());
     die!(
         "Usage: {} [OPTION...] PATH\n\
           Type inference.\n\
@@ -44,7 +46,7 @@ fn parse_args() -> String {
     for arg in std::env::args().skip(1) {
         if arg == "-help" {
             usage();
-        } else if arg.chars().nth(0).unwrap_or(' ') == '-' {
+        } else if arg.chars().next().unwrap_or(' ') == '-' {
             eprintln!("unknown arg '{}'", arg);
             usage();
         } else {
@@ -55,12 +57,11 @@ fn parse_args() -> String {
     String::from("")
 }
 
-pub fn implicit_open<'a, R: Read>(file: &mut R) -> Result<Box<implicit::Expr>> {
+pub fn implicit_open<R: Read>(file: &mut R) -> Result<Box<implicit::Expr>> {
     let input = {
         let mut s = String::new();
-        match file.read_to_string(&mut s) {
-            Err(why) => return err!("read: {}", why),
-            Ok(_) => {}
+        if let Err(why) = file.read_to_string(&mut s) {
+            return err!("read: {}", why);
         }
         s
     };

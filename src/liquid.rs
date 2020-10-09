@@ -96,20 +96,20 @@ impl KEnv {
         self.fresh_ty(hm_type)
     }
 
-    fn get(&self, s: &Id) -> Type {
+    fn get(&self, s: &str) -> Type {
         match self.refined.get(s) {
             Some(ty) => ty.clone(),
             None => panic!("env.get('{}' missing ({:?})", s, self.in_scope()),
         }
     }
 
-    fn insert(&mut self, id: &Id, ty: &Type) {
-        self.refined.insert(id.clone(), ty.clone());
+    fn insert(&mut self, id: &str, ty: &Type) {
+        self.refined.insert(id.to_string(), ty.clone());
     }
 
     fn in_scope(&self) -> HashSet<Id> {
         let keys: HashSet<_> = self.refined.keys().cloned().collect();
-        return keys;
+        keys
     }
 }
 
@@ -162,7 +162,7 @@ fn hm_shape_expr(env: &HashMap<Id, explicit::Type>, expr: &Expr) -> explicit::Ty
     }
 }
 
-fn ty<'a>(_: &mut KEnv, c: &Imm) -> Type {
+fn ty(_: &mut KEnv, c: &Imm) -> Type {
     use self::Liquid::E;
     use crate::common::Op2;
 
@@ -188,11 +188,11 @@ fn base(ty: &Type) -> Option<Base> {
     }
 }
 
-fn subst(sid: &Id, imm: &Imm, ty: &Type) -> Type {
+fn subst(sid: &str, imm: &Imm, ty: &Type) -> Type {
     if let T::Ref(scope, base, iref) = ty {
         if let Liquid::K(id, pending) = &**iref {
             let mut pending = pending.clone();
-            pending.push_back((imm.clone(), sid.clone()));
+            pending.push_back((imm.clone(), sid.to_string()));
             T::Ref(
                 scope.clone(),
                 *base,
@@ -212,7 +212,7 @@ fn subst(sid: &Id, imm: &Imm, ty: &Type) -> Type {
     }
 }
 
-pub fn cons_imm<'a>(
+pub fn cons_imm(
     k_env: &mut KEnv,
     pathc: &LinkedList<Expr>,
     imm: &Imm,
@@ -243,10 +243,10 @@ pub fn cons_imm<'a>(
 
             let ffun = T::Fun(x.clone(), Box::new(fx.clone()), Box::new(f.clone()));
             // Γ ⊢ (x:fx → f)
-            c.push_back((ffun_env.clone(), C::WellFormed(Box::new(fx.clone()))));
+            c.push_back((ffun_env.clone(), C::WellFormed(Box::new(fx))));
             c.push_back((ffun_env.clone(), C::WellFormed(Box::new(ffun.clone()))));
             // Γ,x:fx ⊢ (fe <: f)
-            c.push_back((ffun_env.clone(), C::Subtype(Box::new(fe), Box::new(f))));
+            c.push_back((ffun_env, C::Subtype(Box::new(fe), Box::new(f))));
 
             (ffun, c)
         }
@@ -257,10 +257,7 @@ pub fn cons_imm<'a>(
             let ffix_env = (k_env.in_scope(), pathc.clone());
 
             let (fe, mut c) = cons_expr(k_env, &pathc, e);
-            c.push_back((
-                ffix_env,
-                C::Subtype(Box::new(fe.clone()), Box::new(f.clone())),
-            ));
+            c.push_back((ffix_env, C::Subtype(Box::new(fe), Box::new(f.clone()))));
 
             (f, c)
         }
@@ -270,7 +267,7 @@ pub fn cons_imm<'a>(
     }
 }
 
-pub fn cons_op<'a>(
+pub fn cons_op(
     k_env: &mut KEnv,
     pathc: &LinkedList<Expr>,
     e: &Op,
@@ -302,7 +299,7 @@ pub fn cons_op<'a>(
     }
 }
 
-pub fn cons_expr<'a>(
+pub fn cons_expr(
     k_env: &mut KEnv,
     pathc: &LinkedList<Expr>,
     expr: &Expr,
@@ -335,12 +332,12 @@ pub fn cons_expr<'a>(
             // Γ,e1 ⊢ (f2 <: f)
             c1.push_back((
                 (k_env.in_scope(), pathc_t),
-                C::Subtype(Box::new(f2.clone()), Box::new(f.clone())),
+                C::Subtype(Box::new(f2), Box::new(f.clone())),
             ));
             // Γ,¬e1 ⊢ (f3 <: f)
             c1.push_back((
                 (k_env.in_scope(), pathc_f),
-                C::Subtype(Box::new(f3.clone()), Box::new(f.clone())),
+                C::Subtype(Box::new(f3), Box::new(f.clone())),
             ));
 
             (f, c1)
@@ -359,10 +356,7 @@ pub fn cons_expr<'a>(
             // Γ ⊢ (f)
             c1.push_back((let_env.clone(), C::WellFormed(Box::new(f.clone()))));
             // Γ,x:f1 ⊢ (f2 <: f)
-            c1.push_back((
-                let_env,
-                C::Subtype(Box::new(f2.clone()), Box::new(f.clone())),
-            ));
+            c1.push_back((let_env, C::Subtype(Box::new(f2), Box::new(f.clone()))));
 
             (f, c1)
         }
@@ -376,9 +370,9 @@ pub fn cons_expr<'a>(
                 c1.push_back(((HashSet::new(), pathc.clone()), C::WellFormed(fx.clone())));
                 c1.push_back((
                     (k_env.in_scope(), pathc.clone()),
-                    C::Subtype(Box::new(f2.clone()), fx.clone()),
+                    C::Subtype(Box::new(f2), fx.clone()),
                 ));
-                return (f, c1);
+                (f, c1)
             } else {
                 panic!("expected TFun, not {:?}", f1);
             }
@@ -483,7 +477,7 @@ fn replace_expr(expr: &Expr, from: &Imm, to: &Imm) -> Expr {
     }
 }
 
-fn replace(v: &Id, q: &implicit::Expr) -> Option<implicit::Expr> {
+fn replace(v: &str, q: &implicit::Expr) -> Option<implicit::Expr> {
     use implicit::Expr as I;
 
     let r = match q {
@@ -511,7 +505,7 @@ fn replace(v: &Id, q: &implicit::Expr) -> Option<implicit::Expr> {
             Box::new(replace(v, var)?),
         ),
         I::V => I::V,
-        I::Star => I::Var(v.clone()),
+        I::Star => I::Var(v.to_string()),
     };
 
     Some(r)
@@ -521,7 +515,7 @@ fn replace(v: &Id, q: &implicit::Expr) -> Option<implicit::Expr> {
 // and of the right shape at the location of the well-formedness
 // constraint
 fn qstar(
-    _: &Id,
+    _: &str,
     in_scope: &HashSet<Id>,
     env: &HashMap<Id, explicit::Type>,
     qset: &[implicit::Expr],
@@ -530,9 +524,9 @@ fn qstar(
 
     let mut qstar: HashSet<lambdal::Expr> = HashSet::new();
     for tmpl in qset {
-        if in_scope.len() == 0 {
+        if in_scope.is_empty() {
             let r = hindley_milner::infer_in(env.clone(), tmpl);
-            if let Ok(_) = r {
+            if r.is_ok() {
                 if let Ok(ee) = lambdal::q(tmpl) {
                     let ty = hm_shape_expr(env, &ee);
                     if let TBool = ty.clone() {
@@ -547,7 +541,7 @@ fn qstar(
         for v in in_scope.iter() {
             if let Some(e) = replace(v, tmpl) {
                 let r = hindley_milner::infer_in(env.clone(), &e);
-                if let Ok(_) = r {
+                if r.is_ok() {
                     if let Ok(ee) = lambdal::q(&e) {
                         let ty = hm_shape_expr(env, &ee);
                         if let TBool = ty.clone() {
@@ -583,8 +577,8 @@ fn build_a(
                         id.clone(),
                         KInfo {
                             base: *base,
-                            all_qs: all_qs,
-                            curr_qs: curr_qs,
+                            all_qs,
+                            curr_qs,
                         },
                     );
                 } else {
@@ -721,7 +715,7 @@ fn smt_from_expr<'ctx>(
     }
 }
 
-fn expr_from_var(a: &HashMap<Id, KInfo>, var: &Id, ty: &Type) -> Vec<lambdal::Expr> {
+fn expr_from_var(a: &HashMap<Id, KInfo>, var: &str, ty: &Type) -> Vec<lambdal::Expr> {
     let const_true = Expr::Op(Op::Imm(Imm::Bool(true)));
     let exprs = match ty {
         T::Ref(_, _, inner) => match &**inner {
@@ -729,7 +723,7 @@ fn expr_from_var(a: &HashMap<Id, KInfo>, var: &Id, ty: &Type) -> Vec<lambdal::Ex
             Liquid::K(p_id, substs) => {
                 let qs = match a.get(p_id) {
                     Some(ps) => ps.clone().curr_qs,
-                    None => vec![const_true.clone()],
+                    None => vec![const_true],
                 };
                 let mut qs_replaced = vec![];
                 for mut q in qs {
@@ -743,24 +737,24 @@ fn expr_from_var(a: &HashMap<Id, KInfo>, var: &Id, ty: &Type) -> Vec<lambdal::Ex
         },
         T::Fun(_, _, _) => {
             // functions are uninterpreted.
-            vec![const_true.clone()]
+            vec![const_true]
         }
     };
     let mut instantiated = vec![];
     for e in exprs {
-        instantiated.push(replace_expr(&e, &Imm::V, &Imm::Var(var.clone())));
+        instantiated.push(replace_expr(&e, &Imm::V, &Imm::Var(var.to_string())));
     }
     instantiated
 }
 
 fn const_for_type<'ctx>(
     ctx: &'ctx Context,
-    var: &Id,
+    var: &str,
     ty: &explicit::Type,
 ) -> Option<Dynamic<'ctx>> {
     let sort: Dynamic<'ctx> = match ty {
-        explicit::Type::TInt => Dynamic::from(Int::new_const(ctx, var.as_str())),
-        explicit::Type::TBool => Dynamic::from(Bool::new_const(ctx, var.as_str())),
+        explicit::Type::TInt => Dynamic::from(Int::new_const(ctx, var)),
+        explicit::Type::TBool => Dynamic::from(Bool::new_const(ctx, var)),
         _ => {
             //println!("TODO: v'{}' more sorts than int ({:?})", var, ty);
             return None;
@@ -836,7 +830,7 @@ fn weaken(
     env: &HashMap<Id, explicit::Type>,
     renv: &HashMap<Id, Type>,
     a: &HashMap<Id, KInfo>,
-    all_p: &Vec<(HashSet<Id>, LinkedList<Expr>, Box<Type>)>,
+    all_p: &[(HashSet<Id>, LinkedList<Expr>, Box<Type>)],
     qs: &HashSet<lambdal::Expr>,
 ) -> Option<Vec<lambdal::Expr>> {
     let const_true = Expr::Op(Op::Imm(Imm::Bool(true)));
@@ -891,7 +885,7 @@ fn solve(
                 // FIXME: shouldn't default to Int
                 KInfo {
                     base: Base::Int,
-                    all_qs: all_qs,
+                    all_qs,
                     curr_qs: vec![const_true.clone()],
                 }
             }
@@ -932,7 +926,7 @@ fn solve(
                             KInfo {
                                 base: qs.base,
                                 all_qs: qs.all_qs.clone(),
-                                curr_qs: new_qs.clone(),
+                                curr_qs: new_qs,
                             },
                         );
                         return solve(env, renv, constraints, &new_a);
@@ -1021,14 +1015,15 @@ pub fn infer(
             println!("{}:\t{:?}", id, k_env.refined[id]);
         }
     }
-    println!("");
+    println!();
 
     let mut constraints: HashMap<Idx, Constraint> = HashMap::new();
     split(&mut constraints, &constraint_list);
 
     println!("Subtype Constraints");
+    #[allow(clippy::type_complexity)]
     let mut by_id: HashMap<Id, Vec<(HashSet<Id>, LinkedList<Expr>, Box<Type>)>> = HashMap::new();
-    let mut ckeys: Vec<Idx> = constraints.keys().map(|i| *i).collect();
+    let mut ckeys: Vec<Idx> = constraints.keys().copied().collect();
     // sort constrains to make output easier to understand
     ckeys.sort_by_key(|k| {
         if let ((_, _), C::Subtype(_, bref)) = &constraints[k] {
@@ -1071,7 +1066,7 @@ pub fn infer(
             }
         }
     }
-    println!("");
+    println!();
 
     let mut all_constraints: LinkedList<STConstraints> = LinkedList::new();
     for (id, v) in by_id {

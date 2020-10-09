@@ -10,7 +10,7 @@ pub enum Value {
     VInt(i64),
     VBool(bool),
     VClosure(Box<Closure>, String, Box<Expr>),
-    VIntArray(Box<Vec<i64>>),
+    VIntArray(Vec<i64>),
 }
 
 fn vint(v: Value) -> i64 {
@@ -34,7 +34,7 @@ fn vclosure(v: Value) -> (Box<Closure>, String, Box<Expr>) {
     }
 }
 
-fn vintarray(v: Value) -> Box<Vec<i64>> {
+fn vintarray(v: Value) -> Vec<i64> {
     match v {
         Value::VIntArray(a) => a,
         _ => panic!("unreachable -- expected intarray not {:?}", v),
@@ -69,15 +69,15 @@ fn eval_op2(ctx: &Closure, op: Op2, l: &Op, r: &Op) -> Value {
             let vr = vbool(eval_op(ctx, r));
 
             match op {
-                And => VBool(vl < vr),
-                Or => VBool(vl > vr),
+                And => VBool(vl && vr),
+                Or => VBool(vl || vr),
                 _ => panic!("unreachable logic op {:?}", op),
             }
         }
     }
 }
 
-fn subst_imm(ctx: &Closure, id: &String, fix: &Imm, i: &Imm) -> Imm {
+fn subst_imm(ctx: &Closure, id: &str, fix: &Imm, i: &Imm) -> Imm {
     use crate::lambdal::Imm::*;
     match i {
         Bool(b) => Bool(*b),
@@ -101,13 +101,13 @@ fn subst_imm(ctx: &Closure, id: &String, fix: &Imm, i: &Imm) -> Imm {
     }
 }
 
-fn subst_op(ctx: &Closure, id: &String, fix: &Imm, o: &Op) -> Op {
+fn subst_op(ctx: &Closure, id: &str, fix: &Imm, o: &Op) -> Op {
     use crate::lambdal::Op::*;
     match o {
         Op2(op, e1, e2) => {
             let e1 = Box::new(subst_op(ctx, id, fix, e1));
             let e2 = Box::new(subst_op(ctx, id, fix, e2));
-            Op2(op.clone(), e1, e2)
+            Op2(*op, e1, e2)
         }
         MkArray(sz, n) => {
             let sz = Box::new(subst_imm(ctx, id, fix, sz));
@@ -130,7 +130,7 @@ fn subst_op(ctx: &Closure, id: &String, fix: &Imm, o: &Op) -> Op {
 }
 
 // fixpoint substitution
-fn subst_expr(ctx: &Closure, id: &String, fix: &Imm, e: &Expr) -> Expr {
+fn subst_expr(ctx: &Closure, id: &str, fix: &Imm, e: &Expr) -> Expr {
     use crate::lambdal::Expr::*;
     match e {
         If(e1, e2, e3) => {
@@ -184,7 +184,7 @@ fn eval_op(ctx: &Closure, o: &Op) -> Value {
             let n = vint(eval_imm(ctx, n));
             let mut vec = Vec::with_capacity(sz as usize);
             vec.resize(sz as usize, n);
-            VIntArray(Box::new(vec))
+            VIntArray(vec)
         }
         GetArray(iid, idx) => {
             let arr = vintarray(eval_imm(ctx, iid));
@@ -192,7 +192,7 @@ fn eval_op(ctx: &Closure, o: &Op) -> Value {
             VInt(arr[idx as usize])
         }
         SetArray(iid, idx, v) => {
-            let mut arr = vintarray(eval_imm(ctx, iid)).clone();
+            let mut arr = vintarray(eval_imm(ctx, iid));
             let idx = vint(eval_imm(ctx, idx));
             let v = vint(eval_imm(ctx, v));
             arr[idx as usize] = v;
@@ -215,7 +215,7 @@ fn eval(ctx: &Closure, expr: &Expr) -> Value {
         App(e1, e2) => {
             let v = eval_imm(ctx, e2);
             let (ctx, id, e) = vclosure(eval_imm(ctx, e1));
-            let mut new_ctx = ctx.clone();
+            let mut new_ctx = ctx;
             new_ctx.insert(id, v);
             eval(&new_ctx, &e)
         }

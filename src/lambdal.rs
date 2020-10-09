@@ -150,7 +150,7 @@ fn expr(
             let (cenv, inner) = expr(cenv, e2, k);
             (
                 cenv,
-                Let(id.clone(), Box::new(Op(Imm(e1l.clone()))), Box::new(inner)),
+                Let(id.clone(), Box::new(Op(Imm(e1l))), Box::new(inner)),
             )
         }),
         E::Var(x) => k(cenv, I::Var(x.clone())),
@@ -204,7 +204,7 @@ fn expr(
             expr(cenv, e1, &|cenv, ie1| {
                 expr(cenv, e2, &|cenv, ie2| {
                     let (cenv, app_tmp) = cenv.tmp();
-                    let app_val = App(Box::new(ie1.clone()), Box::new(ie2.clone()));
+                    let app_val = App(Box::new(ie1.clone()), Box::new(ie2));
                     // value to pass to the continuation
                     let app_ref = I::Var(app_tmp.clone());
 
@@ -323,7 +323,7 @@ fn build_env_expr(env: HashMap<Id, Type>, e: &Expr) -> (HashMap<Id, Type>, Type)
         }
         Let(id, e1, e2) => {
             let (env, id_ty) = build_env_expr(env, e1);
-            let mut env = env.clone();
+            let mut env = env;
             env.insert(id.clone(), id_ty);
 
             build_env_expr(env, e2)
