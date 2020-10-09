@@ -40,54 +40,54 @@ fn add_metavars_in(env: &mut MVEnv, expr: &implicit::Expr) -> explicit::Expr {
     use crate::implicit::Expr as I;
     use crate::typed::Expr as E;
 
-    match *expr {
-        I::Var(ref id) => E::Var(id.clone()),
-        I::Const(ref c) => E::Const(*c),
-        I::Op2(ref op, ref l, ref r) => {
-            let el = box add_metavars_in(env, l);
-            let er = box add_metavars_in(env, r);
+    match expr {
+        I::Var(id) => E::Var(id.clone()),
+        I::Const(c) => E::Const(*c),
+        I::Op2(op, l, r) => {
+            let el = Box::new(add_metavars_in(env, l));
+            let er = Box::new(add_metavars_in(env, r));
             E::Op2(*op, el, er)
         }
-        I::Fun(ref id, ref e) => {
-            let ee = box add_metavars_in(env, e);
+        I::Fun(id, e) => {
+            let ee = Box::new(add_metavars_in(env, e));
             let mv = env.alloc(id);
             E::Fun(id.clone(), mv, ee)
         }
-        I::App(ref e1, ref e2) => {
-            let ee1 = box add_metavars_in(env, e1);
-            let ee2 = box add_metavars_in(env, e2);
+        I::App(e1, e2) => {
+            let ee1 = Box::new(add_metavars_in(env, e1));
+            let ee2 = Box::new(add_metavars_in(env, e2));
             E::App(ee1, ee2)
         }
-        I::If(ref e1, ref e2, ref e3) => {
-            let ee1 = box add_metavars_in(env, e1);
-            let ee2 = box add_metavars_in(env, e2);
-            let ee3 = box add_metavars_in(env, e3);
+        I::If(e1, e2, e3) => {
+            let ee1 = Box::new(add_metavars_in(env, e1));
+            let ee2 = Box::new(add_metavars_in(env, e2));
+            let ee3 = Box::new(add_metavars_in(env, e3));
             E::If(ee1, ee2, ee3)
         }
-        I::Let(ref id, ref e1, ref e2) => {
-            let ee1 = box add_metavars_in(env, e1);
-            let ee2 = box add_metavars_in(env, e2);
+        I::Let(id, e1, e2) => {
+            let ee1 = Box::new(add_metavars_in(env, e1));
+            let ee2 = Box::new(add_metavars_in(env, e2));
             E::Let(id.clone(), ee1, ee2)
         }
-        I::Fix(ref id, ref e) => {
-            let ee = box add_metavars_in(env, e);
+        I::Fix(id, e) => {
+            let ee = Box::new(add_metavars_in(env, e));
             let mv = env.alloc(id);
             E::Fix(id.clone(), mv, ee)
         }
-        I::MkArray(ref sz, ref n) => {
-            let sz = box add_metavars_in(env, sz);
-            let n = box add_metavars_in(env, n);
+        I::MkArray(sz, n) => {
+            let sz = Box::new(add_metavars_in(env, sz));
+            let n = Box::new(add_metavars_in(env, n));
             E::MkArray(sz, n)
         }
-        I::GetArray(ref id, ref idx) => {
-            let id = box add_metavars_in(env, id);
-            let idx = box add_metavars_in(env, idx);
+        I::GetArray(id, idx) => {
+            let id = Box::new(add_metavars_in(env, id));
+            let idx = Box::new(add_metavars_in(env, idx));
             E::GetArray(id, idx)
         }
-        I::SetArray(ref id, ref idx, ref v) => {
-            let id = box add_metavars_in(env, id);
-            let idx = box add_metavars_in(env, idx);
-            let v = box add_metavars_in(env, v);
+        I::SetArray(id, idx, v) => {
+            let id = Box::new(add_metavars_in(env, id));
+            let idx = Box::new(add_metavars_in(env, idx));
+            let v = Box::new(add_metavars_in(env, v));
             E::SetArray(id, idx, v)
         }
         I::Star => E::Star,
@@ -108,10 +108,10 @@ fn gen_constraints<'a>(
     use crate::common::{Const, Op2};
     use crate::typed::Expr as E;
 
-    let result = match *expr {
+    let result = match expr {
         E::Const(Const::Int(_)) => (Vec::new(), Type::TInt),
         E::Const(Const::Bool(_)) => (Vec::new(), Type::TBool),
-        E::Op2(op, ref e1, ref e2) => {
+        E::Op2(op, e1, e2) => {
             let (mut c1, t1) = gen_constraints(m, env, e1)?;
             let (mut c2, t2) = gen_constraints(m, env, e2)?;
             c1.append(&mut c2);
@@ -128,9 +128,9 @@ fn gen_constraints<'a>(
             };
             c1.push((t1, expected.clone()));
             c1.push((t2, expected));
-            (c1, explicit::opty(op))
+            (c1, explicit::opty(*op))
         }
-        E::If(ref e1, ref e2, ref e3) => {
+        E::If(e1, e2, e3) => {
             let (mut c1, t1) = gen_constraints(m, env, e1)?;
             let (mut c2, t2) = gen_constraints(m, env, e2)?;
             let (mut c3, t3) = gen_constraints(m, env, e3)?;
@@ -140,13 +140,13 @@ fn gen_constraints<'a>(
             c1.push((t2, t3.clone()));
             (c1, t3)
         }
-        E::Var(ref x) => match env.get(x) {
+        E::Var(x) => match env.get(x) {
             Some(ty) => (Vec::new(), ty.clone()),
             None => {
                 return err!("unbound identifier: {} in {:?}", x, env);
             }
         },
-        E::Let(ref id, ref e1, ref e2) => {
+        E::Let(id, e1, e2) => {
             let (mut c1, t1) = gen_constraints(m, env, e1)?;
             let mut new_env = env.clone();
             new_env.insert(id.clone(), t1.clone());
@@ -154,27 +154,30 @@ fn gen_constraints<'a>(
             c1.append(&mut c2);
             (c1, t2)
         }
-        E::Fun(ref id, ref t1, ref e) => {
+        E::Fun(id, t1, e) => {
             let mut new_env = env.clone();
             new_env.insert(id.clone(), t1.clone());
             let (c, t2) = gen_constraints(m, &new_env, e)?;
-            (c, Type::TFun(id.clone(), box t1.clone(), box t2))
+            (
+                c,
+                Type::TFun(id.clone(), Box::new(t1.clone()), Box::new(t2)),
+            )
         }
-        E::Fix(ref id, ref t1, ref e) => {
+        E::Fix(id, t1, e) => {
             let mut new_env = env.clone();
             new_env.insert(id.clone(), t1.clone());
             let (mut c, t2) = gen_constraints(m, &new_env, e)?;
             c.push((t1.clone(), t2));
             (c, t1.clone())
         }
-        E::App(ref e1, ref e2) => {
+        E::App(e1, e2) => {
             let mv = m.alloc_empty();
             let (mut c1, t1) = gen_constraints(m, env, e1)?;
             let (mut c2, t2) = gen_constraints(m, env, e2)?;
-            let id = match *e1 {
-                box E::Fun(ref id, _, _) => id.clone(),
-                box E::Var(ref id) => {
-                    if let Some(&Type::TFun(ref xid, _, _)) = env.get(id) {
+            let id = match &**e1 {
+                E::Fun(id, _, _) => id.clone(),
+                E::Var(id) => {
+                    if let Some(Type::TFun(xid, _, _)) = env.get(id) {
                         xid.clone()
                     } else {
                         // this is a problem, unless we're only
@@ -186,10 +189,13 @@ fn gen_constraints<'a>(
                 _ => String::from("gonna-fail"),
             };
             c1.append(&mut c2);
-            c1.push((t1.clone(), Type::TFun(id, box t2.clone(), box mv.clone())));
+            c1.push((
+                t1.clone(),
+                Type::TFun(id, Box::new(t2.clone()), Box::new(mv.clone())),
+            ));
             (c1, mv)
         }
-        E::MkArray(ref sz, ref n) => {
+        E::MkArray(sz, n) => {
             let (mut c1, t1) = gen_constraints(m, env, sz)?;
             let (mut c2, t2) = gen_constraints(m, env, n)?;
             c1.append(&mut c2);
@@ -197,7 +203,7 @@ fn gen_constraints<'a>(
             c1.push((t2, Type::TInt));
             (c1, Type::TIntArray)
         }
-        E::GetArray(ref id, ref idx) => {
+        E::GetArray(id, idx) => {
             let (mut c1, t1) = gen_constraints(m, env, id)?;
             let (mut c2, t2) = gen_constraints(m, env, idx)?;
             c1.append(&mut c2);
@@ -205,7 +211,7 @@ fn gen_constraints<'a>(
             c1.push((t2, Type::TInt));
             (c1, Type::TInt)
         }
-        E::SetArray(ref id, ref idx, ref v) => {
+        E::SetArray(id, idx, v) => {
             let (mut c1, t1) = gen_constraints(m, env, id)?;
             let (mut c2, t2) = gen_constraints(m, env, idx)?;
             let (mut c3, t3) = gen_constraints(m, env, v)?;
@@ -226,8 +232,8 @@ fn gen_constraints<'a>(
 fn apply(env: &HashMap<Metavar, Type>, typ_in: &Type) -> Type {
     use explicit::Type::*;
 
-    match *typ_in {
-        TMetavar(ref mv) => {
+    match typ_in {
+        TMetavar(mv) => {
             if let Some(styp) = env.get(mv) {
                 // println!("$$\t  found {:?}", mv);
                 styp.clone()
@@ -236,7 +242,7 @@ fn apply(env: &HashMap<Metavar, Type>, typ_in: &Type) -> Type {
                 typ_in.clone()
             }
         }
-        TFun(ref id, ref a, ref b) => TFun(id.clone(), box apply(env, a), box apply(env, b)),
+        TFun(id, a, b) => TFun(id.clone(), Box::new(apply(env, a)), Box::new(apply(env, b))),
         TIntArray | TInt | TBool => typ_in.clone(),
     }
 }
@@ -246,7 +252,7 @@ fn compose(env1: &HashMap<Metavar, Type>, env2: &HashMap<Metavar, Type>) -> Hash
 
     for (mv, typ) in env1.iter() {
         if env2.contains_key(mv) {
-            if let Some(&Type::TMetavar(ref mv2)) = env2.get(mv) {
+            if let Some(Type::TMetavar(mv2)) = env2.get(mv) {
                 r.insert(mv2.clone(), typ.clone());
             }
         }
@@ -269,9 +275,9 @@ fn occurs(mv: &Metavar, t: &Type) -> bool {
     use explicit::Type::*;
 
     match t {
-        &TMetavar(ref mv2) => mv == mv2,
-        &TFun(_, ref a, ref b) => occurs(mv, a) || occurs(mv, b),
-        &TIntArray | &TInt | &TBool => false,
+        TMetavar(mv2) => mv == mv2,
+        TFun(_, a, b) => occurs(mv, &a) || occurs(mv, &b),
+        TIntArray | TInt | TBool => false,
     }
 }
 
@@ -281,26 +287,22 @@ fn unify(t1: &Type, t2: &Type) -> Result<HashMap<Metavar, Type>> {
     let mut env: HashMap<Metavar, Type> = HashMap::new();
 
     match (t1, t2) {
-        (&TInt, &TInt) => {}
-        (&TBool, &TBool) => {}
-        (&TIntArray, &TIntArray) => {}
-        (&TMetavar(ref mv1), &TMetavar(ref mv2)) if mv1 == mv2 => {}
-        (&TMetavar(ref mv1), &TMetavar(_)) => {
+        (TInt, TInt) => {}
+        (TBool, TBool) => {}
+        (TIntArray, TIntArray) => {}
+        (TMetavar(mv1), TMetavar(mv2)) if mv1 == mv2 => {}
+        (TMetavar(mv1), TMetavar(_)) => {
             env.insert(mv1.clone(), t2.clone());
         }
-        (&TMetavar(ref mv1), _) if !occurs(mv1, t2) => {
+        (TMetavar(mv1), _) if !occurs(mv1, t2) => {
             env.insert(mv1.clone(), t2.clone());
         }
-        (&TMetavar(ref mv1), _) => {
-            return err!("occurs check failed for mv1 '{:?}' in '{:?}'", mv1, t2)
-        }
-        (_, &TMetavar(ref mv2)) if !occurs(mv2, t1) => {
+        (TMetavar(mv1), _) => return err!("occurs check failed for mv1 '{:?}' in '{:?}'", mv1, t2),
+        (_, TMetavar(mv2)) if !occurs(mv2, t1) => {
             env.insert(mv2.clone(), t1.clone());
         }
-        (_, &TMetavar(ref mv2)) => {
-            return err!("occurs check failed for mv2 '{:?}' in '{:?}'", mv2, t1)
-        }
-        (&TFun(_, ref s1, ref s2), &TFun(_, ref t1, ref t2)) => {
+        (_, TMetavar(mv2)) => return err!("occurs check failed for mv2 '{:?}' in '{:?}'", mv2, t1),
+        (TFun(_, s1, s2), TFun(_, t1, t2)) => {
             let pi = unify(s1, t1)?;
             let s2 = apply(&pi, s2);
             let t2 = apply(&pi, t2);
@@ -313,14 +315,13 @@ fn unify(t1: &Type, t2: &Type) -> Result<HashMap<Metavar, Type>> {
 }
 
 fn unify_all(constraints: &[(Type, Type)]) -> Result<HashMap<Metavar, Type>> {
-    let r: HashMap<Metavar, Type> =
-        if let Some((&(ref t1, ref t2), rest)) = constraints.split_first() {
-            let rst = unify_all(rest)?;
-            let fst = unify(t1, t2)?;
-            compose(&fst, &rst)
-        } else {
-            HashMap::new()
-        };
+    let r: HashMap<Metavar, Type> = if let Some(((t1, t2), rest)) = constraints.split_first() {
+        let rst = unify_all(rest)?;
+        let fst = unify(t1, t2)?;
+        compose(&fst, &rst)
+    } else {
+        HashMap::new()
+    };
 
     Ok(r)
 }
@@ -331,49 +332,49 @@ fn remove_metavars(
 ) -> Result<Box<explicit::Expr>> {
     use crate::typed::Expr as E;
 
-    let result: explicit::Expr = match *expr {
-        E::Const(ref c) => E::Const(c.clone()),
-        E::Op2(op, ref e1, ref e2) => {
+    let result: explicit::Expr = match expr {
+        E::Const(c) => E::Const(c.clone()),
+        E::Op2(op, e1, e2) => {
             let e1 = remove_metavars(env, e1)?;
             let e2 = remove_metavars(env, e2)?;
             E::Op2(op.clone(), e1, e2)
         }
-        E::If(ref e1, ref e2, ref e3) => {
+        E::If(e1, e2, e3) => {
             let e1 = remove_metavars(env, e1)?;
             let e2 = remove_metavars(env, e2)?;
             let e3 = remove_metavars(env, e3)?;
             E::If(e1, e2, e3)
         }
-        E::Var(ref x) => E::Var(x.clone()),
-        E::Let(ref id, ref e1, ref e2) => {
+        E::Var(x) => E::Var(x.clone()),
+        E::Let(id, e1, e2) => {
             let e1 = remove_metavars(env, e1)?;
             let e2 = remove_metavars(env, e2)?;
             E::Let(id.clone(), e1, e2)
         }
-        E::Fun(ref id, ref t1, ref e) => {
+        E::Fun(id, t1, e) => {
             let e = remove_metavars(env, e)?;
             E::Fun(id.clone(), apply(env, t1), e)
         }
-        E::Fix(ref id, ref t1, ref e) => {
+        E::Fix(id, t1, e) => {
             let e = remove_metavars(env, e)?;
             E::Fix(id.clone(), apply(env, t1), e)
         }
-        E::App(ref e1, ref e2) => {
+        E::App(e1, e2) => {
             let e1 = remove_metavars(env, e1)?;
             let e2 = remove_metavars(env, e2)?;
             E::App(e1, e2)
         }
-        E::MkArray(ref sz, ref n) => {
+        E::MkArray(sz, n) => {
             let sz = remove_metavars(env, sz)?;
             let n = remove_metavars(env, n)?;
             E::MkArray(sz, n)
         }
-        E::GetArray(ref id, ref idx) => {
+        E::GetArray(id, idx) => {
             let id = remove_metavars(env, id)?;
             let idx = remove_metavars(env, idx)?;
             E::GetArray(id, idx)
         }
-        E::SetArray(ref id, ref idx, ref v) => {
+        E::SetArray(id, idx, v) => {
             let id = remove_metavars(env, id)?;
             let idx = remove_metavars(env, idx)?;
             let v = remove_metavars(env, v)?;
@@ -383,7 +384,7 @@ fn remove_metavars(
         E::Star => E::Star,
     };
 
-    Ok(box result)
+    Ok(Box::new(result))
 }
 
 pub fn infer_in(id_env: HashMap<Id, Type>, expr: &implicit::Expr) -> Result<explicit::Expr> {
@@ -505,9 +506,13 @@ fn unification() {
 
     match apply(
         &s,
-        &TFun(String::from("_"), box TMetavar(x.clone()), box TBool),
+        &TFun(
+            String::from("_"),
+            Box::new(TMetavar(x.clone())),
+            Box::new(TBool),
+        ),
     ) {
-        TFun(_, box TInt, box TBool) => {}
+        TFun(_, l, r) if *l == TInt && *r == TBool => {}
         _ => die!("apply should recur into type constructors"),
     }
 
@@ -520,8 +525,8 @@ fn unification() {
         &compose(&s1, &s2),
         &TFun(
             String::from("_"),
-            box TMetavar(x.clone()),
-            box TMetavar(y.clone()),
+            Box::new(TMetavar(x.clone())),
+            Box::new(TMetavar(y.clone())),
         ),
     );
     let app2 = apply(
@@ -530,8 +535,8 @@ fn unification() {
             &s2,
             &TFun(
                 String::from("_"),
-                box TMetavar(x.clone()),
-                box TMetavar(y.clone()),
+                Box::new(TMetavar(x.clone())),
+                Box::new(TMetavar(y.clone())),
             ),
         ),
     );
@@ -546,8 +551,8 @@ fn unification() {
         &compose(&s1, &s2),
         &TFun(
             String::from("___"),
-            box TMetavar(x.clone()),
-            box TMetavar(y.clone()),
+            Box::new(TMetavar(x.clone())),
+            Box::new(TMetavar(y.clone())),
         ),
     );
     let app2 = apply(
@@ -556,8 +561,8 @@ fn unification() {
             &s2,
             &TFun(
                 String::from("___"),
-                box TMetavar(x.clone()),
-                box TMetavar(y.clone()),
+                Box::new(TMetavar(x.clone())),
+                Box::new(TMetavar(y.clone())),
             ),
         ),
     );
