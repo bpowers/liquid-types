@@ -1,9 +1,9 @@
+use std::fmt::{self, Debug, Error, Formatter};
 use std::{error, result};
-use std::fmt::{self, Debug, Formatter, Error};
 
 pub type Id = String;
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
+#[derive(PartialEq, Eq, Ord, Hash, PartialOrd, Copy, Clone)]
 pub enum Op2 {
     LT,
     GT,
@@ -68,11 +68,10 @@ macro_rules! die(
 #[macro_export]
 macro_rules! err(
     ($($arg:tt)*) => { {
-        use common::LiquidError;
+        use crate::common::LiquidError;
         Err(LiquidError::new(format!($($arg)*)))
     } }
 );
-
 
 #[derive(Debug)]
 pub struct LiquidError {
@@ -81,7 +80,7 @@ pub struct LiquidError {
 
 impl LiquidError {
     pub fn new(msg: String) -> LiquidError {
-        LiquidError { msg: msg }
+        LiquidError { msg }
     }
 }
 

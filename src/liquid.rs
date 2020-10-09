@@ -4,13 +4,15 @@ use std::collections::LinkedList;
 use std::result;
 use std::fmt::{Debug, Formatter, Error};
 
-use hindley_milner;
-use explicit;
-use implicit;
-use lambdal;
-use lambdal::{Expr, Op, Imm};
-use common::{Id, Result};
-use refined::{Base, T};
+use crate::hindley_milner;
+use crate::explicit;
+use crate::explicit::Type::TInt;
+use crate::implicit;
+use crate::lambdal::{self, Expr, Op, Imm};
+use crate::common::{Id, Result};
+use crate::refined::{Base, T};
+use crate::implicit_parse::ProgramParser;
+use crate::tok::Tokenizer;
 
 use z3::{
     ast::{Bool, Int, Real, BV},
@@ -18,14 +20,6 @@ use z3::{
 };
 // core, integer, LIA, LIA_Sorts
 
-use explicit::Type::TInt;
-
-macro_rules! otry {
-    ($expr:expr) => (match $expr {
-        Some(val) => val,
-        None => return None,
-    })
-}
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum C {
@@ -125,8 +119,8 @@ impl KEnv {
 }
 
 fn hm_shape_imm(env: &HashMap<Id, explicit::Type>, imm: &Imm) -> explicit::Type {
-    use explicit::Type::*;
-    use lambdal::Imm::*;
+    use crate::explicit::Type::*;
+    use crate::lambdal::Imm::*;
 
     match *imm {
         Bool(_) => TBool,
@@ -174,7 +168,7 @@ fn hm_shape_expr(env: &HashMap<Id, explicit::Type>, expr: &Expr) -> explicit::Ty
 }
 
 fn ty<'a>(_: &mut KEnv, c: &Imm) -> Type {
-    use common::Op2;
+    use crate::common::Op2;
     use self::Liquid::E;
 
     let base = match *c {
@@ -208,9 +202,9 @@ fn subst(sid: &Id, imm: &Imm, ty: &Type) -> Type {
 }
 
 pub fn cons_imm<'a>(k_env: &mut KEnv, pathc: &LinkedList<Expr>, imm: &Imm) -> (Type, LinkedList<Constraint>) {
-    use lambdal::Op::Imm as I;
-    use lambdal::Imm::*;
-    use common::Op2::Eq;
+    use crate::lambdal::Op::Imm as I;
+    use crate::lambdal::Imm::*;
+    use crate::common::Op2::Eq;
 
     match *imm {
         Var(ref id) => {
@@ -263,7 +257,7 @@ pub fn cons_imm<'a>(k_env: &mut KEnv, pathc: &LinkedList<Expr>, imm: &Imm) -> (T
 }
 
 pub fn cons_op<'a>(k_env: &mut KEnv, pathc: &LinkedList<Expr>, e: &Op) -> (Type, LinkedList<Constraint>) {
-    use common::Op2::Eq;
+    use crate::common::Op2::Eq;
 
     match *e {
         Op::Imm(ref imm) => cons_imm(k_env, pathc, imm),
@@ -420,18 +414,18 @@ fn replace_expr(expr: &Expr, from: &Imm, to: &Imm) -> Expr {
 fn replace(v: &Id, q: &implicit::Expr) -> Option<implicit::Expr> {
     use implicit::Expr as I;
 
-    let r = match *q {
-        I::Var(ref id)                        => I::Var(id.clone()),
-        I::Const(ref c)                       => I::Const(*c),
-        I::Op2(ref op, ref l, ref r)          => I::Op2(*op, box otry!(replace(v, l)), box otry!(replace(v, r))),
-        I::Fun(ref id, ref e)                 => I::Fun(id.clone(), box otry!(replace(v, e))),
-        I::App(ref e1, ref e2)                => I::App(box otry!(replace(v, e1)), box otry!(replace(v, e2))),
-        I::If(ref e1, ref e2, ref e3)         => I::If(box otry!(replace(v, e1)), box otry!(replace(v, e2)), box otry!(replace(v, e3))),
-        I::Let(ref id, ref e1, ref e2)        => I::Let(id.clone(), box otry!(replace(v, e1)), box otry!(replace(v, e2))),
-        I::Fix(ref id, ref e)                 => I::Fix(id.clone(), box otry!(replace(v, e))),
-        I::MkArray(ref sz, ref n)             => I::MkArray(box otry!(replace(v, sz)), box otry!(replace(v, n))),
-        I::GetArray(ref id, ref idx)          => I::GetArray(box otry!(replace(v, id)), box otry!(replace(v, idx))),
-        I::SetArray(ref id, ref idx, ref var) => I::SetArray(box otry!(replace(v, id)), box otry!(replace(v, idx)), box otry!(replace(v, var))),
+    let r = match q {
+        I::Var(id) => I::Var(id.clone()),
+        I::Const(c) => I::Const(*c),
+        I::Op2(op, l, r) => I::Op2(*op, Box::new(replace(v, l)?), Box::new(replace(v, r)?)),
+        I::Fun(id, e)                 => I::Fun(id.clone(), Box::new(replace(v, e)?)),
+        I::App(e1, e2)                => I::App(Box::new(replace(v, e1)?), Box::new(replace(v, e2)?)),
+        I::If(e1, e2, ref e3)         => I::If(Box::new(replace(v, e1)?), Box::new(replace(v, e2)?), Box::new(replace(v, e3)?)),
+        I::Let(id, e1, ref e2)        => I::Let(id.clone(), Box::new(replace(v, e1)?), Box::new(replace(v, e2)?)),
+        I::Fix(id, e)                 => I::Fix(id.clone(), Box::new(replace(v, e)?)),
+        I::MkArray(sz, n)             => I::MkArray(Box::new(replace(v, sz)?), Box::new(replace(v, n)?)),
+        I::GetArray(id, idx)          => I::GetArray(Box::new(replace(v, id)?), Box::new(replace(v, idx)?)),
+        I::SetArray(id, idx, ref var) => I::SetArray(Box::new(replace(v, id)?), Box::new(replace(v, idx)?), Box::new(replace(v, var)?)),
         I::V                                  => I::V,
         I::Star                               => I::Var(v.clone()),
     };
@@ -538,8 +532,8 @@ fn smt_from_op(
     vars: &HashMap<String, <SMTLib2<LIA> as SMTBackend>::Idx>,
     q: &lambdal::Op) -> <SMTLib2<LIA> as SMTBackend>::Idx {
 
-    use lambdal::Op as O;
-    use common::Op2;
+    use crate::lambdal::Op as O;
+    use crate::common::Op2;
 
     match *q {
         O::Imm(ref imm)          => smt_from_imm(s, vars, imm),
@@ -826,7 +820,7 @@ fn solve(
 }
 
 fn conjoin(qs: &[Expr]) -> Op {
-    use common::Op2;
+    use crate::common::Op2;
     if let Expr::Op(op) = qs[0].clone() {
         match qs[1..].len() {
             0 => op,
@@ -944,7 +938,6 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
         };
     }
     {
-        use std::str::FromStr;
         println!("min_a:");
         let mut ids: Vec<_> = min_a.keys().clone().collect();
         ids.sort_by_key(|id| i32::from_str(&id[2..]).unwrap_or(-1));
@@ -957,22 +950,10 @@ pub fn infer(expr: &Expr, env: &HashMap<Id, explicit::Type>, q: &[implicit::Expr
     Ok(concretize(&k_env.refined, &min_a))
 }
 
-#[macro_export]
-macro_rules! q(
-    ($s:expr) => { {
-        use implicit_parse;
-        use tok::Tokenizer;
-        let s = $s;
-        let tokenizer = Tokenizer::new(&s);
-        let iexpr = match implicit_parse::parse_Program(&s, tokenizer) {
-            Ok(iexpr) => *iexpr,
-            Err(e) => {
-                die!("parse_Program({}): {:?}", $s, e);
-            }
-        };
-        iexpr
-    } }
-);
+pub(crate) fn q(input: &str) -> Result<crate::implicit::Expr> {
+    let lexer = Tokenizer::new(input);
+    ProgramParser::new(&input, lexer)
+}
 
 #[cfg(test)]
 macro_rules! expr(

@@ -1,6 +1,7 @@
-use common::{Op2};
-use lambdal::{Expr,Op,Imm};
 use std::collections::HashMap;
+
+use crate::common::Op2;
+use crate::lambdal::{Expr, Imm, Op};
 
 type Closure = HashMap<String, Value>;
 
@@ -15,34 +16,34 @@ pub enum Value {
 fn vint(v: Value) -> i64 {
     match v {
         Value::VInt(i) => i,
-        _ => panic!("unreachable -- expected int not {:?}", v)
+        _ => panic!("unreachable -- expected int not {:?}", v),
     }
 }
 
 fn vbool(v: Value) -> bool {
     match v {
         Value::VBool(b) => b,
-        _ => panic!("unreachable -- expected bool not {:?}", v)
+        _ => panic!("unreachable -- expected bool not {:?}", v),
     }
 }
 
 fn vclosure(v: Value) -> (Box<Closure>, String, Box<Expr>) {
     match v {
         Value::VClosure(ctx, id, e) => (ctx, id, e),
-        _ => panic!("unreachable -- expected closure not {:?}", v)
+        _ => panic!("unreachable -- expected closure not {:?}", v),
     }
 }
 
 fn vintarray(v: Value) -> Box<Vec<i64>> {
     match v {
         Value::VIntArray(a) => a,
-        _ => panic!("unreachable -- expected intarray not {:?}", v)
+        _ => panic!("unreachable -- expected intarray not {:?}", v),
     }
 }
 
 fn eval_op2(ctx: &Closure, op: Op2, l: &Op, r: &Op) -> Value {
-    use common::Op2::*;
     use self::Value::*;
+    use crate::common::Op2::*;
 
     // all binary ops operate on ints, and at this point have passed
     // typechecking
@@ -52,11 +53,11 @@ fn eval_op2(ctx: &Closure, op: Op2, l: &Op, r: &Op) -> Value {
             let vr = vint(eval_op(ctx, r));
 
             match op {
-                LT  => VBool(vl < vr),
+                LT => VBool(vl < vr),
                 LTE => VBool(vl <= vr),
-                GT  => VBool(vl > vr),
+                GT => VBool(vl > vr),
                 GTE => VBool(vl >= vr),
-                Eq  => VBool(vl == vr),
+                Eq => VBool(vl == vr),
                 Add => VInt(vl + vr),
                 Sub => VInt(vl - vr),
                 Mul => VInt(vl * vr),
@@ -72,13 +73,12 @@ fn eval_op2(ctx: &Closure, op: Op2, l: &Op, r: &Op) -> Value {
                 Or => VBool(vl > vr),
                 _ => panic!("unreachable logic op {:?}", op),
             }
-
         }
     }
 }
 
 fn subst_imm(ctx: &Closure, id: &String, fix: &Imm, i: &Imm) -> Imm {
-    use lambdal::Imm::*;
+    use crate::lambdal::Imm::*;
     match *i {
         Bool(b) => Bool(b),
         Int(n) => Int(n),
@@ -102,7 +102,7 @@ fn subst_imm(ctx: &Closure, id: &String, fix: &Imm, i: &Imm) -> Imm {
 }
 
 fn subst_op(ctx: &Closure, id: &String, fix: &Imm, o: &Op) -> Op {
-    use lambdal::Op::*;
+    use crate::lambdal::Op::*;
     match *o {
         Op2(op, ref e1, ref e2) => {
             let e1 = box subst_op(ctx, id, fix, e1);
@@ -131,7 +131,7 @@ fn subst_op(ctx: &Closure, id: &String, fix: &Imm, o: &Op) -> Op {
 
 // fixpoint substitution
 fn subst_expr(ctx: &Closure, id: &String, fix: &Imm, e: &Expr) -> Expr {
-    use lambdal::Expr::*;
+    use crate::lambdal::Expr::*;
     match *e {
         If(ref e1, ref e2, ref e3) => {
             let e1 = box subst_imm(ctx, id, fix, e1);
@@ -154,17 +154,15 @@ fn subst_expr(ctx: &Closure, id: &String, fix: &Imm, e: &Expr) -> Expr {
 }
 
 fn eval_imm(ctx: &Closure, i: &Imm) -> Value {
-    use lambdal::Imm::*;
     use self::Value::*;
+    use crate::lambdal::Imm::*;
     match *i {
         Bool(b) => VBool(b),
         Int(i) => VInt(i),
-        Var(ref id) => {
-            match ctx.get(id) {
-                Some(v) => v.clone(),
-                None => panic!("lookup {} in ctx failed: {:?}", id, ctx),
-            }
-        }
+        Var(ref id) => match ctx.get(id) {
+            Some(v) => v.clone(),
+            None => panic!("lookup {} in ctx failed: {:?}", id, ctx),
+        },
         Fun(ref id, ref e) => VClosure(box ctx.clone(), id.clone(), e.clone()),
         Fix(ref id, ref e) => {
             let inner = eval(ctx, e);
@@ -177,8 +175,8 @@ fn eval_imm(ctx: &Closure, i: &Imm) -> Value {
 }
 
 fn eval_op(ctx: &Closure, o: &Op) -> Value {
-    use lambdal::Op::*;
     use self::Value::*;
+    use crate::lambdal::Op::*;
     match *o {
         Op2(op, ref e1, ref e2) => eval_op2(ctx, op, e1, e2),
         MkArray(ref sz, ref n) => {
@@ -200,12 +198,12 @@ fn eval_op(ctx: &Closure, o: &Op) -> Value {
             arr[idx as usize] = v;
             VIntArray(arr)
         }
-        Imm(ref imm) => eval_imm(ctx, imm)
+        Imm(ref imm) => eval_imm(ctx, imm),
     }
 }
 
 fn eval(ctx: &Closure, expr: &Expr) -> Value {
-    use lambdal::Expr::*;
+    use crate::lambdal::Expr::*;
     match *expr {
         If(ref cond, ref e1, ref e2) => {
             if vbool(eval_imm(ctx, cond)) {
@@ -227,9 +225,7 @@ fn eval(ctx: &Closure, expr: &Expr) -> Value {
             new_ctx.insert(id.clone(), v1);
             eval(&new_ctx, e2)
         }
-        Op(ref op) => {
-            eval_op(ctx, op)
-        }
+        Op(ref op) => eval_op(ctx, op),
     }
 }
 
@@ -272,6 +268,8 @@ fn eval_results() {
 
     test_eval!("-22", VInt(-22));
     test_eval!("let double = (fun n -> n*2) in double 8", VInt(16));
-    test_eval!("let rec factorial = fun x -> if x = 0 then 1 else x * (factorial (x - 1)) in factorial 5",
-               VInt(120));
+    test_eval!(
+        "let rec factorial = fun x -> if x = 0 then 1 else x * (factorial (x - 1)) in factorial 5",
+        VInt(120)
+    );
 }

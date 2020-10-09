@@ -1,6 +1,6 @@
+pub use crate::common::Id;
 use std::collections::HashSet;
-use std::fmt::{Debug, Formatter, Error};
-pub use common::Id;
+use std::fmt::{Debug, Error, Formatter};
 
 // not used
 // pub type Metavar = (i32, String);
@@ -9,7 +9,7 @@ pub use common::Id;
 pub enum Base {
     Bool,
     Int,
-//    IntArray,
+    //    IntArray,
 }
 
 #[derive(PartialEq, Eq, Clone)]
@@ -18,7 +18,6 @@ pub enum T<B: Debug> {
     Fun(Id, Box<T<B>>, Box<T<B>>),
     // TODO: type variable?
 }
-
 
 impl<B: Debug> Debug for T<B> {
     fn fmt(&self, fmt: &mut Formatter) -> Result<(), Error> {

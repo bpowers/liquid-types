@@ -1,18 +1,14 @@
 use std::collections::HashMap;
 
-use implicit;
-use explicit;
-
-use explicit::{Type, Metavar};
-
+use crate::common::{Id, Result};
+use crate::explicit::{self, Metavar, Type};
+use crate::implicit;
 
 #[cfg(test)]
-use implicit_parse;
+use crate::implicit_parse;
 
 #[cfg(test)]
-use tok::Tokenizer;
-
-use common::{Id, Result};
+use crate::tok::Tokenizer;
 
 struct MVEnv<'a> {
     env_id: &'a str,
@@ -41,8 +37,8 @@ impl<'a> MVEnv<'a> {
 }
 
 fn add_metavars_in(env: &mut MVEnv, expr: &implicit::Expr) -> explicit::Expr {
-    use implicit::Expr as I;
-    use typed::Expr as E;
+    use crate::implicit::Expr as I;
+    use crate::typed::Expr as E;
 
     match *expr {
         I::Var(ref id) => E::Var(id.clone()),
@@ -104,12 +100,13 @@ pub fn add_metavars(expr: &implicit::Expr) -> explicit::Expr {
     add_metavars_in(&mut env, expr)
 }
 
-fn gen_constraints<'a>(m: &mut MVEnv,
-                       env: &HashMap<Id, Type>,
-                       expr: &'a explicit::Expr)
-                       -> Result<(Vec<(Type, Type)>, Type)> {
-    use common::{Const, Op2};
-    use typed::Expr as E;
+fn gen_constraints<'a>(
+    m: &mut MVEnv,
+    env: &HashMap<Id, Type>,
+    expr: &'a explicit::Expr,
+) -> Result<(Vec<(Type, Type)>, Type)> {
+    use crate::common::{Const, Op2};
+    use crate::typed::Expr as E;
 
     let result = match *expr {
         E::Const(Const::Int(_)) => (Vec::new(), Type::TInt),
@@ -119,8 +116,14 @@ fn gen_constraints<'a>(m: &mut MVEnv,
             let (mut c2, t2) = gen_constraints(m, env, e2)?;
             c1.append(&mut c2);
             let expected = match op {
-                Op2::LT | Op2::LTE | Op2::GT | Op2::GTE | Op2::Eq |
-                Op2::Add | Op2::Sub | Op2::Mul => Type::TInt,
+                Op2::LT
+                | Op2::LTE
+                | Op2::GT
+                | Op2::GTE
+                | Op2::Eq
+                | Op2::Add
+                | Op2::Sub
+                | Op2::Mul => Type::TInt,
                 Op2::And | Op2::Or | Op2::Impl | Op2::Iff => Type::TBool,
             };
             c1.push((t1, expected.clone()));
@@ -137,14 +140,12 @@ fn gen_constraints<'a>(m: &mut MVEnv,
             c1.push((t2, t3.clone()));
             (c1, t3)
         }
-        E::Var(ref x) => {
-            match env.get(x) {
-                Some(ty) => (Vec::new(), ty.clone()),
-                None => {
-                    return err!("unbound identifier: {} in {:?}", x, env);
-                }
+        E::Var(ref x) => match env.get(x) {
+            Some(ty) => (Vec::new(), ty.clone()),
+            None => {
+                return err!("unbound identifier: {} in {:?}", x, env);
             }
-        }
+        },
         E::Let(ref id, ref e1, ref e2) => {
             let (mut c1, t1) = gen_constraints(m, env, e1)?;
             let mut new_env = env.clone();
@@ -182,9 +183,7 @@ fn gen_constraints<'a>(m: &mut MVEnv,
                         String::from("gonna-fail2")
                     }
                 }
-                _ => {
-                    String::from("gonna-fail")
-                }
+                _ => String::from("gonna-fail"),
             };
             c1.append(&mut c2);
             c1.push((t1.clone(), Type::TFun(id, box t2.clone(), box mv.clone())));
@@ -314,20 +313,23 @@ fn unify(t1: &Type, t2: &Type) -> Result<HashMap<Metavar, Type>> {
 }
 
 fn unify_all(constraints: &[(Type, Type)]) -> Result<HashMap<Metavar, Type>> {
-    let r: HashMap<Metavar, Type> = if let Some((&(ref t1, ref t2), rest)) =
-        constraints.split_first() {
-        let rst = unify_all(rest)?;
-        let fst = unify(t1, t2)?;
-        compose(&fst, &rst)
-    } else {
-        HashMap::new()
-    };
+    let r: HashMap<Metavar, Type> =
+        if let Some((&(ref t1, ref t2), rest)) = constraints.split_first() {
+            let rst = unify_all(rest)?;
+            let fst = unify(t1, t2)?;
+            compose(&fst, &rst)
+        } else {
+            HashMap::new()
+        };
 
     Ok(r)
 }
 
-fn remove_metavars(env: &HashMap<Metavar, Type>, expr: &explicit::Expr) -> Result<Box<explicit::Expr>> {
-    use typed::Expr as E;
+fn remove_metavars(
+    env: &HashMap<Metavar, Type>,
+    expr: &explicit::Expr,
+) -> Result<Box<explicit::Expr>> {
+    use crate::typed::Expr as E;
 
     let result: explicit::Expr = match *expr {
         E::Const(ref c) => E::Const(c.clone()),
@@ -473,7 +475,9 @@ fn implicit_parse() {
     test_parse!("(2 + 3 - 2) + 3");
     test_parse!("fun x -> x + 1");
     test_parse!("let inc = fun x -> x + 1 in inc 3");
-    test_parse!("let factorial = fix fac -> fun n -> if n = 0 then 1 else n * (fac (n - 1)) in factorial 5");
+    test_parse!(
+        "let factorial = fix fac -> fun n -> if n = 0 then 1 else n * (fac (n - 1)) in factorial 5"
+    );
     test_parse!("let b = true in if b then true else false");
     test_parse!("let double = fun x -> x * 2 in double 3");
     // test_parse!("let h = (fun l -> head l) in let l = 1 :: 2 :: empty in (h l) :: l");
@@ -499,7 +503,10 @@ fn unification() {
         _ => die!("apply should replace x with TInt"),
     }
 
-    match apply(&s, &TFun(String::from("_"), box TMetavar(x.clone()), box TBool)) {
+    match apply(
+        &s,
+        &TFun(String::from("_"), box TMetavar(x.clone()), box TBool),
+    ) {
         TFun(_, box TInt, box TBool) => {}
         _ => die!("apply should recur into type constructors"),
     }
@@ -509,10 +516,25 @@ fn unification() {
     let mut s2 = HashMap::new();
     s1.insert(x.clone(), TInt);
     s2.insert(y.clone(), TBool);
-    let app1 = apply(&compose(&s1, &s2),
-                     &TFun(String::from("_"), box TMetavar(x.clone()), box TMetavar(y.clone())));
-    let app2 = apply(&s1,
-                     &apply(&s2, &TFun(String::from("_"), box TMetavar(x.clone()), box TMetavar(y.clone()))));
+    let app1 = apply(
+        &compose(&s1, &s2),
+        &TFun(
+            String::from("_"),
+            box TMetavar(x.clone()),
+            box TMetavar(y.clone()),
+        ),
+    );
+    let app2 = apply(
+        &s1,
+        &apply(
+            &s2,
+            &TFun(
+                String::from("_"),
+                box TMetavar(x.clone()),
+                box TMetavar(y.clone()),
+            ),
+        ),
+    );
     if app1 != app2 {
         die!("expected equal: {:?} == {:?}", app1, app2)
     }
@@ -520,10 +542,25 @@ fn unification() {
     // TEST "Subst.compose should distribute over Subst.apply (2)" =
     s1.insert(x.clone(), TBool);
     s2.insert(y.clone(), TMetavar(x.clone()));
-    let app1 = apply(&compose(&s1, &s2),
-                     &TFun(String::from("___"), box TMetavar(x.clone()), box TMetavar(y.clone())));
-    let app2 = apply(&s1,
-                     &apply(&s2, &TFun(String::from("___"), box TMetavar(x.clone()), box TMetavar(y.clone()))));
+    let app1 = apply(
+        &compose(&s1, &s2),
+        &TFun(
+            String::from("___"),
+            box TMetavar(x.clone()),
+            box TMetavar(y.clone()),
+        ),
+    );
+    let app2 = apply(
+        &s1,
+        &apply(
+            &s2,
+            &TFun(
+                String::from("___"),
+                box TMetavar(x.clone()),
+                box TMetavar(y.clone()),
+            ),
+        ),
+    );
     if app1 != app2 {
         die!("expected equal2: {:?} == {:?}", app1, app2)
     }
@@ -531,5 +568,4 @@ fn unification() {
     // (* An incomplete suite of tests for unification *)
     // TEST "unifying identical base types should return the empty substitution" =
     //   Subst.to_list (unify TInt TInt) = []
-
 }

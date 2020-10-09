@@ -1,11 +1,10 @@
-use common::Id;
-use common::Op2::*;
-use common::Const::*;
-use implicit::Expr;
-use implicit::Expr::*;
-use tok::{self, Tok};
+use crate::common::Id;
+use crate::common::Op2::*;
+use crate::common::Const::*;
+use crate::implicit::Expr;
+use crate::implicit::Expr::*;
+use crate::tok::{self, Tok};
 
-#[LALR]
 grammar<'input>(text: &'input str);
 
 pub Program: Expr = {
@@ -15,7 +14,7 @@ pub Program: Expr = {
 Expr: Expr = {
     "if" <c:Expr> "then" <t:Expr> "else" <f:Expr>    => If(Box::new(c), Box::new(t), Box::new(f)),
     "let" <id:Ident> "=" <v:Expr> "in" <e:Expr>      => Let(id, Box::new(v), Box::new(e)),
-    "let" "rec" <f:Ident> "=" <v:Expr> "in" <e:Expr> => Let(f.clone(), Box::new(Fix(f, v)), Box::new(e)),
+    "let" "rec" <f:Ident> "=" <v:Expr> "in" <e:Expr> => Let(f.clone(), Box::new(Fix(f, Box::new(v))), Box::new(e)),
     "fun" <id:Ident> "->" <e:Expr>                   => Fun(id, Box::new(e)),
     "fix" <id:Ident> "->" <e:Expr>                   => Fix(id, Box::new(e)),
     "begin" <e:Expr> "end"                           => e,

@@ -1,5 +1,5 @@
-use common::{Id, Op2};
-use typed;
+use crate::common::{Id, Op2};
+use crate::typed;
 
 pub type Metavar = (i32, String);
 
@@ -14,11 +14,17 @@ pub enum Type {
 
 pub fn opty(op: Op2) -> Type {
     match op {
-        Op2::And | Op2::Or | Op2::Impl | Op2::Iff |
-        Op2::LT | Op2::LTE | Op2::GT | Op2::GTE | Op2::Eq => Type::TBool,
+        Op2::And
+        | Op2::Or
+        | Op2::Impl
+        | Op2::Iff
+        | Op2::LT
+        | Op2::LTE
+        | Op2::GT
+        | Op2::GTE
+        | Op2::Eq => Type::TBool,
         Op2::Add | Op2::Sub | Op2::Mul => Type::TInt,
     }
 }
-
 
 pub type Expr = typed::Expr<Type>;

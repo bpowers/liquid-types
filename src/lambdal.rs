@@ -1,14 +1,12 @@
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
-use std::fmt::{Debug, Formatter, Error};
+use std::fmt::{Debug, Error, Formatter};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-use common;
-use common::{Id, Op2, Const};
-use explicit;
-use explicit::{Type};
-use implicit;
-use env;
-use hindley_milner;
+use crate::common::{self, Const, Id, Op2};
+use crate::env;
+use crate::explicit::{self, Type};
+use crate::hindley_milner;
+use crate::implicit;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub enum Imm {
@@ -81,7 +79,7 @@ impl Debug for Expr {
     }
 }
 
-static ENV_ID: AtomicUsize = ATOMIC_USIZE_INIT;
+static ENV_ID: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 struct ConvEnv {
@@ -99,9 +97,9 @@ impl ConvEnv {
 
     fn tmp(&self) -> (ConvEnv, Id) {
         let id = self.next_id;
-        let c = ConvEnv{
+        let c = ConvEnv {
             env_id: self.env_id,
-            next_id: self.next_id+1,
+            next_id: self.next_id + 1,
         };
 
         (c, format!("tmp{}_{}", self.env_id, id))
@@ -120,12 +118,15 @@ fn identity(cenv: ConvEnv, i: Imm) -> (ConvEnv, Expr) {
 }
 
 // 1:1 translation -- can't fail
-fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Imm) -> (ConvEnv, Expr)) -> (ConvEnv, Expr) {
-
-    use self::Imm as I;
-    use typed::Expr as E;
-    use self::Op::*;
+fn expr(
+    cenv: ConvEnv,
+    e: &explicit::Expr,
+    k: &dyn Fn(ConvEnv, Imm) -> (ConvEnv, Expr),
+) -> (ConvEnv, Expr) {
     use self::Expr::*;
+    use self::Imm as I;
+    use self::Op::*;
+    use crate::typed::Expr as E;
 
     match *e {
         E::Const(ref c) => k(cenv, constant(c)),
@@ -145,18 +146,13 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Imm) -> (ConvEnv, Exp
                 })
             })
         }
-        E::Let(ref id, ref e1, ref e2) => {
-            expr(cenv, e1, &|cenv, e1l| {
-                let (cenv, inner) = expr(cenv, e2, k);
-                (cenv, Let(id.clone(), box Op(Imm(e1l.clone())), box inner))
-            })
-        }
-        E::Var(ref x) => {
-            k(cenv, I::Var(x.clone()))
-        }
+        E::Let(ref id, ref e1, ref e2) => expr(cenv, e1, &|cenv, e1l| {
+            let (cenv, inner) = expr(cenv, e2, k);
+            (cenv, Let(id.clone(), box Op(Imm(e1l.clone())), box inner))
+        }),
+        E::Var(ref x) => k(cenv, I::Var(x.clone())),
         E::If(ref e1, ref e2, ref e3) => {
             expr(cenv, e1, &|cenv, cond_ref| {
-
                 let (cenv, l_true) = expr(cenv, e2, &identity);
                 let (cenv, l_false) = expr(cenv, e3, &identity);
 
@@ -178,19 +174,32 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Imm) -> (ConvEnv, Exp
             let (cenv, fun_ref) = cenv.tmp();
             let (cenv, result) = k(cenv, I::Var(fun_ref.clone()));
 
-            (cenv, Let(fun_ref, box Op(Imm(I::Fun(id.clone(), box fun))), box result))
+            (
+                cenv,
+                Let(
+                    fun_ref,
+                    box Op(Imm(I::Fun(id.clone(), box fun))),
+                    box result,
+                ),
+            )
         }
         E::Fix(ref id, _, ref e) => {
             let (cenv, fix) = expr(cenv, e, &identity);
             let (cenv, fix_ref) = cenv.tmp();
             let (cenv, result) = k(cenv, I::Var(fix_ref.clone()));
 
-            (cenv, Let(fix_ref, box Op(Imm(I::Fix(id.clone(), box fix))), box result))
+            (
+                cenv,
+                Let(
+                    fix_ref,
+                    box Op(Imm(I::Fix(id.clone(), box fix))),
+                    box result,
+                ),
+            )
         }
         E::App(ref e1, ref e2) => {
             expr(cenv, e1, &|cenv, ie1| {
                 expr(cenv, e2, &|cenv, ie2| {
-
                     let (cenv, app_tmp) = cenv.tmp();
                     let app_val = App(box ie1.clone(), box ie2.clone());
                     // value to pass to the continuation
@@ -204,38 +213,32 @@ fn expr(cenv: ConvEnv, e: &explicit::Expr, k: &Fn(ConvEnv, Imm) -> (ConvEnv, Exp
                 })
             })
         }
-        E::MkArray(ref sz, ref val) => {
-            expr(cenv, sz, &|cenv, isz| {
-                expr(cenv, val, &|cenv, ival| {
-                    let val = Op(MkArray(box isz.clone(), box ival));
+        E::MkArray(ref sz, ref val) => expr(cenv, sz, &|cenv, isz| {
+            expr(cenv, val, &|cenv, ival| {
+                let val = Op(MkArray(box isz.clone(), box ival));
+                let (cenv, val_ref) = cenv.tmp();
+                let (cenv, result) = k(cenv, I::Var(val_ref.clone()));
+                (cenv, Let(val_ref, box val, box result))
+            })
+        }),
+        E::GetArray(ref id, ref idx) => expr(cenv, id, &|cenv, iid| {
+            expr(cenv, idx, &|cenv, iidx| {
+                let val = Op(GetArray(box iid.clone(), box iidx));
+                let (cenv, val_ref) = cenv.tmp();
+                let (cenv, result) = k(cenv, I::Var(val_ref.clone()));
+                (cenv, Let(val_ref, box val, box result))
+            })
+        }),
+        E::SetArray(ref id, ref idx, ref v) => expr(cenv, id, &|cenv, iid| {
+            expr(cenv, idx, &|cenv, iidx| {
+                expr(cenv, v, &|cenv, iv| {
+                    let val = Op(SetArray(box iid.clone(), box iidx.clone(), box iv));
                     let (cenv, val_ref) = cenv.tmp();
                     let (cenv, result) = k(cenv, I::Var(val_ref.clone()));
                     (cenv, Let(val_ref, box val, box result))
                 })
             })
-        }
-        E::GetArray(ref id, ref idx) => {
-            expr(cenv, id, &|cenv, iid| {
-                expr(cenv, idx, &|cenv, iidx| {
-                    let val = Op(GetArray(box iid.clone(), box iidx));
-                    let (cenv, val_ref) = cenv.tmp();
-                    let (cenv, result) = k(cenv, I::Var(val_ref.clone()));
-                    (cenv, Let(val_ref, box val, box result))
-                })
-            })
-        }
-        E::SetArray(ref id, ref idx, ref v) => {
-            expr(cenv, id, &|cenv, iid| {
-                expr(cenv, idx, &|cenv, iidx| {
-                    expr(cenv, v, &|cenv, iv| {
-                        let val = Op(SetArray(box iid.clone(), box iidx.clone(), box iv));
-                        let (cenv, val_ref) = cenv.tmp();
-                        let (cenv, result) = k(cenv, I::Var(val_ref.clone()));
-                        (cenv, Let(val_ref, box val, box result))
-                    })
-                })
-            })
-        }
+        }),
         E::V => k(cenv, I::V),
         E::Star => k(cenv, I::Star),
     }
@@ -302,8 +305,7 @@ fn build_env_expr(env: HashMap<Id, Type>, e: &Expr) -> (HashMap<Id, Type>, Type)
         }
         App(ref e1, _) => {
             let (env, e1_type) = build_env_imm(env, e1);
-            if let Type::TFun(_,
-                              _, ret_type) = e1_type {
+            if let Type::TFun(_, _, ret_type) = e1_type {
                 (env, *ret_type)
             } else {
                 unreachable!("app of non-fun should have been caught by HM")
@@ -321,7 +323,6 @@ fn build_env_expr(env: HashMap<Id, Type>, e: &Expr) -> (HashMap<Id, Type>, Type)
 }
 
 pub fn anf(implicit_expr: &implicit::Expr) -> common::Result<(Expr, HashMap<Id, Type>)> {
-
     let explicit_expr = hindley_milner::infer(implicit_expr)?;
     // alpha-renaming
     let (alpha_expr, env) = env::extract(&explicit_expr);
@@ -335,9 +336,8 @@ pub fn anf(implicit_expr: &implicit::Expr) -> common::Result<(Expr, HashMap<Id, 
 }
 
 pub fn q_op(e: &implicit::Expr) -> common::Result<Op> {
-    use implicit::Expr as I;
     use self::Imm::*;
-    use common::Const;
+    use implicit::Expr as I;
 
     let imm = match *e {
         I::Op2(op, ref l, ref r) => {
@@ -372,7 +372,11 @@ pub fn q(implicit_expr: &implicit::Expr) -> common::Result<Expr> {
 fn test_q() {
     use common::Op2::*;
 
-    let q1 = implicit::Expr::Op2(LT, box implicit::Expr::V, box implicit::Expr::Const(common::Const::Int(3)));
+    let q1 = implicit::Expr::Op2(
+        LT,
+        box implicit::Expr::V,
+        box implicit::Expr::Const(common::Const::Int(3)),
+    );
     let ql = match q(&q1) {
         Ok(expr) => expr,
         Err(e) => die!("q: {:?}", e),
@@ -442,7 +446,9 @@ fn cmp_expr(vmap: HashMap<Id, Id>, e1: &Expr, e2: &Expr) -> bool {
 
     match (e1, e2) {
         (&If(ref cond1, ref l1, ref r1), &If(ref cond2, ref l2, ref r2)) => {
-            cmp_imm(vmap.clone(), cond1, cond2) && cmp_expr(vmap.clone(), l1, l2) && cmp_expr(vmap, r1, r2)
+            cmp_imm(vmap.clone(), cond1, cond2)
+                && cmp_expr(vmap.clone(), l1, l2)
+                && cmp_expr(vmap, r1, r2)
         }
         (&App(ref l1, ref r1), &App(ref l2, ref r2)) => {
             cmp_imm(vmap.clone(), l1, l2) && cmp_imm(vmap, r1, r2)
@@ -493,57 +499,131 @@ macro_rules! test_anf(
 
 #[test]
 fn anf_transforms() {
-    use common::Op2 as O;
+    use self::Expr::*;
     use self::Imm as I;
     use self::Op::*;
-    use self::Expr::*;
+    use common::Op2 as O;
 
-    test_anf!(
-        "-22",
-        Op(Imm(I::Int(-22))));
+    test_anf!("-22", Op(Imm(I::Int(-22))));
 
     test_anf!(
         "2+3",
-        Let(String::from("!tmp!0"), box Op(Op2(O::Add, box Imm(I::Int(2)), box Imm(I::Int(3)))),
-            box Op(Imm(I::Var(String::from("!tmp!0"))))));
+        Let(
+            String::from("!tmp!0"),
+            box Op(Op2(O::Add, box Imm(I::Int(2)), box Imm(I::Int(3)))),
+            box Op(Imm(I::Var(String::from("!tmp!0"))))
+        )
+    );
 
     test_anf!(
         "2+(3 - 2)",
-        Let(String::from("!tmp!0"), box Op(Op2(O::Sub, box Imm(I::Int(3)), box Imm(I::Int(2)))),
-            box Let(String::from("!tmp!1"), box Op(Op2(O::Add, box Imm(I::Int(2)), box Imm(I::Var(String::from("!tmp!0"))))),
-                    box Op(Imm(I::Var(String::from("!tmp!1")))))));
+        Let(
+            String::from("!tmp!0"),
+            box Op(Op2(O::Sub, box Imm(I::Int(3)), box Imm(I::Int(2)))),
+            box Let(
+                String::from("!tmp!1"),
+                box Op(Op2(
+                    O::Add,
+                    box Imm(I::Int(2)),
+                    box Imm(I::Var(String::from("!tmp!0")))
+                )),
+                box Op(Imm(I::Var(String::from("!tmp!1"))))
+            )
+        )
+    );
 
     test_anf!(
         "2 + 3 - 2",
-        Let(String::from("!tmp!0"), box Op(Op2(O::Add, box Imm(I::Int(2)), box Imm(I::Int(3)))),
-            box Let(String::from("!tmp!1"), box Op(Op2(O::Sub, box Imm(I::Var(String::from("!tmp!0"))), box Imm(I::Int(2)))),
-                    box Op(Imm(I::Var(String::from("!tmp!1")))))));
+        Let(
+            String::from("!tmp!0"),
+            box Op(Op2(O::Add, box Imm(I::Int(2)), box Imm(I::Int(3)))),
+            box Let(
+                String::from("!tmp!1"),
+                box Op(Op2(
+                    O::Sub,
+                    box Imm(I::Var(String::from("!tmp!0"))),
+                    box Imm(I::Int(2))
+                )),
+                box Op(Imm(I::Var(String::from("!tmp!1"))))
+            )
+        )
+    );
 
     test_anf!(
         "let x = 1 in x",
-        Let(String::from("x!a1"), box Op(Imm(I::Int(1))),
-            box Op(Imm(I::Var(String::from("x!a1"))))));
+        Let(
+            String::from("x!a1"),
+            box Op(Imm(I::Int(1))),
+            box Op(Imm(I::Var(String::from("x!a1"))))
+        )
+    );
 
     test_anf!(
         "let x = (if true then 1 else 2) in x",
-        Let(String::from("!tmp!0"), box If(box I::Bool(true), box Op(Imm(I::Int(1))), box Op(Imm(I::Int(2)))),
-            box Let(String::from("x!a1"), box Op(Imm(I::Var(String::from("!tmp!0")))),
-                    box Op(Imm(I::Var(String::from("x!a1")))))));
+        Let(
+            String::from("!tmp!0"),
+            box If(
+                box I::Bool(true),
+                box Op(Imm(I::Int(1))),
+                box Op(Imm(I::Int(2)))
+            ),
+            box Let(
+                String::from("x!a1"),
+                box Op(Imm(I::Var(String::from("!tmp!0")))),
+                box Op(Imm(I::Var(String::from("x!a1"))))
+            )
+        )
+    );
 
     test_anf!(
         "let a = array(3, 5) in a[0]",
-        Let(String::from("!tmp!0"), box Op(MkArray(box I::Int(3), box I::Int(5))),
-            box Let(String::from("a!a1"), box Op(Imm(I::Var(String::from("!tmp!0")))),
-                    box Let(String::from("!tmp!1"), box Op(GetArray(box I::Var(String::from("a!a1")), box I::Int(0))),
-                            box Op(Imm(I::Var(String::from("!tmp!1"))))))));
+        Let(
+            String::from("!tmp!0"),
+            box Op(MkArray(box I::Int(3), box I::Int(5))),
+            box Let(
+                String::from("a!a1"),
+                box Op(Imm(I::Var(String::from("!tmp!0")))),
+                box Let(
+                    String::from("!tmp!1"),
+                    box Op(GetArray(box I::Var(String::from("a!a1")), box I::Int(0))),
+                    box Op(Imm(I::Var(String::from("!tmp!1"))))
+                )
+            )
+        )
+    );
 
     test_anf!(
         "let f = (fun n -> n + 1) in f (2+3)",
-        Let(String::from("!tmp!1"), box Op(Imm(I::Fun(String::from("n!a2"),
-                                                      box Let(String::from("!tmp!0"), box Op(Op2(O::Add, box Imm(I::Var(String::from("n!a2"))), box Imm(I::Int(1)))),
-                                                              box Op(Imm(I::Var(String::from("!tmp!0")))))))),
-            box Let(String::from("f!a1"), box Op(Imm(I::Var(String::from("!tmp!1")))),
-                    box Let(String::from("!tmp!2"), box Op(Op2(O::Add, box Imm(I::Int(2)), box Imm(I::Int(3)))),
-                            box Let(String::from("!tmp!3"), box App(box I::Var(String::from("f!a1")), box I::Var(String::from("!tmp!2"))),
-                                    box Op(Imm(I::Var(String::from("!tmp!3")))))))));
+        Let(
+            String::from("!tmp!1"),
+            box Op(Imm(I::Fun(
+                String::from("n!a2"),
+                box Let(
+                    String::from("!tmp!0"),
+                    box Op(Op2(
+                        O::Add,
+                        box Imm(I::Var(String::from("n!a2"))),
+                        box Imm(I::Int(1))
+                    )),
+                    box Op(Imm(I::Var(String::from("!tmp!0"))))
+                )
+            ))),
+            box Let(
+                String::from("f!a1"),
+                box Op(Imm(I::Var(String::from("!tmp!1")))),
+                box Let(
+                    String::from("!tmp!2"),
+                    box Op(Op2(O::Add, box Imm(I::Int(2)), box Imm(I::Int(3)))),
+                    box Let(
+                        String::from("!tmp!3"),
+                        box App(
+                            box I::Var(String::from("f!a1")),
+                            box I::Var(String::from("!tmp!2"))
+                        ),
+                        box Op(Imm(I::Var(String::from("!tmp!3"))))
+                    )
+                )
+            )
+        )
+    );
 }

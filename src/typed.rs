@@ -1,4 +1,4 @@
-pub use common::{Id, Op2, Const};
+pub use crate::common::{Const, Id, Op2};
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum Expr<Ty> {
