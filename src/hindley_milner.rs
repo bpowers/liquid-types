@@ -388,29 +388,9 @@ pub fn infer_in(id_env: HashMap<Id, Type>, expr: &implicit::Expr) -> Result<expl
     let typed_w_metavars = add_metavars(&expr);
     let mut cg_env = MVEnv::new("β");
 
-    let constraints = match gen_constraints(&mut cg_env, &id_env, &typed_w_metavars) {
-        Ok((c, _)) => c,
-        Err(e) => {
-            return Err(e);
-            //die!("gen_constraints: {}", error::Error::description(&e)),
-        }
-    };
-
-    let mv_env = match unify_all(&constraints) {
-        Ok(e) => e,
-        Err(e) => {
-            return Err(e);
-            //die!("unification failed: {}", error::Error::description(&e)),
-        }
-    };
-
-    let typed = match remove_metavars(&mv_env, &typed_w_metavars) {
-        Ok(expr) => expr,
-        Err(e) => {
-            return Err(e);
-            //die!("remove_metavars failed: {}", error::Error::description(&e)),
-        }
-    };
+    let constraints = gen_constraints(&mut cg_env, &id_env, &typed_w_metavars).map(|(constraints, _)| constraints)?;
+    let mv_env = unify_all(&constraints)?;
+    let typed = remove_metavars(&mv_env, &typed_w_metavars)?;
 
     Ok(*typed)
 }
